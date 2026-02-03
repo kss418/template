@@ -724,3 +724,63 @@ public:
     view_base <const _clist> operator[](int u) const{ return {this, u, head[u]}; } // O(1)
     view operator[](int u){ return {this, u, head[u]}; } // O(1)
 };
+
+template <class C = ll, C CINF = INF>
+class _hungarian{ // 1-based index
+    vector <vector <C>> cost;
+    vector <C> row, col;
+    vector <int> match, pre; int n;
+    void loop(int i){
+        match[0] = i;
+        int j0 = 0;
+        vector <C> mn(n + 1, CINF);
+        vector <bool> use(n + 1, 0);
+
+        while(1){
+            use[j0] = 1;
+            int i0 = match[j0], j1 = 0;
+            C delta = INF;
+            for(int j = 1;j <= n;j++){
+                if(use[j]) continue;
+                C cur = cost[i0][j] - row[i0] - col[j];
+                if(cur < mn[j]){
+                    mn[j] = cur;
+                    pre[j] = j0;
+                }
+
+                if(mn[j] < delta){
+                    delta = mn[j];
+                    j1 = j;
+                }
+            }
+
+            for(int j = 0;j <= n;j++){
+                if(use[j]){ row[match[j]] += delta; col[j] -= delta; }
+                else mn[j] -= delta;
+            }
+
+            j0 = j1;
+            if(!match[j0]) break;
+        }
+
+        while(1){
+            int j1 = pre[j0];
+            match[j0] = match[j1];
+            j0 = j1;
+            if(!j0) break;
+        }
+    }
+public:
+    _hungarian(int n = 0){ clear(n); }
+    void clear(int n){
+        this-> n = n; col.assign(n + 1, 0);
+        row.assign(n + 1, 0); match.assign(n + 1, 0);
+        pre.assign(n + 1, 0); cost.assign(n + 1, vector<C>(n + 1, 0));
+    }
+
+    void set(int i, int j, C v){ cost[i][j] = v; }
+    C build(){
+        for(int i = 1;i <= n;i++) loop(i);
+        return -col[0];
+    }
+};
