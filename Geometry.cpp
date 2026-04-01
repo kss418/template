@@ -470,3 +470,46 @@ public:
 
     void clear(){ for(int i = 0;i < n;i++) bs[i].reset(); }
 };
+
+template <size_t N = 63>
+class _xor_basis{
+public:
+    array<u64, N> basis{}; int rk = 0;
+    _xor_basis(){ clear(); } // O(max_bit)
+    void clear(){ basis.fill(0); rk = 0; } // O(max_bit)
+
+    bool insert(u64 x){ // O(max_bit)
+        for(int i = (int)N - 1; i >= 0; i--){
+            if(((x >> i) & 1ull) == 0) continue;
+            if(!basis[i]){
+                basis[i] = x; rk++;
+                return 1;
+            }
+            x ^= basis[i];
+        }
+        return 0;
+    }
+
+    bool can_make(u64 x) const{ // O(max_bit)
+        for(int i = (int)N - 1; i >= 0; i--){
+            if(((x >> i) & 1ull) == 0) continue;
+            if(!basis[i]) return 0;
+            x ^= basis[i];
+        }
+        return 1;
+    }
+
+    u64 max_xor(u64 x = 0) const{ // O(max_bit)
+        u64 ret = x;
+        for(int i = (int)N - 1; i >= 0; i--) ret = max(ret, ret ^ basis[i]);
+        return ret;
+    }
+
+    u64 min_xor(u64 x = 0) const{ // O(max_bit)
+        u64 ret = x;
+        for(int i = (int)N - 1; i >= 0; i--) ret = min(ret, ret ^ basis[i]);
+        return ret;
+    }
+
+    int rank() const{ return rk; } // O(1)
+};
