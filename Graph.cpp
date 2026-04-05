@@ -148,6 +148,116 @@ public:
     }
 };
 
+// Virtual Tree
+class _vtree { // 1-based index
+private:
+    vector <vector<int>> lift;
+    vector <ll> dist;
+    vector <int> in, out, dep, used;
+    int n, lg, seq; bool built = 0;
+
+    bool is_ancestor(int a, int b) const{
+        return in[a] <= in[b] && out[b] <= out[a];
+    }
+
+    void sort_node(vector <int>& node) const{
+        sort(all(node), [&](int a, int b){
+            return in[a] < in[b];
+        });
+    }
+
+    void clear_vt(){
+        for(auto& v : used) vt[v].clear();
+        used.clear();
+    }
+
+    int lca(int a, int b) const{
+        if(is_ancestor(a, b)) return a;
+        if(is_ancestor(b, a)) return b;
+        for(int i = lg;i >= 0;i--){
+            if(!is_ancestor(lift[i][a], b)) a = lift[i][a];
+        }
+        return lift[0][a];
+    }
+
+    void dfs(int cur, int pre){
+        in[cur] = ++seq;
+        lift[0][cur] = pre;
+        for(int i = 1;i <= lg;i++){
+            lift[i][cur] = lift[i - 1][lift[i - 1][cur]];
+        }
+
+        for(auto& [nxt, co] : adj[cur]){
+            if(nxt == pre) continue;
+            dep[nxt] = dep[cur] + 1;
+            dist[nxt] = dist[cur] + co;
+            dfs(nxt, cur);
+        }
+        out[cur] = seq;
+    }
+public:
+    vector <vector<pair<int, ll>>> adj, vt;
+    _vtree(int n = 0){ clear(n); } // O(1)
+    void clear(int n){ // O(n)
+        this->n = n; seq = 0; built = 0; lg = 1;
+        while((1ll << lg) <= n) lg++;
+        adj.assign(n + 1, {}); vt.assign(n + 1, {});
+        lift.assign(lg + 1, vector<int>(n + 1, 0));
+        in.assign(n + 1, 0); out.assign(n + 1, 0);
+        dep.assign(n + 1, 0); dist.assign(n + 1, 0);
+        used.clear();
+    }
+
+    void add(int a, int b, ll c = 1){
+        adj[a].push_back({b, c});
+        adj[b].push_back({a, c});
+        built = 0;
+    } // O(1)
+
+    void init(int root = 1){ // O(n log n)
+        seq = 0; built = 1; clear_vt();
+        for(auto& row : lift) fill(all(row), 0);
+        fill(all(in), 0); fill(all(out), 0);
+        fill(all(dep), 0); fill(all(dist), 0);
+        dfs(root, root);
+    }
+
+    int depth(int v) const { return dep[v]; } // O(1)
+    int parent(int v) const { return lift[0][v]; } // O(1)
+    ll dist_root(int v) const { return dist[v]; } // O(1)
+    int ret(int a, int b) const { return lca(a, b); } // O(log n)
+
+    ll dist_tree(int a, int b) const{ // O(log n)
+        int c = lca(a, b);
+        return dist[a] + dist[b] - 2 * dist[c];
+    }
+
+    vector <int> build(vector <int> node){ // O(k log k)
+        assert(built); clear_vt();
+        if(node.empty()) return {};
+        sort_node(node);
+
+        int sz = node.size();
+        for(int i = 0;i < sz - 1;i++) node.push_back(lca(node[i], node[i + 1]));
+
+        sort_node(node);
+        node.erase(unique(all(node)), node.end());
+        used = node;
+
+        vector<int> st = {node[0]};
+        for(int i = 1;i < node.size();i++){
+            int v = node[i];
+            while(!st.empty() && !is_ancestor(st.back(), v)){
+                st.pop_back();
+            }
+
+            vt[st.back()].push_back({v, dist[v] - dist[st.back()]});
+            st.push_back(v);
+        }
+        return node;
+    }
+};
+
 // Sparse Table
 class _st { // 0-base index
 private:
