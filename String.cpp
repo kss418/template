@@ -14,13 +14,21 @@ template <class T = ll>
 class _kmp{ // 0-based index
 private:
     int m;
-    vector <T> pat; vector <int> f;
+    vector <T> pat; vector <int> arr;
     void build(){
-        m = (int)pat.size(); int nxt = 0; f.assign(m, 0);
+        m = (int)pat.size(); int nxt = 0; arr.assign(m, 0);
         for(int cur = 1;cur < m;cur++){
-            while(nxt && pat[cur] != pat[nxt]) nxt = f[nxt - 1];
-            if(pat[cur] == pat[nxt]) f[cur] = ++nxt;
+            while(nxt && !build_chk(cur, nxt)) nxt = arr[nxt - 1];
+            if(build_chk(cur, nxt)) arr[cur] = ++nxt;
         }
+    }
+
+    bool build_chk(int cur, int nxt) const{
+        return pat[cur] == pat[nxt];
+    }
+
+    bool match_chk(span<const T> v, int idx, int state) const{
+        return v[idx] == pat[state];
     }
 
     static vector <T> tf(const string& s){
@@ -32,11 +40,11 @@ public:
     _kmp() : m(0){}
     _kmp(const string& s){ set(s); } // O(|s|)
     _kmp(span<const T> v){ set(v); } // O(|v|)
-    void clear(){ pat.clear(); f.clear(); m = 0; } // O(1)
+    void clear(){ pat.clear(); arr.clear(); m = 0; } // O(1)
     void set(const string& s){ pat = tf(s); build(); } // O(|s|)
     void set(span<const T> v){ pat.assign(all(v)); build(); } // O(|v|)
 
-    const vector<int>& fail() const{ return f; } // O(1)
+    const vector<int>& fail() const{ return arr; } // O(1)
     template <class F>
     void it_match(const string& s, const F& f) const{ it_match(tf(s), f);} // O(|s| + m)
     template <class F>
@@ -44,23 +52,23 @@ public:
         int n = (int)v.size();
         if(!m) return; int state = 0;
         for(int i = 0;i < n;i++){
-            state = go(state, v[i]);
+            state = go(state, v, i);
             if(state == m) f(i - m + 1);
         }
     }
 
-    int go(int state, const T& ch) const{ // amortized O(1)
+    int go(int state, span<const T> v, int idx) const{ // amortized O(1)
         if(!m) return 0;
-        if(state == m) state = f[m - 1];
-        while(state && ch != pat[state]) state = f[state - 1];
-        if(ch == pat[state]) state++;
+        if(state == m) state = arr[m - 1];
+        while(state && !match_chk(v, idx, state)) state = arr[state - 1];
+        if(match_chk(v, idx, state)) state++;
         return state;
     }
 
     template <class F>
     void it_border(const F& f) const{ // O(m)
         if(!m) return;
-        for(int x = f[m - 1];x > 0;x = f[x - 1]) f(x);
+        for(int x = arr[m - 1];x > 0;x = arr[x - 1]) f(x);
     }
 };
 
