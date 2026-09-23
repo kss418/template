@@ -1,0 +1,39 @@
+{
+"angle_sort": {
+  "prefix": ">>angle_sort",
+  "body": [
+    "template <typename T = ll, typename U = ll>",
+    "class _angle_sort{",
+    "private:",
+    "    using ptu = pair<T, U>;",
+    "    using i128 = __int128_t;",
+    "",
+    "    static i128 dx(const ptu& p, T cx){ return (i128)p.first - cx; }",
+    "    static i128 dy(const ptu& p, U cy){ return (i128)p.second - cy; }",
+    "    static int half_ccw(i128 x, i128 y){ return (y > 0 || (y == 0 && x >= 0)) ? 0 : 1; }",
+    "    static int half_cw(i128 x, i128 y){ return (y < 0 || (y == 0 && x >= 0)) ? 0 : 1; }",
+    "public:",
+    "    _angle_sort(){}",
+    "",
+    "    static void sort(span<ptu> arr, T cx = 0, U cy = 0, bool is_clock = false){",
+    "        std::sort(arr.begin(), arr.end(), [&](const ptu& a, const ptu& b){",
+    "            i128 ax = dx(a, cx), ay = dy(a, cy);",
+    "            i128 bx = dx(b, cx), by = dy(b, cy);",
+    "",
+    "            int ha = is_clock ? half_cw(ax, ay) : half_ccw(ax, ay);",
+    "            int hb = is_clock ? half_cw(bx, by) : half_ccw(bx, by);",
+    "",
+    "            if(ha != hb) return ha < hb;",
+    "            i128 cross = ax * by - ay * bx;",
+    "            if(cross != 0) return is_clock ? cross < 0 : cross > 0;",
+    "",
+    "            i128 da = ax * ax + ay * ay;",
+    "            i128 db = bx * bx + by * by;",
+    "            return da < db;",
+    "        });",
+    "    }",
+    "};"
+  ],
+  "description": "angle_sort"
+}
+}
