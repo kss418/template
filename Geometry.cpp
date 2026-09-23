@@ -28,21 +28,17 @@ public:
 };
 
 //ANGLE SORT
-template <typename T = ll, typename U = ll>
+template <typename T = pll>
 class _angle_sort{
 private:
-    using ptu = pair<T, U>;
     using i128 = __int128_t;
-
-    static i128 dx(const ptu& p, T cx){ return (i128)p.first - cx; }
-    static i128 dy(const ptu& p, U cy){ return (i128)p.second - cy; }
+    static i128 dx(const T& p, ll cx){ return (i128)p.x - cx; }
+    static i128 dy(const T& p, ll cy){ return (i128)p.y - cy; }
     static int half_ccw(i128 x, i128 y){ return (y > 0 || (y == 0 && x >= 0)) ? 0 : 1; }
     static int half_cw(i128 x, i128 y){ return (y < 0 || (y == 0 && x >= 0)) ? 0 : 1; }
 public:
-    _angle_sort(){}
-
-    static void sort(span<ptu> arr, T cx = 0, U cy = 0, bool is_clock = false){
-        std::sort(arr.begin(), arr.end(), [&](const ptu& a, const ptu& b){
+    static void sort(span<T> arr, ll cx = 0, ll cy = 0, bool is_clock = false){
+        std::sort(arr.begin(), arr.end(), [&](const T& a, const T& b){
             i128 ax = dx(a, cx), ay = dy(a, cy);
             i128 bx = dx(b, cx), by = dy(b, cy);
 
@@ -51,12 +47,18 @@ public:
 
             if(ha != hb) return ha < hb;
             i128 cross = ax * by - ay * bx;
-            if(cross != 0) return is_clock ? cross < 0 : cross > 0;
+            if(cross) return is_clock ? cross < 0 : cross > 0;
 
             i128 da = ax * ax + ay * ay;
             i128 db = bx * bx + by * by;
             return da < db;
         });
+    }
+
+    static bool is_same(const T& a, const T& b, ll cx = 0, ll cy = 0){
+        i128 ax = dx(a, cx), ay = dy(a, cy);
+        i128 bx = dx(b, cx), by = dy(b, cy);
+        return ax * by - ay * bx == 0 && ax * bx + ay * by > 0;
     }
 };
 
