@@ -457,13 +457,19 @@ public:
     node op(const node& l, const node& r) const{ return policy::op(l, r); }
     node id() const{ return node(); }
     node inv(const node& a) const requires has_inv<policy>{ return policy::inv(a); }
+
 private:
-    vector <int> lv, rv, root; vector <node> seg;
-    int n, q, lg, nc, vc;
+    vector <int> lv, rv;
+    vector <node> seg;
+    int n;
+
     int clone(int idx){
-        ++nc; seg[nc] = seg[idx];
-        lv[nc] = lv[idx]; rv[nc] = rv[idx];
-        return nc;
+        int l = lv[idx], r = rv[idx];
+        node v = seg[idx];
+
+        lv.push_back(l); rv.push_back(r);
+        seg.push_back(v);
+        return (int)seg.size() - 1;
     }
 
     int set(int idx, int s, int e, int pos, const node& v){
@@ -478,15 +484,16 @@ private:
 
     node query(int idx, int s, int e, int l, int r) const{
         if(!idx || r < s || e < l) return id();
-        if(l <= s && r >= e) return seg[idx];
+        if(l <= s && e <= r) return seg[idx];
         int m = (s + e) >> 1;
         node ln = query(lv[idx], s, m, l, r);
         node rn = query(rv[idx], m + 1, e, l, r);
         return op(ln, rn);
     }
 
-    node diff_seg(int idx1, int idx2) const requires has_inv<policy>
-    { return op(seg[idx2], inv(seg[idx1])); }
+    node diff_seg(int idx1, int idx2) const requires has_inv<policy>{
+        return op(seg[idx2], inv(seg[idx1]));
+    }
 
     template<class F>
     int bisect(int idx, int s, int e, int p, bool right, const F& f, node& v) const{
@@ -515,7 +522,8 @@ private:
         if(!right && p < s) return p + 1;
         if(!idx1 && !idx2) return right ? e : s;
         if((right && p <= s) || (!right && e <= p)){
-            node nxt = right ? op(v, diff_seg(idx1, idx2)) : op(diff_seg(idx1, idx2), v);
+            node diff = diff_seg(idx1, idx2);
+            node nxt = right ? op(v, diff) : op(diff, v);
             if(f(nxt)){ v = nxt; return right ? e : s; }
             if(s == e) return right ? s - 1 : s + 1;
         }
@@ -529,69 +537,67 @@ private:
         if(ret > m + 1) return ret;
         return bisect_diff(lv[idx1], lv[idx2], s, m, p, right, f, v);
     }
+
 public:
-    _pst(int n = 0, int q = 0){ clear(n, q); } // q -> update size
-    void clear(int n, int q){ // O(q log n)
-        this->n = n; this->q = q;
-        lg = __lg(n + 1) + 2; nc = vc = 0;
-        int mx = (q + 1) * lg + 5;
-        lv.assign(mx, 0); rv.assign(mx, 0);
-        root.assign(q + 1, 0); seg.assign(mx, id());
+    _pst(int n = 0){ clear(n); }
+
+    void clear(int n){
+        this->n = n;
+        lv.assign(1, 0); rv.assign(1, 0);
+        seg.assign(1, id());
     }
 
-    int version() const{ return vc; }
-    int set(int idx, const node& v){ return set(vc, idx, v); } // O(log n)
-    int set(int ver, int idx, const node& v){ // O(log n)
-        assert(0 <= ver && ver <= vc);
-        assert(vc + 1 <= q); assert(0 <= idx && idx <= n);
-        root[++vc] = set(root[ver], 0, n, idx, v);
-        return vc;
+    int node_count() const{
+        return (int)seg.size() - 1;
     }
 
-    node query(int ver, int idx) const{ return query(ver, idx, idx); } // O(log n)
-    node query(int ver, int l, int r) const{ // O(log n)
-        assert(0 <= ver && ver <= vc);
+    int set(int rt, int idx, const node& v){ // O(log n)
+        assert(0 <= idx && idx <= n);
+        return set(rt, 0, n, idx, v);
+    }
+
+    node get(int rt, int idx) const{ // O(log n)
+        return query(rt, idx, idx);
+    }
+
+    node query(int rt, int l, int r) const{ // O(log n)
         l = max(0, l); r = min(n, r);
         if(l > r) return id();
-        return query(root[ver], 0, n, l, r);
+        return query(rt, 0, n, l, r);
     }
 
-    node diff_query(int ver1, int ver2, int idx) const requires has_inv<policy>
-    { return diff_query(ver1, ver2, idx, idx); } // O(log n)
+    node diff_get(int rt1, int rt2, int idx) const requires has_inv<policy>{
+        return diff_query(rt1, rt2, idx, idx);
+    }
 
-    node diff_query(int ver1, int ver2, int l, int r) const requires has_inv<policy>{ // O(log n)
-        ver1--; assert(0 <= ver1 && ver1 <= ver2 && ver2 <= vc);
+    node diff_query(int rt1, int rt2, int l, int r) const requires has_inv<policy>{
         l = max(0, l); r = min(n, r);
         if(l > r) return id();
-        return op(query(root[ver2], 0, n, l, r), inv(query(root[ver1], 0, n, l, r)));
+        return op(query(rt2, 0, n, l, r), inv(query(rt1, 0, n, l, r)));
     }
 
     template<class F>
-    int max_right(int ver, int l, const F& f) const{
-        assert(0 <= ver && ver <= vc); assert(0 <= l && l <= n);
-        assert(f(id())); node v = id();
-        return bisect(root[ver], 0, n, l, 1, f, v);
+    int max_right(int rt, int l, const F& f) const{
+        node v = id();
+        return bisect(rt, 0, n, l, 1, f, v);
     }
 
     template<class F>
-    int min_left(int ver, int r, const F& f) const{
-        assert(0 <= ver && ver <= vc); assert(0 <= r && r <= n);
-        assert(f(id())); node v = id();
-        return bisect(root[ver], 0, n, r, 0, f, v);
+    int min_left(int rt, int r, const F& f) const{
+        node v = id();
+        return bisect(rt, 0, n, r, 0, f, v);
     }
 
     template<class F>
-    int diff_max_right(int ver1, int ver2, int l, const F& f) const requires has_inv<policy>{
-        ver1--; assert(0 <= ver1 && ver1 <= ver2 && ver2 <= vc);
-        assert(0 <= l && l <= n); assert(f(id())); node v = id();
-        return bisect_diff(root[ver1], root[ver2], 0, n, l, 1, f, v);
+    int diff_max_right(int rt1, int rt2, int l, const F& f) const requires has_inv<policy>{
+        node v = id();
+        return bisect_diff(rt1, rt2, 0, n, l, 1, f, v);
     }
 
     template<class F>
-    int diff_min_left(int ver1, int ver2, int r, const F& f) const requires has_inv<policy>{
-        ver1--; assert(0 <= ver1 && ver1 <= ver2 && ver2 <= vc);
-        assert(0 <= r && r <= n); assert(f(id())); node v = id();
-        return bisect_diff(root[ver1], root[ver2], 0, n, r, 0, f, v);
+    int diff_min_left(int rt1, int rt2, int r, const F& f) const requires has_inv<policy>{
+        node v = id();
+        return bisect_diff(rt1, rt2, 0, n, r, 0, f, v);
     }
 };
 
