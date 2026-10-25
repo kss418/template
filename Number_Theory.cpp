@@ -80,9 +80,10 @@ public:
     static constexpr size_t sz = (n >> 1) + 1; 
     bitset <sz> bs;
     vector <int> prime;
-    _es() { init(); }
+    _es() { build(); }
 
-    void init(){
+    void build(){
+        prime.clear(); bs.reset();
         if(n >= 2) prime.push_back(2);
         bs.set(0);
         for(int i = 3;i <= n;i += 2){
@@ -106,18 +107,18 @@ class _gcd {
 public:
     _gcd() {}
 
-    tll init(ll a, ll b) {
+    tll build(ll a, ll b) {
         if (!b) return { a, 1, 0 };
-        auto [g, x, y] = init(b, a % b);
+        auto [g, x, y] = build(b, a % b);
         return { g, y, x - a / b * y };
     }
 
     ll ret(ll a, ll b) {
-        return get<0>(init(a, b));
+        return get<0>(build(a, b));
     }
 
     ll inv(ll a, ll mod) {
-        auto [g, x, y] = init(a, mod);
+        auto [g, x, y] = build(a, mod);
         if (!a || g != 1) return -1;
         return (x < 0 ? x + mod : x);
     }
@@ -349,15 +350,16 @@ public:
 
 class _ls{
 public:
-    vector <int> lp, prime, vphi, vmu; int n, flag; 
+    vector <int> lp, prime, vphi, vmu; int n = 0, flag = 0;
     _ls(){}
-    _ls(int n, int flag = 0) : n(n), flag(flag){ init(); }
+    _ls(int n, int flag = 0) : n(n), flag(flag){ build(); }
     
-    void init(){
+    void build(){
+        prime.clear(); vphi.clear(); vmu.clear();
         lp.assign(n + 1, 0);
         if(n >= 3) prime.reserve((int)(n / log((ld)n)) + 10);
-        if(flag & 1) vphi.assign(n + 1, 0), vphi[1] = 1;
-        if(flag & 2) vmu.assign(n + 1, 0), vmu[1] = 1;
+        if(flag & 1) { vphi.assign(n + 1, 0); if(n >= 1) vphi[1] = 1; }
+        if(flag & 2) { vmu.assign(n + 1, 0); if(n >= 1) vmu[1] = 1; }
 
         for(int i = 2;i <= n;i++){
             if(!lp[i]){

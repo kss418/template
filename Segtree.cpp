@@ -57,14 +57,14 @@ private:
     }
 public:
     _seg(int n = 0, bool base = 1){ clear(n, base); } // O(n)
-    _seg(span<const node> arr, bool base = 1){ build(arr, base); } // O(n)
+    _seg(span<const node> arr, bool base = 1){ make(arr, base); } // O(n)
     void clear(int n, bool base = 1){ // O(n)
         this->n = n; this->base = base;
         sz = 1; while(sz < n + 1) sz <<= 1;
         seg.assign(2 * sz, id());
     }
 
-    void build(span<const node> arr, bool base = 1){ // O(n)
+    void make(span<const node> arr, bool base = 1){ // O(n)
         if(arr.empty()){ clear(base - 1, base); return; }
         clear((int)arr.size() - 1, base);
         for(int i = base;i < (int)arr.size();i++) seg[i + sz] = arr[i];
@@ -190,7 +190,7 @@ private:
     }
 public:
     _prop(int n = 0, bool base = 1){ clear(n, base); } // O(n)
-    _prop(span<const node> arr, bool base = 1){ build(arr, base); } // O(n)
+    _prop(span<const node> arr, bool base = 1){ make(arr, base); } // O(n)
     void clear(int n, bool base = 1){ // O(n)
         this->n = n; this->base = base;
         sz = 1; while(sz < n + 1) sz <<= 1;
@@ -199,7 +199,7 @@ public:
         lz.assign(2 * sz, lz_id());
     }
 
-    void build(span<const node> arr, bool base = 1){ // O(n)
+    void make(span<const node> arr, bool base = 1){ // O(n)
         if(arr.empty()){ clear(base - 1, base); return; }
         clear((int)arr.size() - 1, base);
         for(int i = base;i < (int)arr.size();i++) seg[i + sz] = arr[i];
@@ -272,7 +272,7 @@ private:
             adj[cur].push_back(nxt);
             build_tree(nxt, cur);
         }
-        tmp[cur].clear();
+
     }
 
     void dfs1(int cur){
@@ -322,48 +322,64 @@ public:
 
     void addsol(int s, int e){ tmp[s].push_back(e); }
     void add(int s, int e){ addsol(s, e); addsol(e, s); }
-    void init(){
-        assert(!built); built = 1;
+    void build(){
+        vector<node> values;
+        if(built){
+            values.assign(n + 1, seg.id());
+            for(int v = base; v <= n; ++v) values[v] = seg.query(in[v], in[v]);
+        }
+        cnt = 0; adj.assign(n + 1, {});
+        fill(all(sz), 0); fill(all(top), -1); fill(all(d), 0);
+        fill(all(in), 0); fill(all(out), 0); fill(all(p), -1);
         for(int i = base;i <= n;i++){
             if(sz[i]) continue; top[i] = i;
             build_tree(i); dfs1(i); dfs2(i);
         }
-        tmp.clear(); tmp.shrink_to_fit();
+        if(built){
+            vector<node> ordered(n + 1, seg.id());
+            for(int v = base; v <= n; ++v) ordered[in[v]] = values[v];
+            if constexpr (requires(policy& s, span<const node> a){ s.make(a, 0); }) seg.make(ordered, 0);
+            else {
+                if constexpr (requires(policy& s){ s.clear(n, 0); }) seg.clear(n, 0);
+                else seg.clear(n);
+                for(int v = base; v <= n; ++v) seg.set(in[v], values[v]);
+            }
+        }
+        built = 1;
     }
 
     node query(int x){
-        assert(built);
         return seg.query(in[x], in[x]);
     }
 
     node query(int st, int en) { 
-        assert(built); node ret = seg.id();
+        node ret = seg.id();
         auto path = get_path(st, en);
         for(auto &[l, r] : path) ret = seg.op(ret, seg.query(l, r));
         return ret;
     }
 
-    node query_sub(int x){ assert(built); return seg.query(in[x] + m, out[x]); }
+    node query_sub(int x){ return seg.query(in[x] + m, out[x]); }
     void set(int x, const node& v)
         requires requires(policy s, int i, const node& nv){ s.set(i, nv); }
-    { assert(built); seg.set(in[x], v); }
+    { seg.set(in[x], v); }
 
     void update(int x, const node& v)
         requires requires(policy s, int i, const node& nv){ s.update(i, nv); }
-    { assert(built); seg.update(in[x], v); }
+    { seg.update(in[x], v); }
 
     template<class P = policy>
     void update(int st, int en, const typename P::lazy& lz)
         requires is_action<P>
     {
-        auto path = get_path(st, en); assert(built);
+        auto path = get_path(st, en);
         for(auto &[l, r] : path) seg.update(l, r, lz);
     }
 
     template<class P = policy>
     void update_sub(int x, const typename P::lazy& lz)
         requires is_action<P>
-    { assert(built); seg.update(in[x] + m, out[x], lz); }
+    { seg.update(in[x] + m, out[x], lz); }
 }; 
 
 struct mt_policy {
@@ -405,13 +421,13 @@ private:
     }
 public:
     _mt(int n = 0, bool base = 1){ clear(n, base); } // O(n)
-    _mt(span<const node> arr, bool base = 1){ build(arr, base); } // O(n log n)
+    _mt(span<const node> arr, bool base = 1){ make(arr, base); } // O(n log n)
     void clear(int n, bool base = 1){ // O(n)
         this->n = n; this->base = base; sz = 1; while(sz < n + 1) sz <<= 1;
         arr.assign(n + 1, node()); seg.assign(2 * sz, {});
     }
 
-    void build(span<const node> arr, bool base = 1){ // O(n log n)
+    void make(span<const node> arr, bool base = 1){ // O(n log n)
         if(arr.empty()){ clear(base - 1, base); return; }
         clear((int)arr.size() - 1, base); this->arr.assign(all(arr));
         for(int i = base; i <= n; i++) seg[sz + i].assign(1, arr[i]);
@@ -628,13 +644,13 @@ private:
     node inv(const node& a) const{ return policy::inv(a); }
 public:
     _fw(int n = 0, bool base = 1){ clear(n, base); } // O(n)
-    _fw(span<const node> arr, bool base = 1){ build(arr, base); } // O(n)
+    _fw(span<const node> arr, bool base = 1){ make(arr, base); } // O(n)
     void clear(int n, bool base = 1){ // O(n)
         this->n = n; this->base = base;
         bit.assign(n + 2, id());
     }
 
-    void build(span<const node> arr, bool base = 1){ // O(n)
+    void make(span<const node> arr, bool base = 1){ // O(n)
         if(arr.empty()){ clear(base - 1, base); return; }
         clear((int)arr.size() - 1, base);
         for(int i = base;i <= n;i++) bit[i + 1] = arr[i];

@@ -7,5 +7,6 @@ if not compiler:
     raise SystemExit('Set CXX to a GNU C++20 compiler or add g++ to PATH.')
 with tempfile.TemporaryDirectory(prefix='.base-index-', dir=root) as temp:
     exe = Path(temp) / ('base_index.exe' if os.name == 'nt' else 'base_index')
-    subprocess.run([compiler, '-std=gnu++20', '-O2', str(root/'base_index.cpp'), '-o', str(exe)], check=True)
-    subprocess.run([str(exe)], check=True)
+    for source in ['base_index.cpp', 'lifecycle.cpp']:
+        subprocess.run([compiler, '-std=gnu++20', '-O2', str(root/source), '-o', str(exe)], check=True)
+        subprocess.run([str(exe)], check=True)

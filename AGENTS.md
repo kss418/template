@@ -18,7 +18,7 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
   Compute element, vertex, component, and required-edge counts from `n-base+1`.
   For two-dimensional ranges, apply the same base to both axes.
 - Append `base` after existing optional parameters so their positions are preserved.
-  Forward the selected base through `clear`, `build`, preprocessing, and wrappers.
+  Forward the selected base through range-resetting `clear`/`make` APIs and wrappers; calculation-only `build` keeps the configured base.
   Internal helpers may use their own indexing, but configure and translate it explicitly.
 - `n=0, base=1` is empty; `n=0, base=0` contains index 0. Include both cases when
   changing range initialization or boundary behavior.
@@ -38,6 +38,28 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
   matching snippets and README examples when their index behavior changes.
   For index-behavior changes, run `python tests/run_base_index.py` with a GNU C++20
   compiler and keep coverage for both bases, inclusive endpoints, counts, and sentinels.
+
+## Computation lifecycle contract
+- Use `build(...)` for preprocessing/calculation. Every call recomputes derived state
+  from the retained current input; do not silently continue previous calculations.
+- Use `make(...)` for whole-input replacement (arrays, strings, or a new virtual-tree
+  node set). A make operation may finish the preparation needed for immediate queries.
+  Keep point `set`/`update` and incremental input `add`/`insert` names.
+- Queries requiring preprocessing before the first build, or after input changes and
+  before rebuilding, are UB by contract. Do not enforce lifecycle validity with asserts,
+  exceptions, automatic rebuilds, or runtime checks. Bounds/algebra preconditions are separate.
+- Preserve input across builds; clear derived visitation, aggregate counts, heaps,
+  matches, potentials, residual capacities and other work state before recalculation.
+  Input and derived data sharing storage must be separated or reconstructible.
+- Build returns the full result or status. Explicit incremental execution uses a
+  separate name such as `augment`, whose result is the current call's increase.
+- Online data structures keep immediate-query semantics after supported updates.
+  HLD rebuilds preserve logical vertex values while changing DFS storage order.
+- When Mo policy owns external/static work state, call its optional `reset()` at each
+  build; policy authors must supply this hook when their state needs it.
+- Test repeated build and modify-build-query sequences, including both index bases;
+  never exercise UB query sequences as if they had a defined result. Keep snippets
+  and README examples synchronized with API renames.
 
 ## Repo sync (web tasks)
 - At the start of a task, run:

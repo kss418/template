@@ -85,6 +85,10 @@ public:
     void add(int a, int b, cost co = cost()){ addsol(a, b, co); addsol(b, a, co); } // O(1)
     void addsol(int a, int b, cost co = cost()){ adj[a].push_back({b, co}); } // O(1)
     void build(){ // O(n log n)
+        cc = 0; ord.clear();
+        for(auto& row : p) fill(all(row), -1);
+        fill(all(d), -1); fill(all(comp), 0);
+        if constexpr (policy::use_node) for(auto& row : arr) fill(all(row), node());
         for(int i = base;i <= n;i++){
             if(d[i] != -1) continue;
             d[i] = 0; ++cc; build_comp(i, cc);
@@ -216,7 +220,7 @@ public:
         built = 0;
     } // O(1)
 
-    void init(int root = -1){ // O(n log n)
+    void build(int root = -1){ // O(n log n)
         seq = 0; built = 1; clear_vt();
         for(auto& row : lift) fill(all(row), 0);
         fill(all(in), 0); fill(all(out), 0);
@@ -237,8 +241,8 @@ public:
         return dist[a] + dist[b] - 2 * dist[c];
     }
 
-    vector <int> build(vector <int> node){ // O(k log k)
-        assert(built); clear_vt();
+    vector <int> make(vector <int> node){ // O(k log k)
+        clear_vt();
         if(node.empty()) return {};
         sort_node(node);
 
@@ -341,7 +345,7 @@ private:
     }; _uf uf; vector<edge> adj;
 
     bool cal(int num = 0){ 
-        assert(!built); built = 1;
+        uf.clear(n); result = zero(); built = 1;
         sort(all(adj)); int cnt = 0;
         for(auto& i : adj){
             auto& [st, en, c] = i;
@@ -359,13 +363,13 @@ public:
     }
 
     void add(int st, int en, cost c){ // O(1)
-        assert(!built); assert(base <= st && st <= n && base <= en && en <= n);
+        assert(base <= st && st <= n && base <= en && en <= n);
         adj.push_back({st, en, c}); 
     }
 
-    bool init(int num = 0){ return cal(num);} // O(m log m)
+    bool build(int num = 0){ return cal(num);} // O(m log m)
     cost ret(){ // O(1)
-        assert(built);
+
         return result; 
     }
 };
@@ -500,7 +504,7 @@ public:
     void add_most1(int a, int b, int c){ add_most1(a, b); add_most1(b, c); add_most1(a, c); } // O(1)
     void add_least2(int a, int b, int c){ add_or(a, b); add_or(a, c); add_or(b, c); } // O(1)
 
-    bool solve(){ // O(n + m)
+    bool build(){ // O(n + m)
         scc.build(); 
         for(int i = base;i <= n;i++){
             if(scc.same(pos(i), neg(i))) return false;
@@ -522,7 +526,7 @@ public:
 class _bm {
     bool base; // indices base..n
 private:
-    vector<vector<int>> adj; int as, bs;
+    vector<vector<int>> adj; int as, bs, result;
     vector<int> av, bv, dist;
     static constexpr int INF = 0x3f3f3f3f;
     bool bfs(){
@@ -557,14 +561,14 @@ private:
 public:
     _bm(int a = 0, int b = 0, bool base = 1){ clear(a, b, base); } // O(n)
     void clear(int a, int b, bool base = 1){ // O(n)
-        as = a; bs = b; this->base = base;
+        as = a; bs = b; result = 0; this->base = base;
         adj.assign(as + 1, {}); dist.assign(as + 1, 0);
         av.assign(as + 1, -1); bv.assign(bs + 1, -1);
     }
 
     void addsol(int s, int e){ adj[s].push_back(e); } // O(1)
-    int ret(){ // O(m sqrt n)
-        int result = 0;
+    int build(){ // O(m sqrt n)
+        result = 0; fill(all(av), -1); fill(all(bv), -1); fill(all(dist), 0);
         while(bfs()){
             for(int i = base;i <= as;i++){
                 if(av[i] != -1) continue;
@@ -573,6 +577,8 @@ public:
         }
         return result;
     }
+
+    int ret() const{ return result; } // O(1)
 
     template <class F>
     void it_all(const F& f) const{
@@ -725,8 +731,8 @@ public:
     void addsol(int st, int en){ tmp[st].push_back(en); } // O(1)
     void add(int st, int en){ addsol(st, en); addsol(en, st); } // O(1)
 
-    void init(){ // O(n + m)
-        assert(!built); built = 1;
+    void build(){ // O(n + m)
+        adj.assign(n + 1, {}); fill(all(cnt), 0); built = 1;
         for(int i = base;i <= n;i++){
             for(auto& j : tmp[i]){
                 if(tmp[i].size() < tmp[j].size()) continue;
@@ -737,7 +743,7 @@ public:
     }
 
     ll ret(ll mod = 0){ // O(m sqrt m)
-        assert(built); ll c = 0;
+        ll c = 0;
         for(int i = base;i <= n;i++){
             for(auto& j : adj[i]) cnt[j]++;
             for(auto& j : adj[i]){
@@ -771,8 +777,8 @@ public:
     void addsol(int st, int en){ tmp[st].push_back(en); } // O(1)
     void add(int st, int en){ addsol(st, en); addsol(en, st); } // O(1)
 
-    void init(){ // O(n + m)
-        assert(!built); built = 1;
+    void build(){ // O(n + m)
+        adj.assign(n + 1, {}); fill(all(cnt), 0); built = 1;
         for(int i = base;i <= n;i++){
             for(auto& j : tmp[i]){
                 if(tmp[i].size() < tmp[j].size()) continue;
@@ -783,7 +789,7 @@ public:
     }
 
     ll ret(ll mod = 0){ // O(m sqrt m)
-        assert(built); ll c = 0;
+        ll c = 0;
         for(int i = base;i <= n;i++){
             vector <int> use;
             for(auto& j : adj[i]){
@@ -916,6 +922,7 @@ public:
         cost[i - base + 1][j - base + 1] = v;
     }
     C build(){
+        fill(all(row), 0); fill(all(col), 0); fill(all(match), 0); fill(all(pre), 0);
         for(int i = 1;i <= sz;i++) loop(i);
         return -col[0];
     }

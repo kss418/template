@@ -106,12 +106,44 @@ _bm matching(a, b, 0);         // left 0..a, right 0..b
 _fw2d<> grid(n, m, 0);         // rows 0..n, columns 0..m
 ```
 
-- `span`으로 build하는 배열은 **배열 첨자와 외부 인덱스가 일치**합니다. 기본 `base=1`이면 `arr[0]`은 건너뛰며 마지막 인덱스는 `arr.size()-1`입니다.
+- `span`으로 make하는 배열은 **배열 첨자와 외부 인덱스가 일치**합니다. 기본 `base=1`이면 `arr[0]`은 건너뛰며 마지막 인덱스는 `arr.size()-1`입니다.
 - 기본 `n=0, base=1`은 원소가 없는 상태입니다. `n=0, base=0`은 0번 원소 하나입니다.
-- `_vtree::init()`은 선택한 base를 기본 루트로 사용합니다. 루트는 명시해서 바꿀 수도 있습니다.
+- `_vtree::build()`은 선택한 base를 기본 루트로 사용합니다. 루트는 명시해서 바꿀 수도 있습니다.
 - `_2sat`의 양수 리터럴은 변수 번호, 음수 리터럴은 `번호 + (n-base+1)`입니다. `pos/neg/op`를 사용하면 base에 맞게 변환됩니다.
 - `_ufset`의 이전/다음 원소가 없으면 각각 `base-1`, `n+1` 경계 인덱스를 반환합니다.
 - 행렬의 행·열 개수, 수론의 수치 상한, 해시 용량은 base 대상이 아닙니다.
 - 이전에 기본 생성자로 0번을 사용하던 코드는 마지막 인자에 `0`을 추가해야 합니다.
 
 검증: GNU C++20 컴파일러가 PATH에 있을 때 `python tests/run_base_index.py`.
+
+
+## build / make 계약
+
+- `build(...)`는 보존한 현재 입력으로 계산 상태와 결과를 처음부터 다시 계산합니다. 반복 호출은 이전 실행의 증가분이 아닌 전체 결과를 만듭니다.
+- 배열·문자열 등 전체 입력을 교체하고 준비하는 함수는 `make(...)`입니다. 기존 seg/lazy/merge-sort-tree/Fenwick의 `build(arr, base)`와 문자열 클래스의 `set(...)`은 `make(...)`로 변경했습니다. `span`은 기존처럼 외부 인덱스에 맞추며 기본 `bool base = 1`을 유지합니다.
+- 기존 `init(...)` 및 2-SAT의 `solve()`는 `build(...)`로 변경했습니다. 매칭은 `build()`가 전체 최대 매칭 크기를 반환하고 `ret()`은 계산된 크기를 조회합니다.
+- 전처리가 필요한 구조의 결과를 최초 `build` 전이나 입력 수정 후 재빌드 전에 조회하는 것은 **UB**입니다. 이를 위한 `built` assert나 자동 재계산은 제공하지 않습니다. 인덱스·수학적 전제조건에 대한 기존 assert는 별개입니다.
+- seg/DSU/PST 등 즉시 갱신형 자료구조의 점 갱신 후 조회는 계속 유효합니다. `make`는 입력 교체와 필요한 준비를 함께 수행하므로 호출 직후 조회할 수 있습니다.
+- `_vtree::build(root)`는 원본 트리를 전처리하고, `make(nodes)`는 선택 정점의 가상 트리를 구성합니다.
+- HLD는 원본 트리를 유지하고 재빌드 시 정점 값을 새 DFS 순서로 옮깁니다. backend는 `make(span, 0)` 또는 점 `set(index, node)`를 제공해야 합니다.
+- 최대 유량과 MCMF의 `build(s,t,limit)`는 원래 용량에서 다시 계산합니다. 이전 잔여 그래프에서 이어서 보내려면 `augment(s,t,limit)`를 사용합니다. `augment`의 반환값은 이번 호출의 증가분입니다.
+- Mo는 매 build에서 현재 구간과 답 상태를 초기화합니다. policy가 외부/static 작업 상태를 갖는다면 `static void reset()`을 제공하여 매 build 시작에 초기화해야 합니다.
+
+```cpp
+_seg<> seg;
+seg.make(arr, 0);
+
+_dij<> dij(n);
+dij.addsol(1, n, 5);
+dij.build(1);
+dij.addsol(1, n, 2);
+dij.build(1);               // 수정한 입력으로 다시 계산
+
+_flow<> flow(n);
+flow.addsol(1, n, 5);
+flow.build(1, n);           // 5
+flow.build(1, n);           // 다시 5
+flow.augment(1, n);         // 이미 포화되어 추가 유량 0
+```
+
+전체 회귀 검사: `python tests/run_tests.py` (GNU C++20).

@@ -50,7 +50,7 @@ private:
         }
     }
     void reset(int n){ pre.assign(n + 1, -1); d.assign(n + 1, policy::inf()); }
-    void chk(int x) const{ assert(built); assert(x >= base && x <= n); }
+    void chk(int x) const{ assert(x >= base && x <= n); }
 public:
     static bool less(const dist& a, const dist& b){ return policy::leq(a, b) && !policy::leq(b, a); } // O(1)
     static bool eq(const dist& a, const dist& b){ return policy::leq(a, b) && policy::leq(b, a); }   // O(1)
@@ -70,13 +70,14 @@ public:
         addsol(st, en, c); addsol(en, st, c);
     }
 
-    void init(int source){ // O((n + m) log n)
+    void build(int source){ // O((n + m) log n)
         assert(base <= source && source <= n);
+        while(!pq.empty()) pq.pop();
         reset(n); d[source] = policy::zero();
         pq.push({ d[source], source }); cal();
     }
 
-    void init(const vector <int>& source){ // O((n + m) log n)
+    void build(const vector <int>& source){ // O((n + m) log n)
         reset(n);
         for(const auto& i : source){
             assert(base <= i && i <= n);
@@ -110,20 +111,21 @@ class _floyd {
     bool base;
 private:
     using dist = typename policy::dist; using cost = typename policy::cost;
-    vector <vector<dist>> d; vector <vector<int>> nxt; 
+    vector <vector<dist>> d, input; vector <vector<int>> nxt;
     int n; bool built = 0;
 
     static bool less(const dist& a, const dist& b){ return policy::leq(a, b) && !policy::leq(b, a); }
     static bool eq(const dist& a, const dist& b){ return policy::leq(a, b) && policy::leq(b, a); }
-    void chk(int st, int en) const{ assert(built); assert(st >= base && st <= n); assert(en >= base && en <= n); }
+    void chk(int st, int en) const{ assert(st >= base && st <= n); assert(en >= base && en <= n); }
 public:
     _floyd(int n = 0, bool base = 1){ clear(n, base); } // O(n^2)
     void clear(int n, bool base = 1){ // O(n^2)
         this->n = n; this->base = base; built = 0;
-        d.assign(n + 1, vector<dist>(n + 1, policy::inf()));
+        input.assign(n + 1, vector<dist>(n + 1, policy::inf()));
+        d = input;
         nxt.assign(n + 1, vector<int>(n + 1, 0));
         for(int i = base; i <= n; i++){
-            d[i][i] = policy::zero();
+            input[i][i] = d[i][i] = policy::zero();
             nxt[i][i] = i;
         }
     }
@@ -135,11 +137,14 @@ public:
     void addsol(int st, int en, cost c) { // O(1)
         assert(base <= st && st <= n && base <= en && en <= n);
         built = 0;
-        if(!less(c, d[st][en])) return;
-        d[st][en] = c; nxt[st][en] = en;
+        if(!less(c, input[st][en])) return;
+        input[st][en] = c;
     }
 
-    void init() { // O(n^3)
+    void build() { // O(n^3)
+        d = input; nxt.assign(n + 1, vector<int>(n + 1, 0));
+        for(int i = base; i <= n; ++i) for(int j = base; j <= n; ++j)
+            if(!eq(d[i][j], policy::inf())) nxt[i][j] = j;
         built = 1;
         for (int k = base; k <= n; k++) {
             for (int i = base; i <= n; i++) {
@@ -225,7 +230,7 @@ private:
         d.assign(n + 1, policy::inf()); q.clear();
         in.assign(n + 1, false); cy.assign(n + 1, false);
     }
-    void chk(int x) const{ assert(built); assert(x >= base && x <= n); }
+    void chk(int x) const{ assert(x >= base && x <= n); }
 public:
     _spfa(int n = 0, bool base = 1){ clear(n, base); } // O(n)
     void clear(int n, bool base = 1){ // O(n + m)
@@ -243,7 +248,7 @@ public:
     }
 
     // cycle existed -> return 0 
-    bool init(int source, dist fi = policy::zero()) { // O(nm)
+    bool build(int source, dist fi = policy::zero()) { // O(nm)
         assert(base <= source && source <= n);
         reset(n); d[source] = fi; in[source] = 1;
         q.push_back(source);
@@ -251,7 +256,7 @@ public:
     }
 
     // cycle existed -> return 0 
-    bool init(const vector <int>& source, dist fi = policy::zero()) { // O(nm)
+    bool build(const vector <int>& source, dist fi = policy::zero()) { // O(nm)
         reset(n); 
         for (const auto& st : source) {
             assert(base <= st && st <= n);

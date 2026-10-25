@@ -61,6 +61,7 @@
       "        cost[i - base + 1][j - base + 1] = v;",
       "    }",
       "    C build(){",
+      "        fill(all(row), 0); fill(all(col), 0); fill(all(match), 0); fill(all(pre), 0);",
       "        for(int i = 1;i <= sz;i++) loop(i);",
       "        return -col[0];",
       "    }",

@@ -30,7 +30,7 @@
     "    void add_most1(int a, int b, int c){ add_most1(a, b); add_most1(b, c); add_most1(a, c); } // O(1)",
     "    void add_least2(int a, int b, int c){ add_or(a, b); add_or(a, c); add_or(b, c); } // O(1)",
     "",
-    "    bool solve(){ // O(n + m)",
+    "    bool build(){ // O(n + m)",
     "        scc.build(); ",
     "        for(int i = base;i <= n;i++){",
     "            if(scc.same(pos(i), neg(i))) return false;",

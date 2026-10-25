@@ -124,7 +124,8 @@ public:
         dp.resize(n + 1, vector<ll>(m + 1, 0));
     }
 
-    void init() {
+    void build() {
+        n = a.size(); m = b.size(); dp.assign(n + 1, vector<ll>(m + 1, 0));
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < m; j++) {
                 if (a[i] == b[j]) {
@@ -225,6 +226,8 @@ public:
     void add(int l, int r){ assert(base <= l && l <= r && r <= n); vq.push_back({l, r, (int)vq.size()}); } // O(1)
     void set(int idx, const node& v){ if(idx >= base && idx <= n) arr[idx] = v; } // O(1)
     void build(){ // O(q log q + (n^2 / b + qb) * update)
+        if constexpr (requires{ policy::reset(); }) policy::reset();
+        cl = base; cr = base - 1; cur = ret_id();
         if (vq.empty()) { result.clear(); return; } 
         sort(all(vq), cmp{b}); result.assign(vq.size(), ret_id());
         for(const auto& cq : vq){
@@ -326,9 +329,9 @@ public:
         return 0;
     }
 
-    void init(){
+    void build(){
         arr.resize(hi + 1);
-        l.resize(q.size(), lo); r.resize(q.size(), hi);
+        l.assign(q.size(), lo); r.assign(q.size(), hi);
 
         while(1){
             clear(); bool flag = 0;

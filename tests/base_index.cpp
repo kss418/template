@@ -82,27 +82,27 @@ void check_graphs(bool base){
     range_templates::_hld<range_templates::_seg<>> hld(n,0,base);
     graphs::_vtree vt(n,base);graphs::_mst<> mst(n,base);
     for(int i=first;i<n;++i){lca.add(i,i+1);weighted.add(i,i+1,1);hld.add(i,i+1);vt.add(i,i+1);mst.add(i,i+1,1);}
-    lca.build();weighted.build();hld.init();vt.init();
+    lca.build();weighted.build();hld.build();vt.build();
     CHECK(lca.depth(first)==0);CHECK(lca.ancestor(n,n-first)==first);CHECK(lca.ret(first,n)==first);CHECK(lca.dist(first,n)==n-first);
-    CHECK(weighted.query(first,n).v==n-first);CHECK(vt.dist_tree(first,n)==n-first);CHECK(vt.build({first,n}).front()==first);
+    CHECK(weighted.query(first,n).v==n-first);CHECK(vt.dist_tree(first,n)==n-first);CHECK(vt.make({first,n}).front()==first);
     for(int i=first;i<=n;++i)hld.set(i,{1});CHECK(hld.query(first,n).v==count);CHECK(hld.query_sub(first).v==count);
     range_templates::_hld<range_templates::_seg<>> edge_hld(n,1,base);
     for(int i=first;i<n;++i)edge_hld.add(i,i+1);
-    edge_hld.init();edge_hld.set(first,{99});for(int i=first+1;i<=n;++i)edge_hld.set(i,{2});
+    edge_hld.build();edge_hld.set(first,{99});for(int i=first+1;i<=n;++i)edge_hld.set(i,{2});
     CHECK(edge_hld.query(first,n).v==2*(count-1));CHECK(edge_hld.query_sub(first).v==2*(count-1));
-    CHECK(mst.init());CHECK(mst.ret()==count-1);
-    graphs::_mst<> disconnected(n,base);for(int i=first+1;i<n;++i)disconnected.add(i,i+1,1);CHECK(!disconnected.init());
+    CHECK(mst.build());CHECK(mst.ret()==count-1);
+    graphs::_mst<> disconnected(n,base);for(int i=first+1;i<n;++i)disconnected.add(i,i+1,1);CHECK(!disconnected.build());
     graphs::_st lift(n,32,base);for(int i=first;i<=n;++i)lift.add(i,min(i+1,n));lift.build();CHECK(lift.ret(first,n-first).first==n);
     graphs::_scc scc(n,base);scc.build();CHECK(scc.comp_cnt()==count);CHECK(scc.component(first)>=0);
     scc.clear(n,!base);scc.build();CHECK(scc.comp_cnt()==n-int(!base)+1);
-    graphs::_2sat sat(n,base);CHECK(sat.neg(first)!=sat.pos(n));sat.add_true(sat.pos(first));sat.add_false(sat.pos(n));CHECK(sat.solve());
-    graphs::_2sat impossible(n,base);impossible.add_eq(impossible.pos(first),impossible.pos(n));impossible.add_true(impossible.pos(first));impossible.add_false(impossible.pos(n));CHECK(!impossible.solve());
-    graphs::_bm match(n,n,base);for(int i=first;i<=n;++i)match.addsol(i,i);CHECK(match.ret()==count);
+    graphs::_2sat sat(n,base);CHECK(sat.neg(first)!=sat.pos(n));sat.add_true(sat.pos(first));sat.add_false(sat.pos(n));CHECK(sat.build());
+    graphs::_2sat impossible(n,base);impossible.add_eq(impossible.pos(first),impossible.pos(n));impossible.add_true(impossible.pos(first));impossible.add_false(impossible.pos(n));CHECK(!impossible.build());
+    graphs::_bm match(n,n,base);for(int i=first;i<=n;++i)match.addsol(i,i);CHECK(match.build()==count);
     graphs::_clist<int> list(n,base);CHECK(list.size()==count);list[first].push_front(7);CHECK(list[first].front()==7);
     graphs::_bcc bcc(n,base);for(int i=first+1;i<=n;++i)bcc.add(first,i);CHECK(bcc.point()==vector<long long>{first});CHECK((int)bcc.line().size()==count-1);
     int last=first+3;
-    graphs::_3cycle triangle(last,base);triangle.add(first,first+1);triangle.add(first+1,first+2);triangle.add(first+2,first);triangle.add(first,first+3);triangle.init();CHECK(triangle.ret()==1);
-    graphs::_4cycle square(last,base);for(int i=first;i<=last;++i)square.add(i,i==last?first:i+1);square.init();CHECK(square.ret()==1);
+    graphs::_3cycle triangle(last,base);triangle.add(first,first+1);triangle.add(first+1,first+2);triangle.add(first+2,first);triangle.add(first,first+3);triangle.build();CHECK(triangle.ret()==1);
+    graphs::_4cycle square(last,base);for(int i=first;i<=last;++i)square.add(i,i==last?first:i+1);square.build();CHECK(square.ret()==1);
     graphs::_hungarian<> assignment(n,base);long long expected=0;
     for(int i=first;i<=n;++i){expected+=i+1;for(int j=first;j<=n;++j)assignment.set(i,j,i==j?i+1:1000);}
     CHECK(assignment.build()==expected);
@@ -112,22 +112,22 @@ void check_paths_and_flow(bool base){
     paths::_dij<> dij(n,base);paths::_floyd<> floyd(n,base);paths::_spfa<> spfa(n,base);
     flows::_flow<> flow(n,base);flows::_mcmf<> mincost(n,1,base);
     for(int i=first;i<n;++i){dij.addsol(i,i+1,1);floyd.addsol(i,i+1,1);spfa.addsol(i,i+1,1);flow.addsol(i,i+1,3);mincost.addsol(i,i+1,2,1);}
-    dij.init(first);floyd.init();CHECK(spfa.init(first));
+    dij.build(first);floyd.build();CHECK(spfa.build(first));
     CHECK(dij.ret(n)==count-1);CHECK(floyd.ret(first,n)==count-1);CHECK(floyd.ret(first,first)==0);CHECK(spfa.ret(n)==count-1);
     CHECK(flow.build(first,n)==3);flow.reset();CHECK(flow.build(first,n)==3);
     CHECK((mincost.build(first,n)==pair<long long,long long>{2,2*(count-1)}));
-    paths::_spfa<> parallel(n,base);for(long long w:{5,4,3,2,1})parallel.addsol(first,n,w);CHECK(parallel.init(first));CHECK(parallel.ret(n)==1);
-    paths::_spfa<> negative(n,base);negative.addsol(first,n,-1);negative.addsol(n,first,0);CHECK(!negative.init(first));CHECK(negative.is_cycle(first));
-    paths::_floyd<> via(n,base);via.addsol(n,first,1);via.addsol(first,first+1,1);via.init();CHECK(via.ret(n,first+1)==2);
+    paths::_spfa<> parallel(n,base);for(long long w:{5,4,3,2,1})parallel.addsol(first,n,w);CHECK(parallel.build(first));CHECK(parallel.ret(n)==1);
+    paths::_spfa<> negative(n,base);negative.addsol(first,n,-1);negative.addsol(n,first,0);CHECK(!negative.build(first));CHECK(negative.is_cycle(first));
+    paths::_floyd<> via(n,base);via.addsol(n,first,1);via.addsol(first,first+1,1);via.build();CHECK(via.ret(n,first+1)==2);
     flows::_flow<> self(n,base);auto handle=self.addsol(first,first,5);self.set_flow(handle,2);CHECK(self.get_flow(handle)==2);
 }
 void check_defaults(){
     CHECK(sets::_uf<>(0).count()==0);CHECK(sets::_ufset(0).count()==0);CHECK(graphs::_clist<int>(0).size()==0);
     graphs::_scc scc;scc.build();CHECK(scc.comp_cnt()==0);
-    graphs::_2sat sat;CHECK(sat.solve());graphs::_bm bm;CHECK(bm.ret()==0);
+    graphs::_2sat sat;CHECK(sat.build());graphs::_bm bm;CHECK(bm.build()==0);
     graphs::_hungarian<> assignment;CHECK(assignment.build()==0);
-    graphs::_lca<> lca;lca.build();graphs::_vtree vt;vt.init();CHECK(vt.build({}).empty());
-    range_templates::_hld<range_templates::_seg<>> hld;hld.init();
+    graphs::_lca<> lca;lca.build();graphs::_vtree vt;vt.build();CHECK(vt.make({}).empty());
+    range_templates::_hld<range_templates::_seg<>> hld;hld.build();
     range_templates::_mt<> single(0,0);single.update(0,{3});CHECK(single.eq(0,0,{3})==1);
     vector<range_templates::monoid::node> empty;
     range_templates::_seg<> seg(span<const range_templates::monoid::node>(empty),0);CHECK(seg.query(0,0).v==0);
@@ -177,7 +177,7 @@ void check_oracles(bool base){
                 square+=edge[a][c]&&edge[c][b]&&edge[b][d]&&edge[d][a];
             }
         }
-        triangles.init();squares.init();CHECK(triangles.ret()==tri);CHECK(squares.ret()==square);
+        triangles.build();squares.build();CHECK(triangles.ret()==tri);CHECK(squares.ret()==square);
     }
     for(int trial=0;trial<80;++trial){
         graphs::_2sat solver(first+3,base);vector<pair<int,int>> clauses;
@@ -189,11 +189,11 @@ void check_oracles(bool base){
         auto value=[](int mask,int literal){return bool((mask>>(literal/2))&1) != bool(literal%2);};
         bool possible=0;
         for(int mask=0;mask<16;++mask){bool valid=1;for(auto[a,b]:clauses)valid&=value(mask,a)||value(mask,b);possible|=valid;}
-        CHECK(solver.solve()==possible);
+        CHECK(solver.build()==possible);
         if(possible){int assignment=0;solver.it([&](int i,int v){if(i<=first+3 && v)assignment|=1<<(i-first);});for(auto[a,b]:clauses)CHECK(value(assignment,a)||value(assignment,b));}
     }
 }
 int main(){
-    try {for(bool base:{false,true}){check_ranges(base);check_sets(base);check_graphs(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();cout<<"PASS "<<checks<<" base-index checks\n";}
+    try {for(bool base:{false,true}){check_ranges(base);check_sets(base);check_graphs(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();cout<<"PASS "<<checks<<" base-index checks\n";return 0;}
     catch(const exception& e){cerr<<"FAIL "<<e.what()<<'\n';return 1;}
 }

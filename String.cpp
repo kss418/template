@@ -38,11 +38,11 @@ private:
     }
 public:
     _kmp() : m(0){}
-    _kmp(const string& s){ set(s); } // O(|s|)
-    _kmp(span<const T> v){ set(v); } // O(|v|)
+    _kmp(const string& s){ make(s); } // O(|s|)
+    _kmp(span<const T> v){ make(v); } // O(|v|)
     void clear(){ pat.clear(); arr.clear(); m = 0; } // O(1)
-    void set(const string& s){ pat = tf(s); build(); } // O(|s|)
-    void set(span<const T> v){ pat.assign(all(v)); build(); } // O(|v|)
+    void make(const string& s){ pat = tf(s); build(); } // O(|s|)
+    void make(span<const T> v){ pat.assign(all(v)); build(); } // O(|v|)
 
     const vector<int>& fail() const{ return arr; } // O(1)
     template <class F>
@@ -77,7 +77,7 @@ template <class T = ll>
 class _sa{
 private:
     vector <T> arr; vector <int> sa, pos, lcp, cnt, tmp_sa; int n, d; 
-    void build(){ build_sa(); build_lcp(); }
+    void build(){ if(!n) return; build_sa(); build_lcp(); }
     template <class F>
     void counting_sort(int sz, const F& f){
         cnt.assign(sz, 0);
@@ -125,10 +125,10 @@ private:
     }
 public:
     _sa(){ clear(0); } // O(1)
-    _sa(const string& s){ set(s); } // O(n log n)
-    _sa(span<const T> v) { set(v); } // O(n log n)
-    void set(const string& s){ clear(s.size()); for(auto& i : s) arr.push_back((T)i); build(); } // O(n log n)
-    void set(span<const T> v){ clear(v.size()); this->arr.assign(all(v)); build(); } // O(n log n)
+    _sa(const string& s){ make(s); } // O(n log n)
+    _sa(span<const T> v) { make(v); } // O(n log n)
+    void make(const string& s){ clear(s.size()); for(auto& i : s) arr.push_back((T)i); build(); } // O(n log n)
+    void make(span<const T> v){ clear(v.size()); this->arr.assign(all(v)); build(); } // O(n log n)
 
     void clear(int n){ // O(n)
         this->n = n; d = 1; sa.assign(n, 0); arr.clear(); arr.reserve(n);
@@ -168,7 +168,7 @@ private:
     }
 
     template <class It, class F>
-    void build(It begin, It end, const F& f){
+    void make(It begin, It end, const F& f){
         size_t len = (size_t)distance(begin, end);
         arr.clear(); arr.reserve(2 * len + 1);
         const T sep = inf();
@@ -179,10 +179,10 @@ private:
     }
 public:
     _mnc(){} // O(1)
-    _mnc(const string& s){ set(s); } // O(n)
-    _mnc(span<const T> v){ set(v); } // O(n)
-    void set(const string& s){ build(all(s), [&](char c){ return (unsigned char)c; }); } // O(n)
-    void set(span<const T> v){ build(all(v), [&](const T& x){ return x; }); } // O(n)
+    _mnc(const string& s){ make(s); } // O(n)
+    _mnc(span<const T> v){ make(v); } // O(n)
+    void make(const string& s){ make(all(s), [&](char c){ return (unsigned char)c; }); } // O(n)
+    void make(span<const T> v){ make(all(v), [&](const T& x){ return x; }); } // O(n)
 
     const vector<int>& get_rad() const{ return rad; } // O(1)
     ll cnt() const{ return odd + even; } // O(1)
@@ -229,10 +229,10 @@ private:
     }
 public:
     _z(){}
-    _z(const string& s){ set(s); } // O(|s|)
-    _z(span<const T> v){ set(v); } // O(|v|)
+    _z(const string& s){ make(s); } // O(|s|)
+    _z(span<const T> v){ make(v); } // O(|v|)
     void clear(){ arr.clear(); z.clear(); n = 0; } // O(1)
-    void set(const string& s){ arr = tf(s); build(); } // O(|s|)
-    void set(span<const T> v){ arr.assign(all(v)); build(); } // O(|v|)
+    void make(const string& s){ arr = tf(s); build(); } // O(|s|)
+    void make(span<const T> v){ arr.assign(all(v)); build(); } // O(|v|)
     const vector<int>& result() const{ return z; } // O(1)
 };

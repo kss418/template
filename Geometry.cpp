@@ -173,7 +173,9 @@ public:
     void add(ll a, ll b) { add({a, b}); }
     void add(pll a){ arr.push_back({a, cnt++}); }
 
-    void init(){    
+    void build(){
+        st.clear(); p.clear();
+        if(arr.empty()) return;
         swap(arr[0], *min_element(all(arr), [&](pll a, pll b){
             if(a.x != b.x) return a.x < b.x;
             return a.y < b.y;
@@ -377,7 +379,9 @@ public:
     void add(ll a, ll b) { add({a, b}); }
     void add(pll a){ arr.push_back({a, cnt++}); }
 
-    void init_ch(){    
+    void build_ch(){
+        st.clear(); p.clear();
+        if(arr.empty()) return;
         swap(arr[0], *min_element(all(arr), [&](pll a, pll b){
             if(a.x != b.x) return a.x < b.x;
             return a.y < b.y;
@@ -398,7 +402,8 @@ public:
 
     ll area(ll a, ll b, ll c){ // div by 2
         ll num = 0;
-        vector <pll> v = {p[a], p[b], p[c]};
+        int sz = (int)p.size();
+        vector <pll> v = {p[a % sz], p[b % sz], p[c % sz]};
         for(int i = 0;i < v.size();i++){
             auto [x1, y1] = v[i];
             auto [x2, y2] = v[(i + 1) % v.size()];
@@ -423,8 +428,9 @@ public:
         }
     }
 
-    void init_rc(){
-        ll sz = p.size();
+    void build_rc(){
+        ll sz = p.size(); mx = 0; result = {};
+        if(sz <= 1){ if(sz == 1) result = {p[0], p[0]}; return; }
         if(sz == 2) get(0, 1);
         else{
             ll l = 0, r = 1; ld now = 0;
@@ -437,7 +443,7 @@ public:
         }
     }
 
-    void init() { init_ch(); init_rc(); }
+    void build() { build_ch(); build_rc(); }
     pair <pll, pll> ret(){ return result; }
     ld dist(){ return sqrtl(mx); }
 };

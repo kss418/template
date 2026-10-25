@@ -83,7 +83,7 @@ public:
         return {h1, h2};
     }
 
-    T build(int st, int en, T f = INF){ // O(n^2 * m)
+    T augment(int st, int en, T f = INF){ // O(n^2 * m)
         assert(base <= st && st <= n && base <= en && en <= n && st != en);
         T r = 0;
         while(bfs(st, en) && f){
@@ -95,6 +95,8 @@ public:
         }
         return r;
     }
+
+    T build(int st, int en, T f = INF){ reset(); return augment(st, en, f); }
 
     bool reachable(int st, int en) const{ // O(m)
         vector <bool> v(n + 1, false); 
@@ -160,8 +162,8 @@ public:
     static constexpr F FINF = make_inf<F>();
     static constexpr C CINF = make_inf<C>();
     struct edge{
-        int nxt, rev; F cap; C cost;
-        edge(int nxt, int rev, F cap, C cost) : nxt(nxt), rev(rev), cap(cap), cost(cost) {}
+        int nxt, rev; F cap, initial_cap; C cost;
+        edge(int nxt, int rev, F cap, C cost) : nxt(nxt), rev(rev), cap(cap), initial_cap(cap), cost(cost) {}
     };
 private:
     vector<vector<edge>> adj; vector<C> dist, pot; 
@@ -252,7 +254,7 @@ public:
         adj[en].push_back({st, a, 0, -cost});
     }
 
-    pair<F, C> build(int st, int en, F limit = FINF){ 
+    pair<F, C> augment(int st, int en, F limit = FINF){
         assert(base <= st && st <= n && base <= en && en <= n && st != en);
         F flow = 0; C cost = 0;
         if(use_spfa) spfa(st);
@@ -268,4 +270,14 @@ public:
         }
         return {flow, cost};
     }
+
+    void reset(){
+        for(auto& row : adj) for(auto& e : row) e.cap = e.initial_cap;
+        fill(all(pot), 0); fill(all(dist), CINF); fill(all(work), 0); fill(all(lv), -1);
+    }
+
+    pair<F, C> build(int st, int en, F limit = FINF){
+        reset(); return augment(st, en, limit);
+    }
+
 };
