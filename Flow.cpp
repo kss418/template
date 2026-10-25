@@ -11,6 +11,7 @@ constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 
 template <class T = ll> requires (is_integral_v<T> && is_signed_v<T>)
 class _flow {
+    bool base;
 public:
     static consteval T make_inf() {
         T x = 0;
@@ -57,20 +58,21 @@ private:
         return 0;
     }
 public:
-    _flow(int n = 0){ clear(n); } // O(n)
-    void clear(int n){ // O(n)
-        this->n = n; adj.assign(n + 1, {});
+    _flow(int n = 0, bool base = 1){ clear(n, base); } // O(n)
+    void clear(int n, bool base = 1){ // O(n)
+        this->n = n; this->base = base; adj.assign(n + 1, {});
         d.assign(n + 1, -1); w.assign(n + 1, 0);
     }
 
     void reset(){ // O(n + m)
-        for(int i = 0;i <= n;i++){
+        for(int i = base;i <= n;i++){
             for(auto& e : adj[i]) e.c = e.cap;
         }
     }
 
     handle addsol(int st, int en, T c = INF){  // O(1)
-        int re = (int)adj[en].size(), rs = (int)adj[st].size();
+        assert(base <= st && st <= n && base <= en && en <= n);
+        int re = (int)adj[en].size() + (st == en), rs = (int)adj[st].size();
         adj[st].push_back({en, re, c});
         adj[en].push_back({st, rs, 0});
         return {st, rs};
@@ -82,6 +84,7 @@ public:
     }
 
     T build(int st, int en, T f = INF){ // O(n^2 * m)
+        assert(base <= st && st <= n && base <= en && en <= n && st != en);
         T r = 0;
         while(bfs(st, en) && f){
             memset(w.data(), 0, sizeof(int) * (n + 1));
@@ -117,7 +120,7 @@ public:
 
     template <class F>
     void it_all(const F& f) const{ // O(m)
-        for(int i = 0;i <= n;i++) it_idx(i, f);
+        for(int i = base;i <= n;i++) it_idx(i, f);
     }
 
     edge& get_edge(const handle& h){ return adj[h.cur][h.idx]; } // O(1)
@@ -146,6 +149,7 @@ template <class F = ll, class C = ll> requires (
     is_integral_v<F> && is_signed_v<F> && is_integral_v<C> && is_signed_v<C>
 )
 class _mcmf {
+    bool base;
 public:
     template <class T>
     static consteval T make_inf() {
@@ -175,7 +179,7 @@ private:
                 if (!in[nxt]) q.push(nxt), in[nxt] = 1;
             }
         }
-        for(int i = 0; i <= n; i++) if(pot[i] >= CINF) pot[i] = 0;
+        for(int i = base; i <= n; i++) if(pot[i] >= CINF) pot[i] = 0;
     }
 
     bool dijkstra(int st, int en){
@@ -195,7 +199,7 @@ private:
             }
         }
         if (dist[en] >= CINF) return false;
-        for (int i = 0;i <= n;i++) {
+        for (int i = base;i <= n;i++) {
             if (dist[i] < CINF) pot[i] += dist[i];
         }
         return true;
@@ -231,9 +235,9 @@ private:
         return 0;
     }
 public:
-    _mcmf(int n = 0, bool use_spfa = true){ clear(n, use_spfa); } // O(n)
-    void clear(int n, bool use_spfa = true){ // O(n)
-        this->n = n; this->use_spfa = use_spfa; adj.assign(n + 1, {});
+    _mcmf(int n = 0, bool use_spfa = true, bool base = 1){ clear(n, use_spfa, base); } // O(n)
+    void clear(int n, bool use_spfa = true, bool base = 1){ // O(n)
+        this->n = n; this->base = base; this->use_spfa = use_spfa; adj.assign(n + 1, {});
         dist.assign(n + 1, CINF); pot.assign(n + 1, 0);
         work.assign(n + 1, 0); lv.assign(n + 1, -1);
     }
@@ -242,12 +246,14 @@ public:
         addsol(st, en, cap, cost); addsol(en, st, cap, cost);
     }
     void addsol(int st, int en, F cap, C cost){ // O(1)
-        int a = (int)adj[st].size(), b = (int)adj[en].size();
+        assert(base <= st && st <= n && base <= en && en <= n);
+        int a = (int)adj[st].size(), b = (int)adj[en].size() + (st == en);
         adj[st].push_back({en, b, cap, cost});
         adj[en].push_back({st, a, 0, -cost});
     }
 
     pair<F, C> build(int st, int en, F limit = FINF){ 
+        assert(base <= st && st <= n && base <= en && en <= n && st != en);
         F flow = 0; C cost = 0;
         if(use_spfa) spfa(st);
         while(flow < limit && dijkstra(st, en)) {

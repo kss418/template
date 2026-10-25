@@ -17,21 +17,23 @@ struct uf_policy{
 };
 
 template <class policy = uf_policy>
-class _uf{ // 1-based index
+class _uf{
+    bool base; // indices base..n
 private:
     using node = typename policy::node;
     vector<node> arr;
     vector<int> p, sz; int n, cc;
     node id() const{ return node(); }
 public:
-    _uf(int n = 0){ clear(n); } // O(n)
-    void clear(int n){ // O(n)
-        this->n = n; cc = n;
+    _uf(int n = 0, bool base = 1){ clear(n, base); } // O(n)
+    void clear(int n, bool base = 1){ // O(n)
+        this->n = n; this->base = base; cc = n - base + 1;
         p.assign(n + 1, -1); sz.assign(n + 1, 1);
         arr.assign(n + 1, id());
     }
 
     int find(int x){ // O(1)
+        assert(base <= x && x <= n);
         if(p[x] == -1) return x;
         return p[x] = find(p[x]);
     }
@@ -54,16 +56,18 @@ public:
 };
 
 // WEIGHTED UNION FIND
-class _wuf { 
+class _wuf {
+    bool base;
 public:
     vector <ll> p, d, dis; ll n; 
-    _wuf(){}
-    _wuf(ll n) { 
-        this->n = n; dis.resize(n + 1);
-        p.resize(n + 1, -1); d.resize(n + 1); 
+    _wuf(ll n = 0, bool base = 1){ clear(n, base); }
+    void clear(ll n, bool base = 1){
+        this->n = n; this->base = base; dis.assign(n + 1, 0);
+        p.assign(n + 1, -1); d.assign(n + 1, 0);
     }
 
     pll find(ll num) { 
+        assert(base <= num && num <= n);
         if (p[num] == -1) return { num, 0ll };
         auto [pa, diff] = find(p[num]);
         p[num] = pa; d[num] += diff;
@@ -89,25 +93,31 @@ public:
     bool same(ll a, ll b) { return find(a).x == find(b).x; }
 };
 
-class _ufset{ // 1-based index 
+class _ufset{
+    bool base; // indices base..n
 private:
     vector <int> p, sz, l, r; int n, cc;
+    int find_internal(int num){
+        if(p[num] == -1) return num;
+        return p[num] = find_internal(p[num]);
+    }
 public:
-    _ufset(int n = 0){ clear(n); } // O(n)
-    void clear(int n){ // O(n)
-        this->n = n; cc = n;
-        p.assign(n + 2, -1); sz.assign(n + 2, 1);
-        l.resize(n + 2); r.resize(n + 2);
+    _ufset(int n = 0, bool base = 1){ clear(n, base); } // O(n)
+    void clear(int n, bool base = 1){ // O(n)
+        this->n = n; this->base = base; cc = n - base + 1;
+        p.assign(n + 3, -1); sz.assign(n + 3, 1);
+        l.resize(n + 3); r.resize(n + 3);
         iota(all(l), 0); iota(all(r), 0);
     }
 
-    int find(int num){ // O(1) 
-        if(p[num] == -1) return num;
-        return p[num] = find(p[num]);
+    int find(int num){ // O(1), includes boundary sentinels base-1 and n+1
+        assert(base - 1 <= num && num <= n + 1);
+        return find_internal(num + 1) - 1;
     }
 
     bool merge(int a, int b){ // O(1)
-        a = find(a); b = find(b);
+        assert(base <= a && a <= n && base <= b && b <= n);
+        a = find_internal(a + 1); b = find_internal(b + 1);
         if (a == b) return false; 
         if (sz[a] < sz[b]) swap(a, b);
         p[b] = a; sz[a] += sz[b]; cc--;
@@ -117,9 +127,9 @@ public:
     }
 
     int count() const{ return cc; } // O(1)
-    int size(int x){ return sz[find(x)]; } // O(1)
+    int size(int x){ return sz[find_internal(x + 1)]; } // O(1)
     bool root(int x){ return find(x) == x; } // O(1)
     bool same(int a, int b) { return find(a) == find(b); } // O(1)
-    int prv(int x){ return find(l[find(x)] - 1); } // O(1)
-    int nxt(int x){ return find(r[find(x)] + 1); } // O(1)
+    int prv(int x){ return find_internal(l[find_internal(x + 1)] - 1) - 1; } // O(1)
+    int nxt(int x){ return find_internal(r[find_internal(x + 1)] + 1) - 1; } // O(1)
 };

@@ -25,7 +25,8 @@ struct lca_policy{
 };
 
 template <class policy = lca_policy>
-class _lca { // 1-based index
+class _lca {
+    bool base; // indices base..n
 private:
     using node = typename policy::node;
     using cost = typename policy::cost;
@@ -71,25 +72,25 @@ private:
         return cur;
     }
 public:
-    _lca(int n = 0){ clear(n); } // O(1)
-    void clear(int n){ // O(n)
-        this->n = n; lg = 1; cc = 0;
+    _lca(int n = 0, bool base = 1){ clear(n, base); } // O(1)
+    void clear(int n, bool base = 1){ // O(n)
+        this->n = n; this->base = base; lg = 1; cc = 0;
         while ((1ll << lg) <= n) lg++; 
         p.assign(lg + 1, vector<int>(n + 1, -1)); 
         d.assign(n + 1, -1); adj.assign(n + 1, {}); comp.assign(n + 1, 0);
         ord.clear(); ord.reserve(n);
-        if constexpr (policy::use_node) arr.assign(lg + 1, vector<node>(n + 1, policy::node()));
+        if constexpr (policy::use_node) arr.assign(lg + 1, vector<node>(n + 1, node()));
     }
 
     void add(int a, int b, cost co = cost()){ addsol(a, b, co); addsol(b, a, co); } // O(1)
     void addsol(int a, int b, cost co = cost()){ adj[a].push_back({b, co}); } // O(1)
     void build(){ // O(n log n)
-        for(int i = 1;i <= n;i++){
+        for(int i = base;i <= n;i++){
             if(d[i] != -1) continue;
             d[i] = 0; ++cc; build_comp(i, cc);
         }
         for (int i = 1; i <= lg; i++) {
-            for (int j = 1; j <= n; j++) {
+            for (int j = base; j <= n; j++) {
                 if (p[i - 1][j] == -1) continue;
                 p[i][j] = p[i - 1][p[i - 1][j]];
                 if constexpr (policy::use_node) arr[i][j] = policy::merge(arr[i - 1][j], arr[i - 1][p[i - 1][j]]);
@@ -149,7 +150,8 @@ public:
 };
 
 // Virtual Tree
-class _vtree { // 1-based index
+class _vtree {
+    bool base; // indices base..n
 private:
     vector <vector<int>> lift;
     vector <ll> dist;
@@ -197,9 +199,9 @@ private:
     }
 public:
     vector <vector<pair<int, ll>>> adj, vt;
-    _vtree(int n = 0){ clear(n); } // O(1)
-    void clear(int n){ // O(n)
-        this->n = n; seq = 0; built = 0; lg = 1;
+    _vtree(int n = 0, bool base = 1){ clear(n, base); } // O(1)
+    void clear(int n, bool base = 1){ // O(n)
+        this->n = n; this->base = base; seq = 0; built = 0; lg = 1;
         while((1ll << lg) <= n) lg++;
         adj.assign(n + 1, {}); vt.assign(n + 1, {});
         lift.assign(lg + 1, vector<int>(n + 1, 0));
@@ -214,11 +216,14 @@ public:
         built = 0;
     } // O(1)
 
-    void init(int root = 1){ // O(n log n)
+    void init(int root = -1){ // O(n log n)
         seq = 0; built = 1; clear_vt();
         for(auto& row : lift) fill(all(row), 0);
         fill(all(in), 0); fill(all(out), 0);
         fill(all(dep), 0); fill(all(dist), 0);
+        if(n < base) return;
+        if(root == -1) root = base;
+        assert(base <= root && root <= n);
         dfs(root, root);
     }
 
@@ -259,23 +264,24 @@ public:
 };
 
 // Sparse Table
-class _st { // 0-base index
+class _st {
+    bool base; // indices base..n
 private:
     vector <vector<ll>> sum;
     vector <vector<int>> lift; ll m; int n, lg; 
 public:
-    _st(int n = 0, ll max_step = 0){ clear(n, max_step); }; // O(n log m)
-    void clear(int n, ll m = 60){ // O(n log m)
-        lg = 1; this->n = n; this->m = m;
+    _st(int n = 0, ll max_step = 0, bool base = 1){ clear(n, max_step, base); }; // O(n log m)
+    void clear(int n, ll m = 60, bool base = 1){ // O(n log m)
+        lg = 1; this->n = n; this->base = base; this->m = m;
         while((1ll << lg) <= m) lg++;
         lift.assign(lg + 1, vector<int>(n + 2, n + 1));
         sum.assign(lg + 1, vector<ll>(n + 2, 1));
     }
 
-    void add(int st, int en, ll co = 1) { lift[0][st] = en; sum[0][st] = co; } // O(1)
+    void add(int st, int en, ll co = 1) { assert(base <= st && st <= n && base <= en && en <= n + 1); lift[0][st] = en; sum[0][st] = co; } // O(1)
     void build(){ // O(n log m)
         for(int i = 1;i <= lg;i++){
-            for(int j = 0;j <= n;j++){
+            for(int j = base;j <= n;j++){
                 int mid = lift[i - 1][j];
                 lift[i][j] = lift[i - 1][mid];
                 sum[i][j] = min<int>(sum[i - 1][j] + sum[i - 1][mid], 0x3f3f3f3f);
@@ -303,6 +309,7 @@ struct mst_policy{
 
 template <class policy = mst_policy>
 class _mst{
+    bool base;
 private:
     using cost = typename policy::cost;
     cost zero() const{ return policy::zero(); }
@@ -338,21 +345,21 @@ private:
         sort(all(adj)); int cnt = 0;
         for(auto& i : adj){
             auto& [st, en, c] = i;
-            if(cnt >= n - num - 1) return 1;
+            if(cnt >= n - base - num) return 1;
             if(!uf.merge(st, en)) continue;
             result = add(result, c); cnt++;
         }
-        return cnt >= n - num - 1;
+        return cnt >= n - base - num;
     }
 public:
-    _mst(int n = 0){ clear(n); } // O(n)
-    void clear(int n){ // O(n)
-        this->n = n; result = zero(); 
+    _mst(int n = 0, bool base = 1){ clear(n, base); } // O(n)
+    void clear(int n, bool base = 1){ // O(n)
+        this->n = n; this->base = base; result = zero();
         uf.clear(n); built = 0; adj.clear();
     }
 
     void add(int st, int en, cost c){ // O(1)
-        assert(!built);
+        assert(!built); assert(base <= st && st <= n && base <= en && en <= n);
         adj.push_back({st, en, c}); 
     }
 
@@ -364,10 +371,10 @@ public:
 };
 
 //SCC
-class _scc{ // select base
+class _scc{ // indices base..n
 private:
     vector <vector<int>> adj, rev, group;
-    vector <int> comp, ord; vector <bool> v; int n, base, cc;
+    vector <int> comp, ord; vector <bool> v; int n, cc; bool base;
     void dfs1(int cur){
         v[cur] = 1;
         for(auto& nxt : adj[cur]) if(!v[nxt]) dfs1(nxt);
@@ -379,8 +386,8 @@ private:
         for(auto& nxt : rev[cur]) if(comp[nxt] == -1) dfs2(nxt, cid);
     }
 public:
-    _scc(int max_index = 0, int base = 1){ clear(max_index, base); } // O(n)
-    void clear(int max_index, int base = 1){ // O(n)
+    _scc(int max_index = 0, bool base = 1){ clear(max_index, base); } // O(n)
+    void clear(int max_index, bool base = 1){ // O(n)
         this->n = max_index; this->base = base;
         cc = 0; adj.assign(n + 1, {}); rev.assign(n + 1, {});
         comp.assign(n + 1, -1); group.clear(); ord.clear();
@@ -389,6 +396,7 @@ public:
 
     void addsol(int s, int e){ adj[s].push_back(e); rev[e].push_back(s); } // O(1)
     void build(){ // O(n + m)
+        cc = 0; ord.clear(); group.clear(); fill(all(v), false); fill(all(comp), -1);
         for(int i = base;i <= n;i++) if(!v[i]) dfs1(i);
         for(int i = (int)ord.size() - 1;i >= 0;i--){
             int cur = ord[i]; if(comp[cur] != -1) continue;
@@ -464,27 +472,28 @@ public:
 };
 
 //2SAT
-class _2sat{ // selcet base
+class _2sat{ // indices base..n
 private:
-    int n = 0; bool base = 1;
+    int n = 0, vars = 0; bool base = 1;
 public:
     _scc scc; 
-    _2sat(int max_index = 0){ clear(max_index); } // O(n)
+    _2sat(int max_index = 0, bool base = 1){ clear(max_index, base); } // O(n)
     void clear(int max_index, bool base = 1){ // O(n)
         this->n = max_index; this->base = base;
-        scc.clear(2 * n + base - 1, base);
+        vars = n - base + 1;
+        scc.clear(n + vars, base);
     }
 
     int pos(int x) const{ return x; } // O(1)
-    int neg(int x) const{ return x + n; } // O(1)
-    int op(int x) const{ return x < n + base ? x + n : x - n; } // O(1)
+    int neg(int x) const{ return x + vars; } // O(1)
+    int op(int x) const{ return x <= n ? x + vars : x - vars; } // O(1)
 
     void add(int a, int b){ scc.addsol(a, b); } // O(1)
     void add_imp(int a, int b){ add_or(op(a), b); } // O(1)
     void add_or(int a, int b){ add(op(a), b); add(op(b), a); } // O(1)
     void add_true(int x){ add(op(x), x); } // O(1)
     void add_false(int x){ add_true(op(x)); } // O(1)
-    void add_eq(int a, int b){ add(a, b); add(b, a); } // O(1)
+    void add_eq(int a, int b){ add_imp(a, b); add_imp(b, a); } // O(1)
     void add_xor(int a, int b){ add_or(a, b); add_or(op(a), op(b)); } // O(1)
     void add_most1(int a, int b){ add_or(op(a), op(b)); } // O(1)
     
@@ -493,7 +502,7 @@ public:
 
     bool solve(){ // O(n + m)
         scc.build(); 
-        for(int i = base;i < base + n;i++){
+        for(int i = base;i <= n;i++){
             if(scc.same(pos(i), neg(i))) return false;
         }
         return true;
@@ -501,7 +510,7 @@ public:
 
     template<class F>
     void it(const F& f) const{ // O(n)
-        for(int i = base; i < base + 2 * n; i++){
+        for(int i = base; i <= n + vars; i++){
             int x = (scc.component(i) > scc.component(op(i))) ? 1 : 0;
             f(i, x);
         }
@@ -510,14 +519,15 @@ public:
 
 
 //이분 매칭
-class _bm { // 0-based index
+class _bm {
+    bool base; // indices base..n
 private:
     vector<vector<int>> adj; int as, bs;
     vector<int> av, bv, dist;
     static constexpr int INF = 0x3f3f3f3f;
     bool bfs(){
         queue <int> q;
-        for(int i = 0;i <= as;i++){
+        for(int i = base;i <= as;i++){
             if(av[i] == -1) dist[i] = 0, q.push(i);
             else dist[i] = INF;
         }
@@ -545,9 +555,9 @@ private:
         dist[cur] = INF; return false;
     }
 public:
-    _bm(int a = 0, int b = 0){ clear(a, b); } // O(n)
-    void clear(int a, int b){ // O(n)
-        as = a; bs = b;
+    _bm(int a = 0, int b = 0, bool base = 1){ clear(a, b, base); } // O(n)
+    void clear(int a, int b, bool base = 1){ // O(n)
+        as = a; bs = b; this->base = base;
         adj.assign(as + 1, {}); dist.assign(as + 1, 0);
         av.assign(as + 1, -1); bv.assign(bs + 1, -1);
     }
@@ -556,7 +566,7 @@ public:
     int ret(){ // O(m sqrt n)
         int result = 0;
         while(bfs()){
-            for(int i = 0;i <= as;i++){
+            for(int i = base;i <= as;i++){
                 if(av[i] != -1) continue;
                 result += dfs(i);
             }
@@ -566,24 +576,25 @@ public:
 
     template <class F>
     void it_all(const F& f) const{
-        for(int i = 0;i <= as;i++) f(i, av[i]);
+        for(int i = base;i <= as;i++) f(i, av[i]);
     }
 
     template <class F>
     void it_matched(const F& f) const{
-        for(int i = 0;i <= as;i++) if(av[i] != -1) f(i, av[i]);
+        for(int i = base;i <= as;i++) if(av[i] != -1) f(i, av[i]);
     }
 };
 
 //BCC
-class _bcc{ // 1-based index
+class _bcc{
+    bool base; // indices base..n
 public:
     vector <vector <ll>> adj;
     vector <ll> mn, seq, num;
     ll n, cnt;
     stack <pll> st;
 
-    _bcc(ll n) : n(n) {
+    _bcc(ll n = 0, bool base = 1) : n(n), base(base) {
         adj.resize(n + 1); mn.resize(n + 1);
         seq.resize(n + 1); num.resize(n + 1);
     }
@@ -593,8 +604,15 @@ public:
         adj[e].push_back(s);
     }
 
+    void clear(ll n, bool base = 1){
+        this->n = n; this->base = base; cnt = 0;
+        adj.assign(n + 1, {}); mn.assign(n + 1, 0); seq.assign(n + 1, 0); num.assign(n + 1, 0);
+        while(!st.empty()) st.pop();
+    }
+
     void clear(){
         seq.clear(); mn.clear(); cnt = 0;
+        fill(all(num), 0); while(!st.empty()) st.pop();
         seq.resize(n + 1); mn.resize(n + 1);
     }
 
@@ -661,7 +679,7 @@ public:
     // 단절점 반환
     vector <ll> point(){
         vector <ll> ret; clear();
-        for(int i = 1;i <= n;i++){
+        for(int i = base;i <= n;i++){
             if(seq[i]) continue;
             dfs_point(ret, i);
         }
@@ -672,7 +690,7 @@ public:
     // 단절선 반환
     vector <pll> line(){
         vector <pll> ret; clear();
-        for(int i = 1;i <= n;i++){
+        for(int i = base;i <= n;i++){
             if(seq[i]) continue;
             dfs_line(ret, i);
         }
@@ -683,7 +701,7 @@ public:
     // bcc 반환, 테스트 해봐야 함
     vector <vector <pll>> ret(){
         vector <vector <pll>> ret; clear();
-        for(int i = 1;i <= n;i++){
+        for(int i = base;i <= n;i++){
             if(seq[i]) continue;
             dfs_ret(ret, i);
         }
@@ -692,14 +710,15 @@ public:
     }
 };
 
-class _3cycle{ // 1-based index
+class _3cycle{
+    bool base; // indices base..n
 private:
     vector <vector<int>> tmp, adj;
     vector <int> cnt; int n; bool built = 0;
 public: 
-    _3cycle(int n = 0){ clear(n); } // O(n)
-    void clear(int n){ // O(n);
-        this->n = n; adj.assign(n + 1, {}); built = 0;
+    _3cycle(int n = 0, bool base = 1){ clear(n, base); } // O(n)
+    void clear(int n, bool base = 1){ // O(n);
+        this->n = n; this->base = base; adj.assign(n + 1, {}); built = 0;
         cnt.assign(n + 1, 0); tmp.assign(n + 1, {});
     }
 
@@ -708,7 +727,7 @@ public:
 
     void init(){ // O(n + m)
         assert(!built); built = 1;
-        for(int i = 1;i <= n;i++){
+        for(int i = base;i <= n;i++){
             for(auto& j : tmp[i]){
                 if(tmp[i].size() < tmp[j].size()) continue;
                 if(tmp[i].size() == tmp[j].size() && i <= j) continue;
@@ -719,7 +738,7 @@ public:
 
     ll ret(ll mod = 0){ // O(m sqrt m)
         assert(built); ll c = 0;
-        for(int i = 1;i <= n;i++){
+        for(int i = base;i <= n;i++){
             for(auto& j : adj[i]) cnt[j]++;
             for(auto& j : adj[i]){
                 for(auto& k : adj[j]) if(cnt[k]){
@@ -733,7 +752,8 @@ public:
     } 
 };
 
-class _4cycle{ // 1-based index
+class _4cycle{
+    bool base; // indices base..n
 private:
     vector <vector<int>> tmp, adj;
     vector <int> cnt; int n; bool built = 0;
@@ -742,9 +762,9 @@ private:
         return tmp[a].size() == tmp[b].size() && a <= b;
     }
 public:
-    _4cycle(int n = 0){ clear(n); } // O(n)
-    void clear(int n){ // O(n)
-        this->n = n; adj.assign(n + 1, {}); built = 0;
+    _4cycle(int n = 0, bool base = 1){ clear(n, base); } // O(n)
+    void clear(int n, bool base = 1){ // O(n)
+        this->n = n; this->base = base; adj.assign(n + 1, {}); built = 0;
         cnt.assign(n + 1, 0); tmp.assign(n + 1, {});
     }
 
@@ -753,7 +773,7 @@ public:
 
     void init(){ // O(n + m)
         assert(!built); built = 1;
-        for(int i = 1;i <= n;i++){
+        for(int i = base;i <= n;i++){
             for(auto& j : tmp[i]){
                 if(tmp[i].size() < tmp[j].size()) continue;
                 if(tmp[i].size() == tmp[j].size() && i <= j) continue;
@@ -764,10 +784,10 @@ public:
 
     ll ret(ll mod = 0){ // O(m sqrt m)
         assert(built); ll c = 0;
-        for(int i = 1;i <= n;i++){
+        for(int i = base;i <= n;i++){
             vector <int> use;
             for(auto& j : adj[i]){
-                for(auto& k : adj[j]){
+                for(auto& k : tmp[j]){
                     if(less(i, k)) continue;
                     if(!cnt[k]) use.push_back(k);
                     c += cnt[k]++;
@@ -782,6 +802,7 @@ public:
 
 template <class T>
 class _clist{
+    bool base;
 private:
     vector <T> to;
     vector <int> head, nxt, deg; int n;
@@ -814,14 +835,15 @@ private:
 
     void clear_node(int u){ head[u] = -1; deg[u] = 0; }
 public:
-    _clist(int n = 0){ clear(n); } // O(n)
-    void clear(int n){ // O(n)
-        this->n = n; deg.assign(n + 1, 0);
+    _clist(int n = 0, bool base = 1){ clear(n, base); } // O(n)
+    void clear(int n, bool base = 1){ // O(n)
+        this->n = n; this->base = base; deg.assign(n + 1, 0);
         head.assign(n + 1, -1); to.clear(); nxt.clear();
     }
 
-    int size() const{ return n; } // O(1)
-    void push_front(int x, const T& v){ // O(1)
+    int size() const{ return n - base + 1; } // O(1)
+    void push_front(int x, const T& v){
+        assert(base <= x && x <= n); // O(1)
         nxt.push_back(head[x]); to.push_back(v);
         head[x] = (int)to.size() - 1; deg[x]++;
     }
@@ -836,21 +858,22 @@ public:
 };
 
 template <class C = ll, C CINF = INF>
-class _hungarian{ // 1-based index
+class _hungarian{
+    bool base; // indices base..n
     vector <vector <C>> cost;
     vector <C> row, col;
-    vector <int> match, pre; int n;
+    vector <int> match, pre; int n, sz;
     void loop(int i){
         match[0] = i;
         int j0 = 0;
-        vector <C> mn(n + 1, CINF);
-        vector <bool> use(n + 1, 0);
+        vector <C> mn(sz + 1, CINF);
+        vector <bool> use(sz + 1, 0);
 
         while(1){
             use[j0] = 1;
             int i0 = match[j0], j1 = 0;
-            C delta = INF;
-            for(int j = 1;j <= n;j++){
+            C delta = CINF;
+            for(int j = 1;j <= sz;j++){
                 if(use[j]) continue;
                 C cur = cost[i0][j] - row[i0] - col[j];
                 if(cur < mn[j]){
@@ -864,7 +887,7 @@ class _hungarian{ // 1-based index
                 }
             }
 
-            for(int j = 0;j <= n;j++){
+            for(int j = 0;j <= sz;j++){
                 if(use[j]){ row[match[j]] += delta; col[j] -= delta; }
                 else mn[j] -= delta;
             }
@@ -881,16 +904,19 @@ class _hungarian{ // 1-based index
         }
     }
 public:
-    _hungarian(int n = 0){ clear(n); }
-    void clear(int n){
-        this-> n = n; col.assign(n + 1, 0);
-        row.assign(n + 1, 0); match.assign(n + 1, 0);
-        pre.assign(n + 1, 0); cost.assign(n + 1, vector<C>(n + 1, 0));
+    _hungarian(int n = 0, bool base = 1){ clear(n, base); }
+    void clear(int n, bool base = 1){
+        this->n = n; this->base = base; sz = n - base + 1; col.assign(sz + 1, 0);
+        row.assign(sz + 1, 0); match.assign(sz + 1, 0);
+        pre.assign(sz + 1, 0); cost.assign(sz + 1, vector<C>(sz + 1, 0));
     }
 
-    void set(int i, int j, C v){ cost[i][j] = v; }
+    void set(int i, int j, C v){
+        assert(base <= i && i <= n && base <= j && j <= n);
+        cost[i - base + 1][j - base + 1] = v;
+    }
     C build(){
-        for(int i = 1;i <= n;i++) loop(i);
+        for(int i = 1;i <= sz;i++) loop(i);
         return -col[0];
     }
 };

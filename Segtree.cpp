@@ -23,6 +23,7 @@ struct monoid{
 
 template <class policy = monoid>
 class _seg {
+    bool base;
 public:
     using node = typename policy::node;
     node op(const node& l, const node& r) const{ return policy::op(l, r); }
@@ -32,9 +33,9 @@ private:
     node join(const node& a, const node& b, bool right) const{ return right ? op(a, b) : op(b, a); }
     template<class F>
     int bisect(int p, bool right, const F& f) {
-        assert(0 <= p && p <= n); assert(f(id()));
-        if(right) { if (p == n) return n; }
-        else { if (p == 0) return 0; }
+        assert(right ? base <= p && p <= n + 1 : base - 1 <= p && p <= n); assert(f(id()));
+        if(right) { if (p == n + 1) return n; }
+        else { if (p == base - 1) return base; }
         int i = right ? (p + sz) : (p + 1 + sz); node v = id();
         while(1){
             if(!right) --i;
@@ -52,26 +53,26 @@ private:
             v = tmp1;
             if(right) ++i; if((i & -i) == i) break;
         }
-        return right ? n : 0;
+        return right ? n : base;
     }
 public:
-    _seg(int n = 0){ clear(n); } // O(n)
-    _seg(span<const node> arr){ build(arr); } // O(n)
-    void clear(int n){ // O(n)
-        this->n = n;
+    _seg(int n = 0, bool base = 1){ clear(n, base); } // O(n)
+    _seg(span<const node> arr, bool base = 1){ build(arr, base); } // O(n)
+    void clear(int n, bool base = 1){ // O(n)
+        this->n = n; this->base = base;
         sz = 1; while(sz < n + 1) sz <<= 1;
         seg.assign(2 * sz, id());
     }
 
-    void build(span<const node> arr){ // O(n)
-        if(arr.empty()){ clear(0); return; }
-        clear((int)arr.size() - 1);
-        for(int i = 0;i < (int)arr.size();i++) seg[i + sz] = arr[i];
+    void build(span<const node> arr, bool base = 1){ // O(n)
+        if(arr.empty()){ clear(base - 1, base); return; }
+        clear((int)arr.size() - 1, base);
+        for(int i = base;i < (int)arr.size();i++) seg[i + sz] = arr[i];
         for(int i = sz - 1;i >= 1;i--) seg[i] = op(seg[i << 1], seg[i << 1 | 1]);
     }
 
     node query(int st, int en){ // O(log n)
-        st = max(0, st); en = min(n, en);
+        st = max((int)base, st); en = min(n, en);
         if(st > en) return id();
         node l = id(), r = id();
         st += sz; en += sz;
@@ -84,7 +85,7 @@ public:
     }
 
     void set(int idx, const node& v){ // O(log n)
-        if(idx < 0 || idx > n) return;
+        if(idx < base || idx > n) return;
         int p = idx + sz; seg[p] = v;
         for(p >>= 1; p; p >>= 1) seg[p] = op(seg[p << 1], seg[p << 1 | 1]);
     }
@@ -117,7 +118,8 @@ struct action{
 };
 
 template <class policy = action>
-class _prop { 
+class _prop {
+    bool base;
 public:
     using node = typename policy::node;
     using lazy = typename policy::lazy;
@@ -161,9 +163,9 @@ private:
 
     template<class F>
     int bisect(int p, bool right, const F& f) {
-        assert(0 <= p && p <= n); assert(f(id()));
-        if(right) { if (p == n) return n; }
-        else { if (p == 0) return 0; }
+        assert(right ? base <= p && p <= n + 1 : base - 1 <= p && p <= n); assert(f(id()));
+        if(right) { if (p == n + 1) return n; }
+        else { if (p == base - 1) return base; }
         int i = right ? (p + sz) : (p + 1 + sz);
         if(right) propagate(i); else propagate(i - 1);
         node v = id();
@@ -184,33 +186,33 @@ private:
             v = tmp1;
             if(right) ++i; if((i & -i) == i) break;
         }
-        return right ? n : 0;
+        return right ? n : base;
     }
 public:
-    _prop(int n = 0){ clear(n); } // O(n)
-    _prop(span<const node> arr){ build(arr); } // O(n)
-    void clear(int n){ // O(n)
-        this->n = n;
+    _prop(int n = 0, bool base = 1){ clear(n, base); } // O(n)
+    _prop(span<const node> arr, bool base = 1){ build(arr, base); } // O(n)
+    void clear(int n, bool base = 1){ // O(n)
+        this->n = n; this->base = base;
         sz = 1; while(sz < n + 1) sz <<= 1;
         h = __lg(sz);
         seg.assign(2 * sz, id());
         lz.assign(2 * sz, lz_id());
     }
 
-    void build(span<const node> arr){ // O(n)
-        if(arr.empty()){ clear(0); return; }
-        clear((int)arr.size() - 1);
-        for(int i = 0;i < (int)arr.size();i++) seg[i + sz] = arr[i];
+    void build(span<const node> arr, bool base = 1){ // O(n)
+        if(arr.empty()){ clear(base - 1, base); return; }
+        clear((int)arr.size() - 1, base);
+        for(int i = base;i < (int)arr.size();i++) seg[i + sz] = arr[i];
         for(int i = sz - 1;i >= 1;i--) seg[i] = op(seg[i << 1], seg[i << 1 | 1]);
     }
 
     node query(int idx){ // O(log n)
-        idx += sz;
+        assert(base <= idx && idx <= n); idx += sz;
         propagate(idx);
         return seg[idx];
     }
     node query(int st, int en) { // O(log n)
-        st = max(0, st); en = min(n, en);
+        st = max((int)base, st); en = min(n, en);
         if(st > en) return id();
 
         int l = (int)st + sz, r = (int)en + sz;
@@ -228,7 +230,7 @@ public:
 
     void update(int idx, const lazy& lz){ update(idx, idx, lz); } // O(log n)
     void update(int st, int en, const lazy& lz){ // O(log n)
-        st = max(0, st); en = min(n, en);
+        st = max((int)base, st); en = min(n, en);
         if(st > en) return;
 
         int l = (int)st + sz, r = (int)en + sz;
@@ -255,7 +257,8 @@ template <class P>
 concept is_action = requires(P s, int l, int r, const typename P::lazy& z){ s.update(l, r, z); };
 
 template <class policy>
-class _hld { // 1-based index, m=0 vertex, m=1 edge(child-index)
+class _hld {
+    bool base; // indices base..n, m=0 vertex, m=1 edge(child-index)
 public:
     using node = typename policy::node;
     policy seg;
@@ -282,12 +285,12 @@ private:
     }
 
     void dfs2(int cur){
-        in[cur] = ++cnt;
+        in[cur] = cnt++;
         for(auto& nxt : adj[cur]){
             top[nxt] = (nxt == adj[cur][0] ? top[cur] : nxt);
             dfs2(nxt);
         }
-        out[cur] = cnt;
+        out[cur] = cnt - 1;
     }
 
     vector<pair<int,int>> get_path(int st, int en){
@@ -295,7 +298,7 @@ private:
         while(top[st] != top[en]){
             if(d[top[st]] < d[top[en]]) swap(st, en);
             int cur = top[st], l = in[cur], r = in[st];
-            if(m == 1 && p[cur] == 0) l++; 
+            if(m == 1 && p[cur] == -1) l++;
             if(l <= r) ret.push_back({l, r});
             st = p[cur];
         }
@@ -305,21 +308,23 @@ private:
         return ret;
     }
 public:
-    _hld(int n = 0, int m = 0){ clear(n, m); }
-    void clear(int n, int m = 0){
-        this->n = n; this->m = m; cnt = 0;
+    _hld(int n = 0, int m = 0, bool base = 1){ clear(n, m, base); }
+    void clear(int n, int m = 0, bool base = 1){
+        this->n = n; this->base = base; this->m = m; cnt = 0;
         adj.assign(n + 1, {}); tmp.assign(n + 1, {}); 
-        top.assign(n + 1, 0); d.assign(n + 1, 0); 
+        top.assign(n + 1, -1); d.assign(n + 1, 0);
         in.assign(n + 1, 0); out.assign(n + 1, 0);
-        p.assign(n + 1, 0); sz.assign(n + 1, 0);
-        seg.clear(n); built = 0;
+        p.assign(n + 1, -1); sz.assign(n + 1, 0);
+        if constexpr (requires(policy& s){ s.clear(n, 0); }) seg.clear(n, 0);
+        else seg.clear(n);
+        built = 0;
     }
 
     void addsol(int s, int e){ tmp[s].push_back(e); }
     void add(int s, int e){ addsol(s, e); addsol(e, s); }
     void init(){
         assert(!built); built = 1;
-        for(int i = 1;i <= n;i++){
+        for(int i = base;i <= n;i++){
             if(sz[i]) continue; top[i] = i;
             build_tree(i); dfs1(i); dfs2(i);
         }
@@ -370,7 +375,8 @@ struct mt_policy {
 };
 
 template <class policy = mt_policy>
-class _mt{ // 0-based index
+class _mt{
+    bool base; // indices base..n
 public:
     using node = typename policy::node;
 private:
@@ -387,8 +393,8 @@ private:
     }
 
     int query(int st, int en, const node& v, bool is_greater, bool is_less, bool is_eq) const{
-        st = max(st, 0); en = min(en, n);
-        if(n <= 0 || st > en) return 0;
+        st = max(st, (int)base); en = min(en, n);
+        if(n < base || st > en) return 0;
         int l = sz + st, r = sz + en, ret = 0;
         while(l <= r){
             if(l & 1) ret += count_node(seg[l++], v, is_greater, is_less, is_eq);
@@ -398,16 +404,17 @@ private:
         return ret;
     }
 public:
-    _mt(int n = 0){ clear(n); } // O(n)
-    _mt(span<const node> arr){ build(arr); } // O(n log n)
-    void clear(int n){ // O(n)
-        this->n = n; sz = 1; while(sz < n + 1) sz <<= 1; 
+    _mt(int n = 0, bool base = 1){ clear(n, base); } // O(n)
+    _mt(span<const node> arr, bool base = 1){ build(arr, base); } // O(n log n)
+    void clear(int n, bool base = 1){ // O(n)
+        this->n = n; this->base = base; sz = 1; while(sz < n + 1) sz <<= 1;
         arr.assign(n + 1, node()); seg.assign(2 * sz, {});
     }
 
-    void build(span<const node> arr){ // O(n log n)
-        clear((int)arr.size() - 1); this->arr = arr; 
-        for(int i = 0; i <= n; i++) seg[sz + i].assign(1, arr[i]);
+    void build(span<const node> arr, bool base = 1){ // O(n log n)
+        if(arr.empty()){ clear(base - 1, base); return; }
+        clear((int)arr.size() - 1, base); this->arr.assign(all(arr));
+        for(int i = base; i <= n; i++) seg[sz + i].assign(1, arr[i]);
         for(int i = sz - 1; i >= 1; i--){
             auto &l = seg[i << 1], &r = seg[i << 1 | 1], &cur = seg[i];
             cur.resize(l.size() + r.size());
@@ -416,7 +423,7 @@ public:
     }
 
     void update(int idx, const node& v){ // O(n)
-        if(idx < 0 || idx > n) return; arr[idx] = v;
+        if(idx < base || idx > n) return; arr[idx] = v;
         int p = sz + idx; seg[p].assign(1, v); 
         for(int i = p >> 1;i >= 1;i >>= 1){
             auto &l = seg[i << 1], &r = seg[i << 1 | 1], &cur = seg[i];
@@ -452,6 +459,7 @@ struct group{
 
 template <class policy = group>
 class _pst{
+    bool base;
 public:
     using node = typename policy::node;
     node op(const node& l, const node& r) const{ return policy::op(l, r); }
@@ -539,10 +547,10 @@ private:
     }
 
 public:
-    _pst(int n = 0){ clear(n); }
+    _pst(int n = 0, bool base = 1){ clear(n, base); }
 
-    void clear(int n){
-        this->n = n;
+    void clear(int n, bool base = 1){
+        this->n = n; this->base = base;
         lv.assign(1, 0); rv.assign(1, 0);
         seg.assign(1, id());
     }
@@ -552,8 +560,8 @@ public:
     }
 
     int set(int rt, int idx, const node& v){ // O(log n)
-        assert(0 <= idx && idx <= n);
-        return set(rt, 0, n, idx, v);
+        assert(base <= idx && idx <= n);
+        return set(rt, base, n, idx, v);
     }
 
     node get(int rt, int idx) const{ // O(log n)
@@ -561,9 +569,9 @@ public:
     }
 
     node query(int rt, int l, int r) const{ // O(log n)
-        l = max(0, l); r = min(n, r);
+        l = max((int)base, l); r = min(n, r);
         if(l > r) return id();
-        return query(rt, 0, n, l, r);
+        return query(rt, base, n, l, r);
     }
 
     node diff_get(int rt1, int rt2, int idx) const requires has_inv<policy>{
@@ -571,38 +579,47 @@ public:
     }
 
     node diff_query(int rt1, int rt2, int l, int r) const requires has_inv<policy>{
-        l = max(0, l); r = min(n, r);
+        l = max((int)base, l); r = min(n, r);
         if(l > r) return id();
-        return op(query(rt2, 0, n, l, r), inv(query(rt1, 0, n, l, r)));
+        return op(query(rt2, base, n, l, r), inv(query(rt1, base, n, l, r)));
     }
 
     template<class F>
     int max_right(int rt, int l, const F& f) const{
+        assert(base <= l && l <= n + 1); assert(f(id()));
+        if(l > n) return n;
         node v = id();
-        return bisect(rt, 0, n, l, 1, f, v);
+        return bisect(rt, base, n, l, 1, f, v);
     }
 
     template<class F>
     int min_left(int rt, int r, const F& f) const{
+        assert(base - 1 <= r && r <= n); assert(f(id()));
+        if(r < base) return base;
         node v = id();
-        return bisect(rt, 0, n, r, 0, f, v);
+        return bisect(rt, base, n, r, 0, f, v);
     }
 
     template<class F>
     int diff_max_right(int rt1, int rt2, int l, const F& f) const requires has_inv<policy>{
+        assert(base <= l && l <= n + 1); assert(f(id()));
+        if(l > n) return n;
         node v = id();
-        return bisect_diff(rt1, rt2, 0, n, l, 1, f, v);
+        return bisect_diff(rt1, rt2, base, n, l, 1, f, v);
     }
 
     template<class F>
     int diff_min_left(int rt1, int rt2, int r, const F& f) const requires has_inv<policy>{
+        assert(base - 1 <= r && r <= n); assert(f(id()));
+        if(r < base) return base;
         node v = id();
-        return bisect_diff(rt1, rt2, 0, n, r, 0, f, v);
+        return bisect_diff(rt1, rt2, base, n, r, 0, f, v);
     }
 };
 
 template <class policy = group>
-class _fw{ // 0-based index
+class _fw{
+    bool base; // indices base..n
 private:
     using node = typename policy::node;
     vector <node> bit; int n;
@@ -610,17 +627,17 @@ private:
     node id() const{ return node(); }
     node inv(const node& a) const{ return policy::inv(a); }
 public:
-    _fw(int n = 0){ clear(n); } // O(n)
-    _fw(span<const node> arr){ build(arr); } // O(n)
-    void clear(int n){ // O(n)
-        this->n = n;
+    _fw(int n = 0, bool base = 1){ clear(n, base); } // O(n)
+    _fw(span<const node> arr, bool base = 1){ build(arr, base); } // O(n)
+    void clear(int n, bool base = 1){ // O(n)
+        this->n = n; this->base = base;
         bit.assign(n + 2, id());
     }
 
-    void build(span<const node> arr){ // O(n)
-        if(arr.empty()){ clear(0); return; }
-        clear((int)arr.size() - 1);
-        for(int i = 0;i <= n;i++) bit[i + 1] = arr[i];
+    void build(span<const node> arr, bool base = 1){ // O(n)
+        if(arr.empty()){ clear(base - 1, base); return; }
+        clear((int)arr.size() - 1, base);
+        for(int i = base;i <= n;i++) bit[i + 1] = arr[i];
         for(int i = 1;i <= n + 1;i++){
             int j = i + (i & -i);
             if(j <= n + 1) bit[j] = op(bit[j], bit[i]);
@@ -630,32 +647,33 @@ public:
     // range query -> need inv
     node query(int idx) requires has_inv<policy> { return query(idx, idx); } // O(log n)
     node query(int l, int r) requires has_inv<policy> { // O(log n)
-        l = max(l, 0); r = min(r, n);
+        l = max(l, (int)base); r = min(r, n);
         if(l > r) return id();
         return op(pre(r), inv(pre(l - 1))); 
     }
 
     // return 0 ~ idx
     node pre(int idx){ // O(log n)
-        node ret = id(); idx = min(idx, n);
+        node ret = id(); if(idx < base) return ret; idx = min(idx, n);
         for(int i = idx + 1;i > 0;i -= i & -i) ret = op(ret, bit[i]);
         return ret;
     }
 
     void set(int idx, const node& v) requires has_inv<policy> { // O(log n)
-        if(idx < 0 || idx > n) return;
+        if(idx < base || idx > n) return;
         node cur = query(idx, idx), d = op(v, inv(cur));         
         update(idx, d);                
     }
 
     void update(int idx, const node& v){ // O(log n)
-        if(idx < 0 || idx > n) return;
+        if(idx < base || idx > n) return;
         for(int i = idx + 1;i <= n + 1;i += i & -i) bit[i] = op(bit[i], v);
     }
 };
 
 template <class policy = group>
 class _fw2d{
+    bool base;
 private:
     using node = typename policy::node;
     vector<vector<node>> bit; int n, m;
@@ -663,15 +681,15 @@ private:
     node id() const { return node(); }
     node inv(const node& a) const { return policy::inv(a); }
 public:
-    _fw2d(int n = 0, int m = 0){ clear(n, m); } // O(nm)
-    void clear(int n, int m){ // O(nm)
-        this->n = n; this->m = m;
+    _fw2d(int n = 0, int m = 0, bool base = 1){ clear(n, m, base); } // O(nm)
+    void clear(int n, int m, bool base = 1){ // O(nm)
+        this->n = n; this->base = base; this->m = m;
         bit.assign(n + 2, vector<node>(m + 2, id()));
     }
 
     // return (0,0) ~ (y,x)
     node pre(int y, int x){ // O(log n log m)
-        if(x < 0 || y < 0) return id();
+        if(y < base || x < base) return id();
         node ret = id(); x = min(x, m); y = min(y, n);
         for(int i = y + 1; i > 0; i -= i & -i){
             for(int j = x + 1; j > 0; j -= j & -j){
@@ -684,7 +702,7 @@ public:
     // range query -> need inv
     node query(int y, int x) requires has_inv<policy> { return query(y, x, y, x); } // O(log n log m)
     node query(int y1, int x1, int y2, int x2) requires has_inv<policy> { // O(log n log m)
-        x1 = max(x1, 0); y1 = max(y1, 0);
+        x1 = max(x1, (int)base); y1 = max(y1, (int)base);
         x2 = min(x2, m); y2 = min(y2, n);
         if(x1 > x2 || y1 > y2) return id();
         node a = pre(y2, x2), b = pre(y2, x1 - 1);
@@ -694,7 +712,7 @@ public:
     }
 
     void update(int y, int x, const node& v){ // O(log n log m)
-        if(x < 0 || y < 0 || x > m || y > n) return;
+        if(y < base || y > n || x < base || x > m) return;
         for(int i = y + 1; i <= n + 1; i += i & -i){
             for(int j = x + 1; j <= m + 1; j += j & -j){
                 bit[i][j] = op(bit[i][j], v);
@@ -703,7 +721,7 @@ public:
     }
 
     void set(int y, int x, const node& v) requires has_inv<policy> { // O(log n log m)
-        if(x < 0 || y < 0 || x > m || y > n) return;
+        if(y < base || y > n || x < base || x > m) return;
         node cur = query(y, x), d = op(v, inv(cur));
         update(y, x, d);
     }

@@ -89,3 +89,29 @@ PS/CP(Problem Solving / Competitive Programming)용 C++ 템플릿 모음입니�
 
 `snippets/`에는 VS Code용 code snippets이 들어있습니다. 각 알고리즘명에 대응하는
 `.code-snippets` 파일이 존재하며 위 템플릿 파일들과 1:1로 매칭됩니다.
+
+
+## 인덱스 base
+
+위치·정점 범위를 받는 자료구조는 생성자와 초기화 함수에 `bool base = 1`을 받습니다.
+`n`은 마지막 인덱스이며, 실제 범위는 `base=1`이면 `[1,n]`, `base=0`이면 `[0,n]`입니다.
+기존 추가 인자가 있는 경우 `base`는 마지막에 옵니다.
+
+```cpp
+_seg<> seg(n);                 // 1..n
+_seg<> seg0(n, 0);             // 0..n
+_hld<_seg<>> hld(n, 0, 0);     // vertex mode, 0..n
+_mcmf<> flow(n, true, 0);      // use_spfa=true, vertices 0..n
+_bm matching(a, b, 0);         // left 0..a, right 0..b
+_fw2d<> grid(n, m, 0);         // rows 0..n, columns 0..m
+```
+
+- `span`으로 build하는 배열은 **배열 첨자와 외부 인덱스가 일치**합니다. 기본 `base=1`이면 `arr[0]`은 건너뛰며 마지막 인덱스는 `arr.size()-1`입니다.
+- 기본 `n=0, base=1`은 원소가 없는 상태입니다. `n=0, base=0`은 0번 원소 하나입니다.
+- `_vtree::init()`은 선택한 base를 기본 루트로 사용합니다. 루트는 명시해서 바꿀 수도 있습니다.
+- `_2sat`의 양수 리터럴은 변수 번호, 음수 리터럴은 `번호 + (n-base+1)`입니다. `pos/neg/op`를 사용하면 base에 맞게 변환됩니다.
+- `_ufset`의 이전/다음 원소가 없으면 각각 `base-1`, `n+1` 경계 인덱스를 반환합니다.
+- 행렬의 행·열 개수, 수론의 수치 상한, 해시 용량은 base 대상이 아닙니다.
+- 이전에 기본 생성자로 0번을 사용하던 코드는 마지막 인자에 `0`을 추가해야 합니다.
+
+검증: GNU C++20 컴파일러가 PATH에 있을 때 `python tests/run_base_index.py`.

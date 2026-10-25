@@ -27,6 +27,7 @@ struct sp_policy{
 
 template<class policy = sp_policy>
 class _dij {
+    bool base;
 private:
     using dist = typename policy::dist; using cost = typename policy::cost;
     struct edge{ cost w; int nxt; }; struct node{ dist d; int v; };
@@ -49,18 +50,19 @@ private:
         }
     }
     void reset(int n){ pre.assign(n + 1, -1); d.assign(n + 1, policy::inf()); }
-    void chk(int x) const{ assert(built); assert(x >= 0 && x <= n); }
+    void chk(int x) const{ assert(built); assert(x >= base && x <= n); }
 public:
     static bool less(const dist& a, const dist& b){ return policy::leq(a, b) && !policy::leq(b, a); } // O(1)
     static bool eq(const dist& a, const dist& b){ return policy::leq(a, b) && policy::leq(b, a); }   // O(1)
 
-    _dij(int n = 0){ clear(n); } // O(n)
-    void clear(int n){ // O(n + m) 
-        this->n = n; adj.assign(n + 1, {}); reset(n);
+    _dij(int n = 0, bool base = 1){ clear(n, base); } // O(n)
+    void clear(int n, bool base = 1){ // O(n + m)
+        this->n = n; this->base = base; adj.assign(n + 1, {}); reset(n);
         built = 0; while(!pq.empty()) pq.pop();
     }
 
     void addsol(int st, int en, cost c){ // O(1)
+        assert(base <= st && st <= n && base <= en && en <= n);
         built = 0;
         adj[st].push_back({ c,en });
     }
@@ -69,6 +71,7 @@ public:
     }
 
     void init(int source){ // O((n + m) log n)
+        assert(base <= source && source <= n);
         reset(n); d[source] = policy::zero();
         pq.push({ d[source], source }); cal();
     }
@@ -76,6 +79,7 @@ public:
     void init(const vector <int>& source){ // O((n + m) log n)
         reset(n);
         for(const auto& i : source){
+            assert(base <= i && i <= n);
             d[i] = policy::zero();
             pq.push({ d[i], i });
         } cal();
@@ -102,7 +106,8 @@ public:
 };
 
 template <class policy = sp_policy>
-class _floyd { 
+class _floyd {
+    bool base;
 private:
     using dist = typename policy::dist; using cost = typename policy::cost;
     vector <vector<dist>> d; vector <vector<int>> nxt; 
@@ -110,14 +115,14 @@ private:
 
     static bool less(const dist& a, const dist& b){ return policy::leq(a, b) && !policy::leq(b, a); }
     static bool eq(const dist& a, const dist& b){ return policy::leq(a, b) && policy::leq(b, a); }
-    void chk(int st, int en) const{ assert(built); assert(st >= 0 && st <= n); assert(en >= 0 && en <= n); }
+    void chk(int st, int en) const{ assert(built); assert(st >= base && st <= n); assert(en >= base && en <= n); }
 public:
-    _floyd(int n = 0){ clear(n); } // O(n^2)
-    void clear(int n){ // O(n^2)
-        this->n = n; built = 0;
+    _floyd(int n = 0, bool base = 1){ clear(n, base); } // O(n^2)
+    void clear(int n, bool base = 1){ // O(n^2)
+        this->n = n; this->base = base; built = 0;
         d.assign(n + 1, vector<dist>(n + 1, policy::inf()));
         nxt.assign(n + 1, vector<int>(n + 1, 0));
-        for(int i = 1; i <= n; i++){
+        for(int i = base; i <= n; i++){
             d[i][i] = policy::zero();
             nxt[i][i] = i;
         }
@@ -128,6 +133,7 @@ public:
     }
 
     void addsol(int st, int en, cost c) { // O(1)
+        assert(base <= st && st <= n && base <= en && en <= n);
         built = 0;
         if(!less(c, d[st][en])) return;
         d[st][en] = c; nxt[st][en] = en;
@@ -135,9 +141,10 @@ public:
 
     void init() { // O(n^3)
         built = 1;
-        for (int k = 1; k <= n; k++) {
-            for (int i = 1; i <= n; i++) {
-                for (int j = 1; j <= n; j++) {
+        for (int k = base; k <= n; k++) {
+            for (int i = base; i <= n; i++) {
+                for (int j = base; j <= n; j++) {
+                    if(eq(d[i][k], policy::inf()) || eq(d[k][j], policy::inf())) continue;
                     dist nd = policy::add(d[i][k], d[k][j]);
                     if (policy::leq(d[i][j], nd)) continue;
                     d[i][j] = nd; nxt[i][j] = nxt[i][k];
@@ -168,6 +175,7 @@ public:
 
 template <class policy = sp_policy>
 class _spfa {
+    bool base;
 private:
     using dist = typename policy::dist; using cost = typename policy::cost;
     struct edge{ cost w; int nxt; };
@@ -202,7 +210,8 @@ private:
                 if (policy::leq(d[nxt], nd)) continue;
                 d[nxt] = nd; pre[nxt] = cur;
 
-                if(++cnt[nxt] > n){
+                cnt[nxt] = cnt[cur] + 1;
+                if(cnt[nxt] >= n - base + 1){
                     ret = 0; cal_cy(nxt);
                     continue;
                 }
@@ -216,15 +225,16 @@ private:
         d.assign(n + 1, policy::inf()); q.clear();
         in.assign(n + 1, false); cy.assign(n + 1, false);
     }
-    void chk(int x) const{ assert(built); assert(x >= 0 && x <= n); }
+    void chk(int x) const{ assert(built); assert(x >= base && x <= n); }
 public:
-    _spfa(int n = 0){ clear(n); } // O(n)
-    void clear(int n){ // O(n + m)
-        this->n = n; built = 0;
+    _spfa(int n = 0, bool base = 1){ clear(n, base); } // O(n)
+    void clear(int n, bool base = 1){ // O(n + m)
+        this->n = n; this->base = base; built = 0;
         reset(n); adj.assign(n + 1, {});
     }
 
     void addsol(int st, int en, cost c) { // O(1)
+        assert(base <= st && st <= n && base <= en && en <= n);
         built = 0;
         adj[st].push_back({ c, en });
     }
@@ -234,6 +244,7 @@ public:
 
     // cycle existed -> return 0 
     bool init(int source, dist fi = policy::zero()) { // O(nm)
+        assert(base <= source && source <= n);
         reset(n); d[source] = fi; in[source] = 1;
         q.push_back(source);
         return cal();
@@ -243,6 +254,7 @@ public:
     bool init(const vector <int>& source, dist fi = policy::zero()) { // O(nm)
         reset(n); 
         for (const auto& st : source) {
+            assert(base <= st && st <= n);
             d[st] = fi; in[st] = 1;
             q.push_back(st);
         }
