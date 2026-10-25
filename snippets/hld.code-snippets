@@ -87,7 +87,7 @@
     "        if(built){",
     "            vector<node> ordered(n + 1, seg.id());",
     "            for(int v = base; v <= n; ++v) ordered[in[v]] = values[v];",
-    "            if constexpr (requires(policy& s, span<const node> a){ s.make(a, 0); }) seg.make(ordered, 0);",
+    "            if constexpr (requires(policy& s, span<const node> a){ s.make(a); }) seg.make(ordered);",
     "            else {",
     "                if constexpr (requires(policy& s){ s.clear(n, 0); }) seg.clear(n, 0);",
     "                else seg.clear(n);",

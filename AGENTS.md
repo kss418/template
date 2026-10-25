@@ -13,12 +13,14 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
 ## Index base contract
 - For templates whose constructor takes a positional or vertex range, `n` is the
   maximum external index, not the number of elements. Use `bool base = 1` in
-  constructors and initialization APIs; spell the default as `1`, not `true`.
+  constructors and range-resetting `clear` APIs; spell the default as `1`, not `true`.
 - The active range is inclusive: `base=1` means `[1,n]`, and `base=0` means `[0,n]`.
   Compute element, vertex, component, and required-edge counts from `n-base+1`.
   For two-dimensional ranges, apply the same base to both axes.
 - Append `base` after existing optional parameters so their positions are preserved.
-  Forward the selected base through range-resetting `clear`/`make` APIs and wrappers; calculation-only `build` keeps the configured base.
+  Store the selected base in the object. `make(arr)` must not accept a base parameter:
+  it uses and preserves the stored base, including empty input and resizing.
+  Only constructors and `clear` select a new base; calculation-only `build` also preserves it.
   Internal helpers may use their own indexing, but configure and translate it explicitly.
 - `n=0, base=1` is empty; `n=0, base=0` contains index 0. Include both cases when
   changing range initialization or boundary behavior.
@@ -45,6 +47,7 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
 - Use `make(...)` for whole-input replacement (arrays, strings, or a new virtual-tree
   node set). A make operation may finish the preparation needed for immediate queries.
   Keep point `set`/`update` and incremental input `add`/`insert` names.
+  Bulk `make(arr)` reuses the object's configured base; do not add a base argument.
 - Queries requiring preprocessing before the first build, or after input changes and
   before rebuilding, are UB by contract. Do not enforce lifecycle validity with asserts,
   exceptions, automatic rebuilds, or runtime checks. Bounds/algebra preconditions are separate.

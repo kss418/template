@@ -57,14 +57,14 @@ private:
     }
 public:
     _seg(int n = 0, bool base = 1){ clear(n, base); } // O(n)
-    _seg(span<const node> arr, bool base = 1){ make(arr, base); } // O(n)
+    _seg(span<const node> arr, bool base = 1) : base(base){ make(arr); } // O(n)
     void clear(int n, bool base = 1){ // O(n)
         this->n = n; this->base = base;
         sz = 1; while(sz < n + 1) sz <<= 1;
         seg.assign(2 * sz, id());
     }
 
-    void make(span<const node> arr, bool base = 1){ // O(n)
+    void make(span<const node> arr){ // O(n)
         if(arr.empty()){ clear(base - 1, base); return; }
         clear((int)arr.size() - 1, base);
         for(int i = base;i < (int)arr.size();i++) seg[i + sz] = arr[i];
@@ -190,7 +190,7 @@ private:
     }
 public:
     _prop(int n = 0, bool base = 1){ clear(n, base); } // O(n)
-    _prop(span<const node> arr, bool base = 1){ make(arr, base); } // O(n)
+    _prop(span<const node> arr, bool base = 1) : base(base){ make(arr); } // O(n)
     void clear(int n, bool base = 1){ // O(n)
         this->n = n; this->base = base;
         sz = 1; while(sz < n + 1) sz <<= 1;
@@ -199,7 +199,7 @@ public:
         lz.assign(2 * sz, lz_id());
     }
 
-    void make(span<const node> arr, bool base = 1){ // O(n)
+    void make(span<const node> arr){ // O(n)
         if(arr.empty()){ clear(base - 1, base); return; }
         clear((int)arr.size() - 1, base);
         for(int i = base;i < (int)arr.size();i++) seg[i + sz] = arr[i];
@@ -338,7 +338,7 @@ public:
         if(built){
             vector<node> ordered(n + 1, seg.id());
             for(int v = base; v <= n; ++v) ordered[in[v]] = values[v];
-            if constexpr (requires(policy& s, span<const node> a){ s.make(a, 0); }) seg.make(ordered, 0);
+            if constexpr (requires(policy& s, span<const node> a){ s.make(a); }) seg.make(ordered);
             else {
                 if constexpr (requires(policy& s){ s.clear(n, 0); }) seg.clear(n, 0);
                 else seg.clear(n);
@@ -421,13 +421,13 @@ private:
     }
 public:
     _mt(int n = 0, bool base = 1){ clear(n, base); } // O(n)
-    _mt(span<const node> arr, bool base = 1){ make(arr, base); } // O(n log n)
+    _mt(span<const node> arr, bool base = 1) : base(base){ make(arr); } // O(n log n)
     void clear(int n, bool base = 1){ // O(n)
         this->n = n; this->base = base; sz = 1; while(sz < n + 1) sz <<= 1;
         arr.assign(n + 1, node()); seg.assign(2 * sz, {});
     }
 
-    void make(span<const node> arr, bool base = 1){ // O(n log n)
+    void make(span<const node> arr){ // O(n log n)
         if(arr.empty()){ clear(base - 1, base); return; }
         clear((int)arr.size() - 1, base); this->arr.assign(all(arr));
         for(int i = base; i <= n; i++) seg[sz + i].assign(1, arr[i]);
@@ -644,13 +644,13 @@ private:
     node inv(const node& a) const{ return policy::inv(a); }
 public:
     _fw(int n = 0, bool base = 1){ clear(n, base); } // O(n)
-    _fw(span<const node> arr, bool base = 1){ make(arr, base); } // O(n)
+    _fw(span<const node> arr, bool base = 1) : base(base){ make(arr); } // O(n)
     void clear(int n, bool base = 1){ // O(n)
         this->n = n; this->base = base;
         bit.assign(n + 2, id());
     }
 
-    void make(span<const node> arr, bool base = 1){ // O(n)
+    void make(span<const node> arr){ // O(n)
         if(arr.empty()){ clear(base - 1, base); return; }
         clear((int)arr.size() - 1, base);
         for(int i = base;i <= n;i++) bit[i + 1] = arr[i];
