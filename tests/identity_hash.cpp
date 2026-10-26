@@ -307,12 +307,143 @@ void check_actions(bool base){
     CHECK(zero.query(base,n).forward.v==9);CHECK(zero.query(base,n).backward.v==9);
     CHECK(zero.query(base,n).forward.sz==3);CHECK(zero.query(base,n).backward.sz==3);
 }
+
+vector<int> path_vertices(const vector<vector<int>>& adj,int st,int en){
+    vector<int> parent(adj.size(),-1);queue<int> q;q.push(st);parent[st]=st;
+    while(!q.empty()){
+        int cur=q.front();q.pop();
+        for(int nxt:adj[cur])if(parent[nxt]==-1){parent[nxt]=cur;q.push(nxt);}
+    }
+    if(parent[en]==-1)return {};
+    vector<int> path;for(int cur=en;;cur=parent[cur]){path.push_back(cur);if(cur==st)break;}
+    reverse(path.begin(),path.end());return path;
+}
+vector<vector<int>> sample_tree(){
+    vector<vector<int>> adj(7);
+    for(auto [a,b]:vector<pair<int,int>>{{0,1},{0,2},{1,3},{1,4},{2,5},{5,6}}){adj[a].push_back(b);adj[b].push_back(a);}
+    return adj;
+}
+template<class H>
+void add_edges(H& h,const vector<vector<int>>& adj,int base){
+    for(int a=0;a<(int)adj.size();++a)for(int b:adj[a])if(a<b)h.add(a+base,b+base);
+}
+template<class H>
+vector<int> storage_vertices(const H& h,int count,int base){
+    vector<int> at(count,-1);
+    for(int v=0;v<count;++v){
+        int segments=0;
+        h.it_path(v+base,v+base,[&](int l,int r,bool rev){CHECK(l==r);CHECK(!rev);CHECK(l>=0&&l<count);CHECK(at[l]==-1);at[l]=v;++segments;});
+        CHECK(segments==1);
+    }
+    return at;
+}
+void check_hld_order(bool base){
+    using P=bidirectional<text_monoid>;
+    const int count=7,n=base+count-1;auto adj=sample_tree();
+    _hld<_seg<P>> h(n,0,base);add_edges(h,adj,base);h.build();
+    vector<string> values{"A","bc","D","ef","G","hi","J"};
+    for(int v=0;v<count;++v)h.set(v+base,P::lift(values[v]));
+    auto at=storage_vertices(h,count,base);
+    auto verify=[&]{
+        for(int st=0;st<count;++st)for(int en=0;en<count;++en){
+            auto path=path_vertices(adj,st,en);string forward,backward;
+            for(int v:path)forward+=values[v];for(auto it=path.rbegin();it!=path.rend();++it)backward+=values[*it];
+            auto result=h.query(st+base,en+base);
+            CHECK(result.forward==forward);CHECK(result.backward==backward);
+            CHECK(h.query(en+base,st+base).forward==backward);
+            vector<int> visited;
+            h.it_path(st+base,en+base,[&](int l,int r,bool rev){
+                CHECK(l<=r);CHECK(l>=0&&r<count);
+                if(rev){for(int i=r;i>=l;--i)visited.push_back(at[i]);}
+                else{for(int i=l;i<=r;++i)visited.push_back(at[i]);}
+            });
+            CHECK(visited==path);
+        }
+    };
+    verify();values[3]="XYZ";h.set(base+3,P::lift(values[3]));verify();h.build();at=storage_vertices(h,count,base);verify();
+    _hld<_seg<>> sum(n,0,base);add_edges(sum,adj,base);sum.build();for(int v=0;v<count;++v)sum.set(v+base,{v+1});
+    for(int st=0;st<count;++st)for(int en=0;en<count;++en){long long expected=0;for(int v:path_vertices(adj,st,en))expected+=v+1;CHECK(sum.query(st+base,en+base).v==expected);}
+    using M=bidirectional<matrix_monoid>;_hld<_seg<M>> matrix(n,0,base);add_edges(matrix,adj,base);matrix.build();
+    vector<matrix_monoid::node> matrices(count,matrix_monoid::id());
+    for(int v=0;v<count;++v){matrices[v]=v%2?matrix_monoid::node{1,0,1,1}:matrix_monoid::node{1,1,0,1};matrix.set(v+base,M::lift(matrices[v]));}
+    for(int st=0;st<count;++st)for(int en=0;en<count;++en){
+        auto path=path_vertices(adj,st,en);auto forward=matrix_monoid::id(),backward=matrix_monoid::id();
+        for(int v:path)forward=matrix_monoid::op(forward,matrices[v]);
+        for(auto it=path.rbegin();it!=path.rend();++it)backward=matrix_monoid::op(backward,matrices[*it]);
+        CHECK(matrix.query(st+base,en+base).forward==forward);CHECK(matrix.query(st+base,en+base).backward==backward);
+    }
+}
+void check_hld_edges(bool base){
+    using P=bidirectional<text_monoid>;const int count=7,n=base+count-1;auto adj=sample_tree();
+    _hld<_seg<P>> vertex(n,0,base),edge(n,1,base);add_edges(vertex,adj,base);add_edges(edge,adj,base);vertex.build();edge.build();
+    auto at=storage_vertices(vertex,count,base);vector<int> parent(count,-1);
+    for(int v=1;v<count;++v){auto path=path_vertices(adj,0,v);parent[v]=path[path.size()-2];edge.set(v+base,{"d"+to_string(v),"u"+to_string(v)});}
+    edge.set(base,{"ROOT-F","ROOT-B"});
+    for(int st=0;st<count;++st)for(int en=0;en<count;++en){
+        auto path=path_vertices(adj,st,en);string forward,backward;vector<pair<int,int>> expected,visited;
+        for(int i=1;i<(int)path.size();++i){int a=path[i-1],b=path[i];forward+=parent[b]==a?"d"+to_string(b):"u"+to_string(a);expected.push_back({a,b});}
+        for(int i=(int)path.size()-1;i>0;--i){int a=path[i],b=path[i-1];backward+=parent[b]==a?"d"+to_string(b):"u"+to_string(a);}
+        auto result=edge.query(st+base,en+base);CHECK(result.forward==forward);CHECK(result.backward==backward);
+        CHECK(edge.query(en+base,st+base).forward==backward);
+        edge.it_path(st+base,en+base,[&](int l,int r,bool rev){
+            CHECK(l<=r);CHECK(l>=0&&r<count);
+            if(rev){for(int i=r;i>=l;--i){int v=at[i];CHECK(v!=0);visited.push_back({v,parent[v]});}}
+            else{for(int i=l;i<=r;++i){int v=at[i];CHECK(v!=0);visited.push_back({parent[v],v});}}
+        });CHECK(visited==expected);
+    }
+    edge.build();CHECK(edge.query(base+3,base+6).forward=="u3u1d2d5d6");
+}
+void check_hld_lazy(bool base){
+    using P=bidirectional_action<text_action>;const int count=7,n=base+count-1;auto adj=sample_tree();
+    _hld<_prop<P>> h(n,0,base);add_edges(h,adj,base);h.build();vector<char> values(count,'x');mt19937 rng(927);
+    for(int round=0;round<30;++round){
+        int st=rng()%count,en=rng()%count;char c='A'+rng()%4;h.update(st+base,en+base,{true,c});
+        for(int v:path_vertices(adj,st,en))values[v]=c;
+        if(round%7==0)h.build();
+        for(int a=0;a<count;++a)for(int b=0;b<count;++b){
+            auto path=path_vertices(adj,a,b);string forward,backward;
+            for(int v:path)forward+=values[v];for(auto it=path.rbegin();it!=path.rend();++it)backward+=values[*it];
+            auto result=h.query(a+base,b+base);CHECK(result.forward.text==forward);CHECK(result.backward.text==backward);
+            CHECK(result.forward.sz==(int)path.size());CHECK(result.backward.sz==(int)path.size());
+        }
+    }
+    _hld<_prop<signed_action>> edge(n,1,base);add_edges(edge,adj,base);edge.build();vector<long long> weights(count,0);vector<int> parent(count,-1);
+    for(int v=1;v<count;++v){auto path=path_vertices(adj,0,v);parent[v]=path[path.size()-2];}
+    for(int round=0;round<25;++round){
+        int st=rng()%count,en=rng()%count;long long delta=(int)(rng()%9)-4;auto path=path_vertices(adj,st,en);
+        if(round%2){
+            edge.it_path(st+base,en+base,[&](int l,int r,bool rev){edge.seg.update(l,r,{rev?-delta:delta});});
+            for(int i=1;i<(int)path.size();++i){int a=path[i-1],b=path[i];if(parent[b]==a)weights[b]+=delta;else weights[a]-=delta;}
+        }else{
+            edge.update(st+base,en+base,{delta});
+            for(int i=1;i<(int)path.size();++i){int a=path[i-1],b=path[i];weights[parent[b]==a?b:a]+=delta;}
+        }
+        if(round%6==0)edge.build();
+        for(int a=0;a<count;++a)for(int b=0;b<count;++b){
+            auto p=path_vertices(adj,a,b);long long expected=0;
+            for(int i=1;i<(int)p.size();++i){int u=p[i-1],v=p[i];expected+=parent[v]==u?weights[v]:-weights[u];}
+            auto result=edge.query(a+base,b+base);CHECK(result.forward.v==expected);CHECK(result.backward.v==-expected);CHECK(result.forward.sz==(int)p.size()-1);
+        }
+    }
+}
+void check_hld_forest(bool base){
+    using P=bidirectional<text_monoid>;int count=8,n=base+count-1;vector<vector<int>> adj(count);
+    auto add=[&](int a,int b){adj[a].push_back(b);adj[b].push_back(a);};add(0,1);add(1,2);add(3,4);add(4,5);
+    _hld<_seg<P>> h(n,0,base);add_edges(h,adj,base);h.build();vector<string> values;
+    for(int v=0;v<count;++v){values.push_back("["+to_string(v)+"]");h.set(v+base,P::lift(values[v]));}
+    auto verify=[&]{for(int a=0;a<count;++a)for(int b=0;b<count;++b){auto path=path_vertices(adj,a,b);if(path.empty())continue;
+        string expected;for(int v:path)expected+=values[v];CHECK(h.query(a+base,b+base).forward==expected);}};
+    verify();for(auto [a,b]:vector<pair<int,int>>{{2,3},{0,6},{6,7}}){add(a,b);h.add(a+base,b+base);}h.build();verify();h.build();verify();
+    _hld<_seg<P>> empty(0,0,base);empty.build();
+}
+void check_hld_direction(){for(bool base:{false,true}){check_hld_order(base);check_hld_edges(base);check_hld_lazy(base);check_hld_forest(base);}}
+
 void run(){for(bool base:{false,true}){check_monoids(base);check_actions(base);}}
 }
 
 int main(){
     int failures = 0;
-    for(auto [name,test]:vector<pair<string,void(*)()>>{{"bidirectional",bidirectional_checks::run},{"lazy_equality",check_lazy_equality},{"factory_construction",check_factory_construction},{"default_lazy",check_default_lazy},{"explicit_id",check_explicit_id},
+    for(auto [name,test]:vector<pair<string,void(*)()>>{{"hld_direction",bidirectional_checks::check_hld_direction},{"bidirectional",bidirectional_checks::run},{"lazy_equality",check_lazy_equality},{"factory_construction",check_factory_construction},{"default_lazy",check_default_lazy},{"explicit_id",check_explicit_id},
         {"affine",check_affine},{"hash_defaults",check_hash_defaults},{"hash_operations",check_hash_operations}}){
         try{test();cout<<"PASS "<<name<<'\n';}catch(const exception& e){++failures;cerr<<"FAIL "<<name<<": "<<e.what()<<'\n';}
     }

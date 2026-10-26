@@ -94,4 +94,5 @@
 `>>seg`와 `>>prop`는 각각 기본 monoid/action을 포함하므로 독립 policy 스니펫과 중복 선언하지 않습니다.
 양방향 어댑터의 `lift(value)`는 양쪽 값을 같게 만들고, 방향별 값이 다르면 `{forward, backward}`를 직접 넣습니다.
 일반 lazy 어댑터는 양쪽에 같은 태그를 적용하며, 방향별 갱신이 다르면 `apply`를 확장합니다.
-HLD의 경로 방향 처리는 현재 별도 작업이며 어댑터 추가만으로 활성화되지 않습니다.
+HLD에 양방향 backend를 연결하면 `query(u,v).forward`는 u→v, `.backward`는 반대 경로를 집계합니다.
+`it_path(u,v,f)`는 경로 순서대로 `(l,r,rev)`를 전달하며 l/r은 0-based 닫힌 구간입니다.

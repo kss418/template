@@ -304,20 +304,6 @@ private:
         out[cur] = cnt - 1;
     }
 
-    vector<pair<int,int>> get_path(int st, int en){
-        vector<pair<int,int>> ret;
-        while(top[st] != top[en]){
-            if(d[top[st]] < d[top[en]]) swap(st, en);
-            int cur = top[st], l = in[cur], r = in[st];
-            if(m == 1 && p[cur] == -1) l++;
-            if(l <= r) ret.push_back({l, r});
-            st = p[cur];
-        }
-        if(d[st] > d[en]) swap(st, en);
-        int l = in[st] + m, r = in[en];
-        if(l <= r) ret.push_back({l, r});
-        return ret;
-    }
 public:
     _hld(int n = 0, int m = 0, bool base = 1){ clear(n, m, base); }
     void clear(int n, int m = 0, bool base = 1){
@@ -359,14 +345,43 @@ public:
         built = 1;
     }
 
+    // Inclusive zero-based backend indices; rev visits r..l. Same component required.
+    template<class F>
+    void it_path(int st, int en, const F& f) const{ // O(log n) segments
+        vector<pair<int,int>> tail;
+        while(top[st] != top[en]){
+            if(d[top[st]] >= d[top[en]]){
+                int cur = top[st], l = in[cur], r = in[st];
+                if(m == 1 && p[cur] == -1) l++;
+                if(l <= r) f(l, r, 1);
+                st = p[cur];
+            }
+            else{
+                int cur = top[en], l = in[cur], r = in[en];
+                if(m == 1 && p[cur] == -1) l++;
+                if(l <= r) tail.push_back({l, r});
+                en = p[cur];
+            }
+        }
+        bool rev = d[st] > d[en];
+        int l = in[rev ? en : st] + m, r = in[rev ? st : en];
+        if(l <= r) f(l, r, rev);
+        for(auto it = tail.rbegin();it != tail.rend();++it) f(it->first, it->second, 0);
+    }
+
     node query(int x){
         return seg.query(in[x], in[x]);
     }
 
-    node query(int st, int en) { 
+    node query(int st, int en){ // O(log^2 n); raw nodes require commutative aggregation
         node ret = seg.id();
-        auto path = get_path(st, en);
-        for(auto &[l, r] : path) ret = seg.op(ret, seg.query(l, r));
+        it_path(st, en, [&](int l, int r, bool rev){
+            node part = seg.query(l, r);
+            if constexpr (requires(const node& v){ { v.reversed() } -> std::same_as<node>; }){
+                if(rev) part = part.reversed();
+            }
+            ret = seg.op(ret, part);
+        });
         return ret;
     }
 
@@ -383,8 +398,7 @@ public:
     void update(int st, int en, const typename P::lazy& lz)
         requires is_action<P>
     {
-        auto path = get_path(st, en);
-        for(auto &[l, r] : path) seg.update(l, r, lz);
+        it_path(st, en, [&](int l, int r, bool){ seg.update(l, r, lz); });
     }
 
     template<class P = policy>
@@ -764,6 +778,7 @@ struct bidirectional{
         value forward, backward;
         node(value forward, value backward)
             : forward(std::move(forward)), backward(std::move(backward)){}
+        node reversed() const{ return {backward, forward}; }
     };
     static node lift(const value& v){ return {v, v}; }
     static node id(){ return lift(P::id()); }

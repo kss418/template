@@ -9,6 +9,7 @@
       "        value forward, backward;",
       "        node(value forward, value backward)",
       "            : forward(std::move(forward)), backward(std::move(backward)){}",
+      "        node reversed() const{ return {backward, forward}; }",
       "    };",
       "    static node lift(const value& v){ return {v, v}; }",
       "    static node id(){ return lift(P::id()); }",

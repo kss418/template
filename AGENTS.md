@@ -121,5 +121,15 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
 - `bidirectional_action<P>` reuses the same tag/compose in both directions.
   Override `apply` when the problem requires direction-dependent updates.
   Its standalone snippet depends on the common bidirectional snippet.
-- Adapters provide aggregate storage only. Do not claim that HLD traversal order
-  is supported until its path decomposition/query logic has been implemented.
+- Bidirectional nodes provide `node reversed() const` by swapping cached directions.
+  HLD `query(u,v)` folds segments in u-to-v order and invokes this hook on upward
+  segments. Nodes without the hook retain the commutative-aggregation contract.
+- HLD `it_path(u,v,f)` emits inclusive zero-based backend ranges `(l,r,rev)` in
+  path order; `rev=1` means visit r down to l. Endpoints must be in one component.
+  Vertex mode includes the LCA; edge mode stores each edge at its child and excludes
+  the LCA/root dummy. Edge forward/backward values mean parent-to-child/child-to-parent.
+  Vertex values should be direction-independent (use `lift`). Subtree queries keep
+  backend DFS order rather than a path order.
+- Built-in HLD path updates apply the same tag in the backend's canonical orientation
+  to each segment. For updates relative to u-to-v direction, use `it_path` and map
+  tags using its rev flag before calling the public backend's update function.
