@@ -270,7 +270,7 @@ concept is_action = requires(P s, int l, int r, const typename P::lazy& z){ s.up
 
 template <class policy>
 class _hld {
-    bool base; // indices base..n, m=0 vertex, m=1 edge(child-index)
+    bool base;
 public:
     using node = typename policy::node;
     policy seg;
@@ -345,9 +345,8 @@ public:
         built = 1;
     }
 
-    // Inclusive zero-based backend indices; rev visits r..l. Same component required.
     template<class F>
-    void it_path(int st, int en, const F& f) const{ // O(log n) segments
+    void it_path(int st, int en, const F& f) const{ // O(log n)
         vector<pair<int,int>> tail;
         while(top[st] != top[en]){
             if(d[top[st]] >= d[top[en]]){
@@ -373,7 +372,7 @@ public:
         return seg.query(in[x], in[x]);
     }
 
-    node query(int st, int en){ // O(log^2 n); raw nodes require commutative aggregation
+    node query(int st, int en){ // O(log^2 n)
         node ret = seg.id();
         it_path(st, en, [&](int l, int r, bool rev){
             node part = seg.query(l, r);
@@ -417,7 +416,7 @@ struct mt_policy {
 
 template <class policy = mt_policy>
 class _mt{
-    bool base; // indices base..n
+    bool base;
 public:
     using node = typename policy::node;
 private:
@@ -662,7 +661,7 @@ public:
 
 template <class policy = group>
 class _fw{
-    bool base; // indices base..n
+    bool base;
 private:
     using node = typename policy::node;
     vector <node> bit; int n;
@@ -770,7 +769,6 @@ public:
     }
 };
 
-// Bidirectional aggregates. HLD path ordering is handled separately.
 template <class P>
 class bidirectional{
 public:
@@ -790,7 +788,6 @@ public:
     }
 };
 
-// Uniform updates use the same tag in both directions.
 template <class P>
 class bidirectional_action : public bidirectional<P>{
 public:

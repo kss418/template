@@ -3,7 +3,7 @@
   "prefix": ">>bcc",
   "body": [
     "class _bcc{",
-    "    bool base; // indices base..n",
+    "    bool base;",
     "    vector <ll> points;",
     "    vector <pll> lines;",
     "    vector <vector <pll>> blocks;",

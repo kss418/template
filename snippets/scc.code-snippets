@@ -2,7 +2,7 @@
 	"scc": {
   "prefix": ">>scc",
   "body": [
-    "class _scc{ // indices base..n",
+    "class _scc{",
     "private:",
     "    vector <vector<int>> adj, rev, group;",
     "    vector <int> comp, ord; vector <bool> v; int n, cc; bool base;",

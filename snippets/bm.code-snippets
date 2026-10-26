@@ -3,7 +3,7 @@
   "prefix": ">>bm",
   "body": [
     "class _bm {",
-    "    bool base; // indices base..n",
+    "    bool base;",
     "private:",
     "    vector<vector<int>> adj; int as, bs, result;",
     "    vector<int> av, bv, dist;",

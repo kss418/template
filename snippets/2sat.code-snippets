@@ -2,7 +2,7 @@
 	"2sat": {
   "prefix": ">>2sat",
   "body": [
-    "class _2sat{ // indices base..n",
+    "class _2sat{",
     "private:",
     "    int n = 0, vars = 0; bool base = 1;",
     "public:",

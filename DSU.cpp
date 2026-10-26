@@ -18,7 +18,7 @@ struct uf_policy{
 
 template <class policy = uf_policy>
 class _uf{
-    bool base; // indices base..n
+    bool base;
 private:
     using node = typename policy::node;
     vector<node> arr;
@@ -94,7 +94,7 @@ public:
 };
 
 class _ufset{
-    bool base; // indices base..n
+    bool base;
 private:
     vector <int> p, sz, l, r; int n, cc;
     int find_internal(int num){
@@ -110,7 +110,7 @@ public:
         iota(all(l), 0); iota(all(r), 0);
     }
 
-    int find(int num){ // O(1), includes boundary sentinels base-1 and n+1
+    int find(int num){ // O(1)
         assert(base - 1 <= num && num <= n + 1);
         return find_internal(num + 1) - 1;
     }

@@ -26,7 +26,7 @@ struct lca_policy{
 
 template <class policy = lca_policy>
 class _lca {
-    bool base; // indices base..n
+    bool base;
 private:
     using node = typename policy::node;
     using cost = typename policy::cost;
@@ -155,7 +155,7 @@ public:
 
 // Virtual Tree
 class _vtree {
-    bool base; // indices base..n
+    bool base;
 private:
     vector <vector<int>> lift;
     vector <ll> dist;
@@ -269,7 +269,7 @@ public:
 
 // Sparse Table
 class _st {
-    bool base; // indices base..n
+    bool base;
 private:
     vector <vector<ll>> sum;
     vector <vector<int>> lift; ll m; int n, lg; 
@@ -375,7 +375,7 @@ public:
 };
 
 //SCC
-class _scc{ // indices base..n
+class _scc{
 private:
     vector <vector<int>> adj, rev, group;
     vector <int> comp, ord; vector <bool> v; int n, cc; bool base;
@@ -476,7 +476,7 @@ public:
 };
 
 //2SAT
-class _2sat{ // indices base..n
+class _2sat{
 private:
     int n = 0, vars = 0; bool base = 1;
 public:
@@ -524,7 +524,7 @@ public:
 
 //이분 매칭
 class _bm {
-    bool base; // indices base..n
+    bool base;
 private:
     vector<vector<int>> adj; int as, bs, result;
     vector<int> av, bv, dist;
@@ -593,7 +593,7 @@ public:
 
 //BCC
 class _bcc{
-    bool base; // indices base..n
+    bool base;
     vector <ll> points;
     vector <pll> lines;
     vector <vector <pll>> blocks;
@@ -656,7 +656,7 @@ public:
 };
 
 class _3cycle{
-    bool base; // indices base..n
+    bool base;
 private:
     vector <vector<int>> tmp, adj;
     vector <int> cnt; int n; ll result = 0;
@@ -697,7 +697,7 @@ public:
 };
 
 class _4cycle{
-    bool base; // indices base..n
+    bool base;
 private:
     vector <vector<int>> tmp, adj;
     vector <int> cnt; int n; ll result = 0;
@@ -802,7 +802,7 @@ public:
 
 template <class C = ll, C CINF = INF>
 class _hungarian{
-    bool base; // indices base..n
+    bool base;
     vector <vector <C>> cost;
     vector <C> row, col;
     vector <int> match, pre; int n, sz;

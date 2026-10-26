@@ -3,7 +3,7 @@
   "prefix": ">>4cycle",
   "body": [
     "class _4cycle{",
-    "    bool base; // indices base..n",
+    "    bool base;",
     "private:",
     "    vector <vector<int>> tmp, adj;",
     "    vector <int> cnt; int n; ll result = 0;",

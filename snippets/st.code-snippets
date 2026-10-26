@@ -3,7 +3,7 @@
   "prefix": ">>st",
   "body": [
     "class _st {",
-    "    bool base; // indices base..n",
+    "    bool base;",
     "private:",
     "    vector <vector<ll>> sum;",
     "    vector <vector<int>> lift; ll m; int n, lg; ",

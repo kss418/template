@@ -24,7 +24,7 @@
     "",
     "template <class policy = group>",
     "class _fw{",
-    "    bool base; // indices base..n",
+    "    bool base;",
     "private:",
     "    using node = typename policy::node;",
     "    vector <node> bit; int n;",

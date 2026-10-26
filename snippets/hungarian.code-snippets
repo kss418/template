@@ -4,7 +4,7 @@
     "body": [
       "template <class C = ll, C CINF = INF>",
       "class _hungarian{",
-      "    bool base; // indices base..n",
+      "    bool base;",
       "    vector <vector <C>> cost;",
       "    vector <C> row, col;",
       "    vector <int> match, pre; int n, sz;",

@@ -12,7 +12,7 @@
     "",
     "template <class policy = mt_policy>",
     "class _mt{",
-    "    bool base; // indices base..n",
+    "    bool base;",
     "public:",
     "    using node = typename policy::node;",
     "private:",

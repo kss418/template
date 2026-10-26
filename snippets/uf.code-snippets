@@ -11,7 +11,7 @@
     "",
     "template <class policy = uf_policy>",
     "class _uf{",
-    "    bool base; // indices base..n",
+    "    bool base;",
     "private:",
     "    using node = typename policy::node;",
     "    vector<node> arr;",

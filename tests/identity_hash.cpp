@@ -13,7 +13,6 @@ using namespace std;
 static int checks = 0;
 #define CHECK(c) do { ++checks; if (!(c)) throw runtime_error(string("line ") + to_string(__LINE__) + ": " + #c); } while (0)
 
-// These policies deliberately have no default node or tag constructors.
 struct min_policy {
     struct node { long long v; node(long long v) : v(v){} };
     static node id(){ return {1'000'000}; }

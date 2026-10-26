@@ -18,7 +18,7 @@
     "",
     "template <class policy = lca_policy>",
     "class _lca {",
-    "    bool base; // indices base..n",
+    "    bool base;",
     "private:",
     "    using node = typename policy::node;",
     "    using cost = typename policy::cost;",

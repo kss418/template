@@ -4,7 +4,7 @@
   "body": [
     "// Virtual Tree",
     "class _vtree {",
-    "    bool base; // indices base..n",
+    "    bool base;",
     "private:",
     "    vector <vector<int>> lift;",
     "    vector <ll> dist;",
