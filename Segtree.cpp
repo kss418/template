@@ -772,9 +772,11 @@ public:
 
 // Bidirectional aggregates. HLD path ordering is handled separately.
 template <class P>
-struct bidirectional{
+class bidirectional{
+public:
     using value = typename P::node;
-    struct node{
+    class node{
+    public:
         value forward, backward;
         node(value forward, value backward)
             : forward(std::move(forward)), backward(std::move(backward)){}
@@ -790,7 +792,8 @@ struct bidirectional{
 
 // Uniform updates use the same tag in both directions.
 template <class P>
-struct bidirectional_action : bidirectional<P>{
+class bidirectional_action : public bidirectional<P>{
+public:
     using node = typename bidirectional<P>::node;
     using lazy = typename P::lazy;
     static lazy lz_id(){ return P::lz_id(); }

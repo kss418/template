@@ -10,8 +10,10 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
 - Keep snippet triggers/prefixes and the expanded code consistent with the repository templates.
 - Do not defer snippet updates; treat snippets as part of the template interface.
 
-- Keep README.md limited to the algorithm-location guide and snippets section;
-  maintain API conventions in AGENTS.md or source comments.
+- README.md must contain only the algorithm/file-location guide and a brief
+  snippets overview. Do not append API contracts, code examples, index/lifecycle
+  rules, or adapter/HLD usage details, even inside the snippets section.
+  Maintain those details in AGENTS.md or source comments.
 
 ## Index base contract
 - For templates whose constructor takes a positional or vertex range, `n` is the
@@ -79,7 +81,11 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
   - git pull --ff-only
 - Never use `git reset --hard` unless explicitly instructed.
 
-- ## Style / conventions
+## Style / conventions
+- Use `class`, not `struct`, for algorithm, policy, adapter, node, and lazy type
+  definitions when creating or modifying them. State access with explicit
+  `public:`/`private:` sections and use explicit public inheritance where required.
+  Preserve the public API when converting an existing struct.
 - C++17/20/23 as used in the repo (follow existing).
 - Keep headers minimal; prefer `#include <bits/stdc++.h>` if the repo standard uses it.
 - Use consistent type aliases/macros as already present.

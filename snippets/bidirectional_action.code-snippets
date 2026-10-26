@@ -3,7 +3,8 @@
     "prefix": ">>bidirectional_action",
     "body": [
       "template <class P>",
-      "struct bidirectional_action : bidirectional<P>{",
+      "class bidirectional_action : public bidirectional<P>{",
+      "public:",
       "    using node = typename bidirectional<P>::node;",
       "    using lazy = typename P::lazy;",
       "    static lazy lz_id(){ return P::lz_id(); }",
