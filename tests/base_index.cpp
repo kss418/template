@@ -28,10 +28,16 @@ struct sum_mo {
     static void pop_front(int,const node& v,ret& cur){cur.v-=v.v;}
     static void pop_back(int i,const node& v,ret& cur){pop_front(i,v,cur);}
 };
-struct lift_sum {
-    struct node { long long v; node(long long v=0):v(v){} };
+class lift_sum {
+public:
+    class node {
+    public:
+        long long v;
+        node(long long v):v(v){}
+    };
     using cost=long long;
     static constexpr bool use_node=1;
+    static node id(){return {0};}
     static node lift(cost v){return {v};}
     static node merge(const node&a,const node&b){return {a.v+b.v};}
 };

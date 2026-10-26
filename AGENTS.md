@@ -144,9 +144,10 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
 
 ## LCA path aggregation
 - `_lca<policy>` uses `policy::cost`, `policy::node`, `use_node`, `lift(cost)`, and
-  associative `merge(left,right)`. Prefer `policy::id()` for the two-sided identity;
-  legacy policies without it retain `node()` as identity. Nodes with `id()` need
-  no default constructor. Aggregation tables are allocated only with `use_node=1`.
+  associative `merge(left,right)`. Aggregation policies must provide `policy::id()`
+  for the two-sided identity; never infer it from `node()`. The built-in node has
+  no default constructor, and the built-in cost stores `ll v` with default value 0.
+  Aggregation tables are allocated only with `use_node=1`.
 - `query(a,b)` folds edge values in a-to-b order, excluding the LCA vertex.
   It stores both traversal orders internally, so policies need no reversal hook
   or bidirectional adapter. Equal endpoints and disconnected endpoints return identity.
