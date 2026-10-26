@@ -33,15 +33,55 @@ struct product_policy {
 };
 struct affine_policy {
     struct node { long long v; int sz; node(long long v,int sz):v(v),sz(sz){} };
-    struct lazy { long long a,b; lazy(long long a,long long b):a(a),b(b){} };
+    struct lazy {
+        long long a,b; lazy(long long a,long long b):a(a),b(b){}
+        bool operator==(const lazy&) const = default;
+    };
     static node id(){ return {0,0}; }
     static node leaf(){ return {2,1}; }
     static lazy lz_id(){ return {1,0}; }
     static node op(const node& a,const node& b){ return {a.v+b.v,a.sz+b.sz}; }
-    static bool is_lz_id(const lazy& value){ return value.a == 1 && value.b == 0; }
     static void apply(node& value,const lazy& change){ value.v = value.v*change.a+value.sz*change.b; }
     static void compose(lazy& old,const lazy& next){ old = {old.a*next.a,old.b*next.a+next.b}; }
 };
+
+struct assign_policy {
+    using node = range_templates::action::node;
+    struct lazy {
+        bool has; long long value;
+        lazy(bool has,long long value):has(has),value(value){}
+        bool operator==(const lazy& other) const {
+            return has == other.has && (!has || value == other.value);
+        }
+    };
+    static node id(){ return {0,0}; }
+    static node leaf(){ return {0,1}; }
+    static lazy lz_id(){ return {false,0}; }
+    static node op(const node& a,const node& b){ return {a.v+b.v,a.sz+b.sz}; }
+    static void apply(node& value,const lazy& change){ if(change.has)value.v=change.value*value.sz; }
+    static void compose(lazy& old,const lazy& next){ if(next.has)old=next; }
+};
+
+void check_lazy_equality(){
+    using tag = range_templates::action::lazy;
+    CHECK(tag{0} == range_templates::action::lz_id());
+    CHECK(!(tag{3} == range_templates::action::lz_id()));
+    CHECK((assign_policy::lazy{false,123} == assign_policy::lz_id()));
+    CHECK((!(assign_policy::lazy{true,0} == assign_policy::lz_id())));
+    for(bool base : {false,true}){
+        int n=base+6;
+        range_templates::_prop<> add(n,base); add.update(base,n,{7}); add.update(base,n,{-7});
+        CHECK(add.query(base,n).v == 0); CHECK(add.query(base,n).sz == 7);
+        range_templates::_prop<assign_policy> set(n,base);
+        set.update(base,n,{false,123}); CHECK(set.query(base,n).v == 0);
+        set.update(base,n,{true,5}); CHECK(set.query(base,n).v == 35);
+        set.update(base+1,n-1,{true,0}); CHECK(set.query(base,n).v == 10);
+        set.update(base,n,{false,999}); CHECK(set.query(base,n).v == 10);
+        set.update(n,{true,3}); CHECK(set.query(base,n).v == 8);
+        for(int i=base;i<=n;++i){ CHECK(set.query(i).v == (i==base?5:i==n?3:0)); CHECK(set.query(i).sz == 1); }
+        set.clear(n,base);set.update(base,n,{true,0});CHECK(set.query(base,n).v == 0);CHECK(set.query(base,n).sz == 7);
+    }
+}
 
 static_assert(!is_default_constructible_v<range_templates::monoid::node>);
 static_assert(!is_default_constructible_v<range_templates::group::node>);
@@ -173,7 +213,7 @@ void check_hash_operations(){
 }
 int main(){
     int failures = 0;
-    for(auto [name,test]:vector<pair<string,void(*)()>>{{"factory_construction",check_factory_construction},{"default_lazy",check_default_lazy},{"explicit_id",check_explicit_id},
+    for(auto [name,test]:vector<pair<string,void(*)()>>{{"lazy_equality",check_lazy_equality},{"factory_construction",check_factory_construction},{"default_lazy",check_default_lazy},{"explicit_id",check_explicit_id},
         {"affine",check_affine},{"hash_defaults",check_hash_defaults},{"hash_operations",check_hash_operations}}){
         try{test();cout<<"PASS "<<name<<'\n';}catch(const exception& e){++failures;cerr<<"FAIL "<<name<<": "<<e.what()<<'\n';}
     }

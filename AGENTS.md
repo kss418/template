@@ -98,6 +98,10 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
   use `vector<policy::node>(n + 1, policy::leaf())` for an input array.
 - `_prop` requires `static lazy lz_id()` for the no-op tag. Do not infer the
   lazy identity from `lazy()`. Custom action policies must provide this hook.
+- Lazy tags must support `operator==`. `_prop` checks `tag == policy::lz_id()`
+  directly; there is no `policy::is_lz_id()` hook. Use a canonical tag representation
+  or custom equality when inactive fields should be ignored. Equality with the
+  identity must never classify an effective update as a no-op.
 - `make(arr)` uses the caller's nodes verbatim and retains the stored base.
   PST null roots and Fenwick reset state retain identity semantics; they do
   not materialize the dense-tree `leaf()` value.
