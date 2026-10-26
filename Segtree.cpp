@@ -12,10 +12,11 @@ constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 struct monoid{
     struct node {
         ll v;
-        node(ll v = 0) : v(v){}
+        node() : node(0){}
+        node(ll v) : v(v){}
     };
     static node id(){ return {0}; }
-    static node leaf(){ return {0}; }
+    static node leaf(){ return node(); }
     static node op(const node& l, const node& r){
         return {
             l.v + r.v
@@ -106,14 +107,16 @@ public:
 struct action{
     struct node {
         ll v; int sz;
-        node(ll v = 0, int sz = 0) : v(v), sz(sz){}
+        node() : node(0, 1){}
+        node(ll v, int sz = 1) : v(v), sz(sz){}
     };
     struct lazy{
         ll v;
-        lazy(ll v = 0) : v(v){}
+        lazy() : lazy(0){}
+        lazy(ll v) : v(v){}
     };
     static node id(){ return {0, 0}; }
-    static node leaf(){ return {0, 1}; }
+    static node leaf(){ return node(); }
     static node op(const node& l, const node& r){
         return node{
             l.v + r.v,
@@ -475,10 +478,11 @@ concept has_inv = requires(const typename policy::node& a){
 struct group{
     struct node{
         ll v;
-        node(ll v = 0) : v(v){}
+        node() : node(0){}
+        node(ll v) : v(v){}
     };
     static node id(){ return {0}; }
-    static node leaf(){ return {0}; }
+    static node leaf(){ return node(); }
     static node op(const node& l, const node& r){
         return {l.v + r.v};
     }

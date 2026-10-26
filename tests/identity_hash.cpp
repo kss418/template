@@ -59,6 +59,25 @@ void check_default_lazy(){
         tree.make(input); tree.update(base,n,{4}); CHECK(tree.query(base,n).v == count);
     }
 }
+void check_leaf_construction(){
+    for(bool base : {false,true}){
+        const int count = 4, n = base+count-1;
+        vector<range_templates::action::node> input(n+1);
+        range_templates::_prop<> tree(n,base); tree.make(input); tree.update(base,n,{5});
+        CHECK(tree.query(base,n).v == 20); CHECK(tree.query(base,n).sz == count);
+        input.assign(n+1,{2}); tree.make(input); tree.update(base,n,{3});
+        CHECK(tree.query(base,n).v == 20); CHECK(tree.query(base,n).sz == count);
+        tree.update(base,n,range_templates::action::lazy{}); CHECK(tree.query(base,n).v == 20);
+        input[base] = {7,0}; tree.make(input); tree.update(base,n,{3});
+        CHECK(tree.query(base,n).v == 22); CHECK(tree.query(base,n).sz == count-1);
+        CHECK(tree.query(n+1,n).v == 0); CHECK(tree.query(n+1,n).sz == 0);
+        tree.clear(n,base); tree.update(base,n,{2}); CHECK(tree.query(base,n).v == 8); CHECK(tree.query(base,n).sz == count);
+        range_templates::_seg<> plain(n,base); plain.make(vector<range_templates::monoid::node>(n+1));
+        plain.set(n,{5}); CHECK(plain.query(base,n).v == 5);
+        range_templates::_fw<> fenwick(n,base); fenwick.make(vector<range_templates::group::node>(n+1));
+        fenwick.update(base,{2}); fenwick.update(n,{3}); CHECK(fenwick.query(base,n).v == 5);
+    }
+}
 void check_explicit_id(){
     for(bool base : {false,true}){
         int n = base+4;
@@ -148,7 +167,7 @@ void check_hash_operations(){
 }
 int main(){
     int failures = 0;
-    for(auto [name,test]:vector<pair<string,void(*)()>>{{"default_lazy",check_default_lazy},{"explicit_id",check_explicit_id},
+    for(auto [name,test]:vector<pair<string,void(*)()>>{{"leaf_construction",check_leaf_construction},{"default_lazy",check_default_lazy},{"explicit_id",check_explicit_id},
         {"affine",check_affine},{"hash_defaults",check_hash_defaults},{"hash_operations",check_hash_operations}}){
         try{test();cout<<"PASS "<<name<<'\n';}catch(const exception& e){++failures;cerr<<"FAIL "<<name<<": "<<e.what()<<'\n';}
     }

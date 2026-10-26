@@ -10,6 +10,9 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
 - Keep snippet triggers/prefixes and the expanded code consistent with the repository templates.
 - Do not defer snippet updates; treat snippets as part of the template interface.
 
+- Keep README.md limited to the algorithm-location guide and snippets section;
+  maintain API conventions in AGENTS.md or source comments.
+
 ## Index base contract
 - For templates whose constructor takes a positional or vertex range, `n` is the
   maximum external index, not the number of elements. Use `bool base = 1` in
@@ -89,6 +92,10 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
 - `_seg` and `_prop` also require `policy::leaf()` for each real initial leaf
   in `[base,n]`. Padding and query accumulators use `id()`, not `leaf()`.
   The default lazy policy has identity `{0,0}` and initial leaf `{0,1}`.
+- Data-node default construction represents one default leaf. For the default
+  action, `node()` is `{0,1}` and `node(value)` is `{value,1}`; callers may still
+  explicitly pass a length. Construct identities through `policy::id()`. Default
+  lazy-tag construction represents the no-op identity, not a data leaf.
 - `make(arr)` uses the caller's nodes verbatim and retains the stored base.
   PST null roots and Fenwick reset state retain identity semantics; they do
   not materialize the dense-tree `leaf()` value.
