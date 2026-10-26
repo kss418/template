@@ -12,11 +12,10 @@ constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 struct monoid{
     struct node {
         ll v;
-        node() : node(0){}
         node(ll v) : v(v){}
     };
     static node id(){ return {0}; }
-    static node leaf(){ return node(); }
+    static node leaf(){ return {0}; }
     static node op(const node& l, const node& r){
         return {
             l.v + r.v
@@ -107,16 +106,15 @@ public:
 struct action{
     struct node {
         ll v; int sz;
-        node() : node(0, 1){}
         node(ll v, int sz = 1) : v(v), sz(sz){}
     };
     struct lazy{
         ll v;
-        lazy() : lazy(0){}
         lazy(ll v) : v(v){}
     };
     static node id(){ return {0, 0}; }
-    static node leaf(){ return node(); }
+    static node leaf(){ return {0, 1}; }
+    static lazy lz_id(){ return {0}; }
     static node op(const node& l, const node& r){
         return node{
             l.v + r.v,
@@ -138,7 +136,7 @@ public:
     node id() const{ return policy::id(); }
 private:
     vector <node> seg; vector <lazy> lz; int sz, h, n;
-    lazy lz_id() const{ return lazy(); }
+    lazy lz_id() const{ return policy::lz_id(); }
     bool is_lz_id(const lazy& now) const{ return policy::is_lz_id(now); }
     void prop(node& seg, const lazy& lz) const{ policy::apply(seg, lz); }
     void comp(lazy& s, const lazy& p) const{ policy::compose(s, p); }
@@ -478,11 +476,10 @@ concept has_inv = requires(const typename policy::node& a){
 struct group{
     struct node{
         ll v;
-        node() : node(0){}
         node(ll v) : v(v){}
     };
     static node id(){ return {0}; }
-    static node leaf(){ return node(); }
+    static node leaf(){ return {0}; }
     static node op(const node& l, const node& r){
         return {l.v + r.v};
     }

@@ -13,15 +13,15 @@ using namespace std;
 static int checks = 0;
 #define CHECK(c) do { ++checks; if (!(c)) throw runtime_error(string("line ") + to_string(__LINE__) + ": " + #c); } while (0)
 
-// Default construction deliberately supplies neither the identity nor a leaf.
+// These policies deliberately have no default node or tag constructors.
 struct min_policy {
-    struct node { long long v; node(long long v = -999) : v(v){} };
+    struct node { long long v; node(long long v) : v(v){} };
     static node id(){ return {1'000'000}; }
     static node leaf(){ return {7}; }
     static node op(const node& a, const node& b){ return {min(a.v,b.v)}; }
 };
 struct product_policy {
-    struct node { long long v; node(long long v = 0) : v(v){} };
+    struct node { long long v; node(long long v) : v(v){} };
     static node id(){ return {1}; }
     static node leaf(){ return {0}; }
     static node op(const node& a, const node& b){ return {a.v*b.v%101}; }
@@ -32,15 +32,21 @@ struct product_policy {
     }
 };
 struct affine_policy {
-    struct node { long long v; int sz; node(long long v = -99,int sz = -99):v(v),sz(sz){} };
-    struct lazy { long long a,b; lazy(long long a = 1,long long b = 0):a(a),b(b){} };
+    struct node { long long v; int sz; node(long long v,int sz):v(v),sz(sz){} };
+    struct lazy { long long a,b; lazy(long long a,long long b):a(a),b(b){} };
     static node id(){ return {0,0}; }
     static node leaf(){ return {2,1}; }
+    static lazy lz_id(){ return {1,0}; }
     static node op(const node& a,const node& b){ return {a.v+b.v,a.sz+b.sz}; }
     static bool is_lz_id(const lazy& value){ return value.a == 1 && value.b == 0; }
     static void apply(node& value,const lazy& change){ value.v = value.v*change.a+value.sz*change.b; }
     static void compose(lazy& old,const lazy& next){ old = {old.a*next.a,old.b*next.a+next.b}; }
 };
+
+static_assert(!is_default_constructible_v<range_templates::monoid::node>);
+static_assert(!is_default_constructible_v<range_templates::group::node>);
+static_assert(!is_default_constructible_v<range_templates::action::node>);
+static_assert(!is_default_constructible_v<range_templates::action::lazy>);
 
 void check_default_lazy(){
     for(bool base : {false,true}) for(int count = 0; count <= 9; ++count){
@@ -59,22 +65,22 @@ void check_default_lazy(){
         tree.make(input); tree.update(base,n,{4}); CHECK(tree.query(base,n).v == count);
     }
 }
-void check_leaf_construction(){
+void check_factory_construction(){
     for(bool base : {false,true}){
         const int count = 4, n = base+count-1;
-        vector<range_templates::action::node> input(n+1);
+        vector<range_templates::action::node> input(n+1,range_templates::action::leaf());
         range_templates::_prop<> tree(n,base); tree.make(input); tree.update(base,n,{5});
         CHECK(tree.query(base,n).v == 20); CHECK(tree.query(base,n).sz == count);
         input.assign(n+1,{2}); tree.make(input); tree.update(base,n,{3});
         CHECK(tree.query(base,n).v == 20); CHECK(tree.query(base,n).sz == count);
-        tree.update(base,n,range_templates::action::lazy{}); CHECK(tree.query(base,n).v == 20);
+        tree.update(base,n,range_templates::action::lz_id()); CHECK(tree.query(base,n).v == 20);
         input[base] = {7,0}; tree.make(input); tree.update(base,n,{3});
         CHECK(tree.query(base,n).v == 22); CHECK(tree.query(base,n).sz == count-1);
         CHECK(tree.query(n+1,n).v == 0); CHECK(tree.query(n+1,n).sz == 0);
         tree.clear(n,base); tree.update(base,n,{2}); CHECK(tree.query(base,n).v == 8); CHECK(tree.query(base,n).sz == count);
-        range_templates::_seg<> plain(n,base); plain.make(vector<range_templates::monoid::node>(n+1));
+        range_templates::_seg<> plain(n,base); plain.make(vector<range_templates::monoid::node>(n+1,range_templates::monoid::leaf()));
         plain.set(n,{5}); CHECK(plain.query(base,n).v == 5);
-        range_templates::_fw<> fenwick(n,base); fenwick.make(vector<range_templates::group::node>(n+1));
+        range_templates::_fw<> fenwick(n,base); fenwick.make(vector<range_templates::group::node>(n+1,range_templates::group::leaf()));
         fenwick.update(base,{2}); fenwick.update(n,{3}); CHECK(fenwick.query(base,n).v == 5);
     }
 }
@@ -167,7 +173,7 @@ void check_hash_operations(){
 }
 int main(){
     int failures = 0;
-    for(auto [name,test]:vector<pair<string,void(*)()>>{{"leaf_construction",check_leaf_construction},{"default_lazy",check_default_lazy},{"explicit_id",check_explicit_id},
+    for(auto [name,test]:vector<pair<string,void(*)()>>{{"factory_construction",check_factory_construction},{"default_lazy",check_default_lazy},{"explicit_id",check_explicit_id},
         {"affine",check_affine},{"hash_defaults",check_hash_defaults},{"hash_operations",check_hash_operations}}){
         try{test();cout<<"PASS "<<name<<'\n';}catch(const exception& e){++failures;cerr<<"FAIL "<<name<<": "<<e.what()<<'\n';}
     }

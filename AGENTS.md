@@ -92,10 +92,12 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
 - `_seg` and `_prop` also require `policy::leaf()` for each real initial leaf
   in `[base,n]`. Padding and query accumulators use `id()`, not `leaf()`.
   The default lazy policy has identity `{0,0}` and initial leaf `{0,1}`.
-- Data-node default construction represents one default leaf. For the default
-  action, `node()` is `{0,1}` and `node(value)` is `{value,1}`; callers may still
-  explicitly pass a length. Construct identities through `policy::id()`. Default
-  lazy-tag construction represents the no-op identity, not a data leaf.
+- Built-in monoid/group/action nodes and action lazy tags have no default
+  constructors. Initialize through `policy::id()`, `policy::leaf()`, and
+  `policy::lz_id()`; value-taking constructors remain available. For example,
+  use `vector<policy::node>(n + 1, policy::leaf())` for an input array.
+- `_prop` requires `static lazy lz_id()` for the no-op tag. Do not infer the
+  lazy identity from `lazy()`. Custom action policies must provide this hook.
 - `make(arr)` uses the caller's nodes verbatim and retains the stored base.
   PST null roots and Fenwick reset state retain identity semantics; they do
   not materialize the dense-tree `leaf()` value.

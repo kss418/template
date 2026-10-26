@@ -38,9 +38,9 @@ struct lift_sum {
 void check_ranges(bool base){
     const int n=4, first=base, count=n-first+1;
     long long total=0;
-    vector<range_templates::monoid::node> a(n+1);
-    vector<range_templates::action::node> lazy_a(n+1);
-    vector<range_templates::group::node> group_a(n+1);
+    vector<range_templates::monoid::node> a(n+1,range_templates::monoid::leaf());
+    vector<range_templates::action::node> lazy_a(n+1,range_templates::action::leaf());
+    vector<range_templates::group::node> group_a(n+1,range_templates::group::leaf());
     vector<range_templates::mt_policy::node> sorted_a(n+1);
     for(int i=0;i<=n;++i){a[i]={i+1};lazy_a[i]={i+1,1};group_a[i]={i+1};sorted_a[i]={i+1};if(i>=first)total+=i+1;}
     range_templates::_seg<> seg(span<const range_templates::monoid::node>(a),base);
@@ -138,9 +138,9 @@ void check_oracles(bool base){
     mt19937 rng(418+base);
     int first=base,n=7;
     vector<long long> values(n+1),lazy_values(n+1);
-    vector<range_templates::monoid::node> a(n+1);
-    vector<range_templates::group::node> ga(n+1);
-    vector<range_templates::action::node> la(n+1);
+    vector<range_templates::monoid::node> a(n+1,range_templates::monoid::leaf());
+    vector<range_templates::group::node> ga(n+1,range_templates::group::leaf());
+    vector<range_templates::action::node> la(n+1,range_templates::action::leaf());
     for(int i=first;i<=n;++i){values[i]=lazy_values[i]=i+1;a[i]={i+1};ga[i]={i+1};la[i]={i+1,1};}
     range_templates::_seg<> seg(span<const range_templates::monoid::node>(a),base);
     range_templates::_prop<> prop(span<const range_templates::action::node>(la),base);
