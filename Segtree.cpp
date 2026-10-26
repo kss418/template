@@ -14,6 +14,8 @@ struct monoid{
         ll v;
         node(ll v = 0) : v(v){}
     };
+    static node id(){ return {0}; }
+    static node leaf(){ return {0}; }
     static node op(const node& l, const node& r){
         return {
             l.v + r.v
@@ -27,10 +29,15 @@ class _seg {
 public:
     using node = typename policy::node;
     node op(const node& l, const node& r) const{ return policy::op(l, r); }
-    node id() const{ return node(); }
+    node id() const{ return policy::id(); }
 private:
     int n, sz; vector <node> seg;
     node join(const node& a, const node& b, bool right) const{ return right ? op(a, b) : op(b, a); }
+    void reset_storage(int n){
+        this->n = n; sz = 1; while(sz < n + 1) sz <<= 1;
+        seg.assign(2 * sz, id());
+    }
+
     template<class F>
     int bisect(int p, bool right, const F& f) {
         assert(right ? base <= p && p <= n + 1 : base - 1 <= p && p <= n); assert(f(id()));
@@ -59,14 +66,13 @@ public:
     _seg(int n = 0, bool base = 1){ clear(n, base); } // O(n)
     _seg(span<const node> arr, bool base = 1) : base(base){ make(arr); } // O(n)
     void clear(int n, bool base = 1){ // O(n)
-        this->n = n; this->base = base;
-        sz = 1; while(sz < n + 1) sz <<= 1;
-        seg.assign(2 * sz, id());
+        this->base = base; reset_storage(n);
+        for(int i = base;i <= n;i++) seg[i + sz] = policy::leaf();
+        for(int i = sz - 1;i >= 1;i--) seg[i] = op(seg[i << 1], seg[i << 1 | 1]);
     }
 
     void make(span<const node> arr){ // O(n)
-        if(arr.empty()){ clear(base - 1, base); return; }
-        clear((int)arr.size() - 1, base);
+        reset_storage(arr.empty() ? base - 1 : (int)arr.size() - 1);
         for(int i = base;i < (int)arr.size();i++) seg[i + sz] = arr[i];
         for(int i = sz - 1;i >= 1;i--) seg[i] = op(seg[i << 1], seg[i << 1 | 1]);
     }
@@ -106,6 +112,8 @@ struct action{
         ll v;
         lazy(ll v = 0) : v(v){}
     };
+    static node id(){ return {0, 0}; }
+    static node leaf(){ return {0, 1}; }
     static node op(const node& l, const node& r){
         return node{
             l.v + r.v,
@@ -124,7 +132,7 @@ public:
     using node = typename policy::node;
     using lazy = typename policy::lazy;
     node op(const node& l, const node& r) const{ return policy::op(l, r); }
-    node id() const{ return node(); }
+    node id() const{ return policy::id(); }
 private:
     vector <node> seg; vector <lazy> lz; int sz, h, n;
     lazy lz_id() const{ return lazy(); }
@@ -132,6 +140,13 @@ private:
     void prop(node& seg, const lazy& lz) const{ policy::apply(seg, lz); }
     void comp(lazy& s, const lazy& p) const{ policy::compose(s, p); }
     node join(const node& a, const node& b, bool right) const{ return right ? op(a, b) : op(b, a); }
+
+    void reset_storage(int n){
+        this->n = n; sz = 1; while(sz < n + 1) sz <<= 1;
+        h = __lg(sz);
+        seg.assign(2 * sz, id());
+        lz.assign(2 * sz, lz_id());
+    }
 
     void push(int idx){
         if(is_lz_id(lz[idx])) return;
@@ -192,16 +207,13 @@ public:
     _prop(int n = 0, bool base = 1){ clear(n, base); } // O(n)
     _prop(span<const node> arr, bool base = 1) : base(base){ make(arr); } // O(n)
     void clear(int n, bool base = 1){ // O(n)
-        this->n = n; this->base = base;
-        sz = 1; while(sz < n + 1) sz <<= 1;
-        h = __lg(sz);
-        seg.assign(2 * sz, id());
-        lz.assign(2 * sz, lz_id());
+        this->base = base; reset_storage(n);
+        for(int i = base;i <= n;i++) seg[i + sz] = policy::leaf();
+        for(int i = sz - 1;i >= 1;i--) seg[i] = op(seg[i << 1], seg[i << 1 | 1]);
     }
 
     void make(span<const node> arr){ // O(n)
-        if(arr.empty()){ clear(base - 1, base); return; }
-        clear((int)arr.size() - 1, base);
+        reset_storage(arr.empty() ? base - 1 : (int)arr.size() - 1);
         for(int i = base;i < (int)arr.size();i++) seg[i + sz] = arr[i];
         for(int i = sz - 1;i >= 1;i--) seg[i] = op(seg[i << 1], seg[i << 1 | 1]);
     }
@@ -465,6 +477,8 @@ struct group{
         ll v;
         node(ll v = 0) : v(v){}
     };
+    static node id(){ return {0}; }
+    static node leaf(){ return {0}; }
     static node op(const node& l, const node& r){
         return {l.v + r.v};
     }
@@ -479,7 +493,7 @@ class _pst{
 public:
     using node = typename policy::node;
     node op(const node& l, const node& r) const{ return policy::op(l, r); }
-    node id() const{ return node(); }
+    node id() const{ return policy::id(); }
     node inv(const node& a) const requires has_inv<policy>{ return policy::inv(a); }
 
 private:
@@ -640,7 +654,7 @@ private:
     using node = typename policy::node;
     vector <node> bit; int n;
     node op(const node& l, const node& r) const{ return policy::op(l, r); }
-    node id() const{ return node(); }
+    node id() const{ return policy::id(); }
     node inv(const node& a) const{ return policy::inv(a); }
 public:
     _fw(int n = 0, bool base = 1){ clear(n, base); } // O(n)
@@ -694,7 +708,7 @@ private:
     using node = typename policy::node;
     vector<vector<node>> bit; int n, m;
     node op(const node& l, const node& r) const { return policy::op(l, r); }
-    node id() const { return node(); }
+    node id() const { return policy::id(); }
     node inv(const node& a) const { return policy::inv(a); }
 public:
     _fw2d(int n = 0, int m = 0, bool base = 1){ clear(n, m, base); } // O(nm)

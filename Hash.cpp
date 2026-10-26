@@ -50,8 +50,8 @@ private:
         }
     }; array <_core, 2> arr; 
 public:
-    _hash(pi key = {1, 1}, pi mod = {2, 2}){ clear(key, mod); }
-    void clear(pi key, pi mod){ // O(1)
+    _hash(pi key = {911382323, 972663749}, pi mod = {1000000007, 1000000009}){ clear(key, mod); }
+    void clear(pi key = {911382323, 972663749}, pi mod = {1000000007, 1000000009}){ // O(1)
         arr[0] = {key.x, mod.x}; arr[1] = {key.y, mod.y};
     } 
 
@@ -60,10 +60,13 @@ public:
     void pop_back(){ for(auto& c : arr) c.pop_back(); } // O(1)
     int size() const{ return arr[0].size(); } // O(1)
     ll ret(int l, int r) const{ // O(1)
+        if(l > r) return 0;
         return ((ll)arr[0].ret(l, r) << 32) + arr[1].ret(l, r);
     }
 
     bool same(int l1, int r1, int l2, int r2) const{ // O(1)
+        if(r1 - l1 != r2 - l2) return false;
+        if(l1 > r1) return true;
         for(const auto& c : arr) if(c.ret(l1, r1) != c.ret(l2, r2)) return 0;
         return 1;
     }
@@ -126,8 +129,8 @@ private:
     }; array <_core, 2> arr; int n;
 public:
     using pi = pair<int, int>;
-    _deque_hash(int n = 0, pi key = {1, 1}, pi mod = {2, 2}){ clear(n, key, mod); } 
-    void clear(int n, pi key, pi mod){ // O(n)
+    _deque_hash(int n = 0, pi key = {911382323, 972663749}, pi mod = {1000000007, 1000000009}){ clear(n, key, mod); }
+    void clear(int n, pi key = {911382323, 972663749}, pi mod = {1000000007, 1000000009}){ // O(n)
         arr[0] = {n, key.x, mod.x}; arr[1] = {n, key.y, mod.y};
     } 
 
@@ -137,10 +140,13 @@ public:
     void pop_front(){ for(auto& c : arr) c.pop_front(); } // O(log n)
     int size() const{ return arr[0].size(); } // O(1)
     ll ret(int l, int r) const{ // O(log n)
+        if(l > r) return 0;
         return ((ll)arr[0].ret(l, r) << 32) + arr[1].ret(l, r);
     }
 
     bool same(int l1, int r1, int l2, int r2) const{ // O(log n)
+        if(r1 - l1 != r2 - l2) return false;
+        if(l1 > r1) return true;
         for(const auto& c : arr) if(c.ret(l1, r1) != c.ret(l2, r2)) return 0;
         return 1;
     }

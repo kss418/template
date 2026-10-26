@@ -81,3 +81,19 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
 - Keep headers minimal; prefer `#include <bits/stdc++.h>` if the repo standard uses it.
 - Use consistent type aliases/macros as already present.
 - No extra I/O prompts; code should be contest-ready.
+
+
+## Identity, initial leaves, and hashes
+- `_seg`, `_prop`, `_pst`, `_fw`, and `_fw2d` require `policy::id()` for the
+  aggregation identity. Do not infer it from `node()`.
+- `_seg` and `_prop` also require `policy::leaf()` for each real initial leaf
+  in `[base,n]`. Padding and query accumulators use `id()`, not `leaf()`.
+  The default lazy policy has identity `{0,0}` and initial leaf `{0,1}`.
+- `make(arr)` uses the caller's nodes verbatim and retains the stored base.
+  PST null roots and Fenwick reset state retain identity semantics; they do
+  not materialize the dense-tree `leaf()` value.
+- Default prefix/deque hashes use the same key pair `{911382323,972663749}`
+  and modulus pair `{1000000007,1000000009}`. Custom settings remain supported.
+  Only compare raw hashes produced with identical settings and equal lengths.
+  `same` checks lengths, while `ret` returns only the hash value. Hash collisions
+  remain possible. Keep both hash implementations and their snippets aligned.
