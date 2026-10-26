@@ -141,3 +141,21 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
 - Built-in HLD path updates apply the same tag in the backend's canonical orientation
   to each segment. For updates relative to u-to-v direction, use `it_path` and map
   tags using its rev flag before calling the public backend's update function.
+
+## LCA path aggregation
+- `_lca<policy>` uses `policy::cost`, `policy::node`, `use_node`, `lift(cost)`, and
+  associative `merge(left,right)`. Prefer `policy::id()` for the two-sided identity;
+  legacy policies without it retain `node()` as identity. Nodes with `id()` need
+  no default constructor. Aggregation tables are allocated only with `use_node=1`.
+- `query(a,b)` folds edge values in a-to-b order, excluding the LCA vertex.
+  It stores both traversal orders internally, so policies need no reversal hook
+  or bidirectional adapter. Equal endpoints and disconnected endpoints return identity.
+- `add(a,b,cost)` assigns the same value in both directions. The overload
+  `add(a,b,ab,ba)` assigns a-to-b and b-to-a costs independently, regardless of root.
+  `addsol` accepts the same cost forms but stores only the a-to-b adjacency;
+  its reverse cost is still available for upward path queries. Directed forest
+  input must be reachable from each component's smallest active vertex, which is
+  selected as root during build. `ret`, `dist`, `ancestor`, and `jump` retain their APIs.
+- Both aggregation orders are rebuilt from retained edges on every `build()`.
+  Complexity is O(n log n) preprocessing/storage and O(log n) per path query,
+  assuming constant-time policy values and operations.

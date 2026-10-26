@@ -61,10 +61,144 @@ void check_cycles(bool base){
     triangle.clear(0,base); square.clear(0,base);
     CHECK(triangle.build() == 0); CHECK(square.build() == 0); CHECK(t.ret() == 0); CHECK(s.ret() == 0);
 }
+class lca_text {
+public:
+    class node {
+    public:
+        string v;
+        node(string v = "") : v(move(v)) {}
+    };
+    using cost = string;
+    static constexpr bool use_node = 1;
+    static node lift(const cost& v){ return {v}; }
+    static node merge(const node& a, const node& b){ return {a.v+b.v}; }
+};
+void check_lca_order(bool base){
+    graphs::_lca<lca_text> tree(base+5,base);
+    tree.add(base,base+1,"a"); tree.add(base+1,base+2,"b");
+    tree.add(base+1,base+3,"c"); tree.add(base+3,base+4,"d");
+    tree.build();
+    CHECK(tree.query(base,base+4).v == "acd");
+    CHECK(tree.query(base+4,base).v == "dca");
+    CHECK(tree.query(base+2,base+4).v == "bcd");
+    tree.clear(base+4,base);
+    tree.add(base+1,base+2,"a","A"); tree.add(base+2,base+3,"b","B");
+    tree.add(base+3,base+4,"c","C"); tree.build();
+    CHECK(tree.query(base+1,base+4).v == "abc");
+    CHECK(tree.query(base+4,base+1).v == "CBA");
+    tree.add(base,base+3,"d","D"); tree.build();
+    CHECK(tree.parent(base+2) == base+3);
+    CHECK(tree.query(base,base+1).v == "dBA");
+    CHECK(tree.query(base+1,base+4).v == "abc");
+    CHECK(tree.query(base+4,base+1).v == "CBA");
+    tree.build(); CHECK(tree.query(base+1,base).v == "abD");
+}
+class lca_matrix {
+public:
+    using cost = array<long long,4>;
+    class node {
+    public:
+        cost v;
+        explicit node(cost v) : v(v) {}
+    };
+    static constexpr bool use_node = 1;
+    static node id(){ return node({1,0,0,1}); }
+    static node lift(const cost& v){ return node(v); }
+    static node merge(const node& a, const node& b){
+        cost v{};
+        for(int i=0;i<2;i++) for(int j=0;j<2;j++) for(int k=0;k<2;k++)
+            v[2*i+j]=(v[2*i+j]+a.v[2*i+k]*b.v[2*k+j])%1000000007;
+        return node(v);
+    }
+};
+static_assert(!is_default_constructible_v<lca_matrix::node>);
+template<class P>
+void check_lca_paths(bool base, int mode, unsigned seed){
+    using cost = typename P::cost;
+    mt19937 rng(seed);
+    int count=3+rng()%23, n=base+count-1;
+    graphs::_lca<P> tree(n,base);
+    vector<vector<pair<int,cost>>> adj(n+1);
+    auto value=[&]() -> cost {
+        if constexpr(is_same_v<cost,string>) return "["+to_string(rng()%1000)+"]";
+        else return {1+(int)(rng()%9),1+(int)(rng()%9),1+(int)(rng()%9),1+(int)(rng()%9)};
+    };
+    auto add=[&](int a,int b){
+        cost ab=value(), ba=mode%2 ? value() : ab;
+        if(mode>=2){
+            if(mode%2) tree.addsol(a,b,ab,ba);
+            else tree.addsol(a,b,ab);
+        } else if(mode%2){
+            if(rng()%2) tree.add(a,b,ab,ba); else tree.add(b,a,ba,ab);
+        } else {
+            if(rng()%2) tree.add(a,b,ab); else tree.add(b,a,ab);
+        }
+        adj[a].push_back({b,ab}); adj[b].push_back({a,ba});
+    };
+    for(int v=base+1;v<=n;v++) if(rng()%4) add(base+rng()%(v-base),v);
+    auto verify=[&](){
+        vector<int> par(n+1,-1), dep(n+1,-1), comp(n+1,-1);
+        for(int root=base;root<=n;root++) if(dep[root]==-1){
+            queue<int> q; q.push(root); dep[root]=0; comp[root]=root;
+            while(!q.empty()){
+                int v=q.front(); q.pop();
+                for(auto [w,c]:adj[v]) if(dep[w]==-1){
+                    par[w]=v; dep[w]=dep[v]+1; comp[w]=root; q.push(w);
+                }
+            }
+        }
+        for(int a=base;a<=n;a++){
+            CHECK(tree.parent(a)==par[a]); CHECK(tree.depth(a)==dep[a]);
+            CHECK(tree.ancestor(a,0)==a); CHECK(tree.ancestor(a,dep[a]+1)==-1);
+            for(int b=base;b<=n;b++){
+                CHECK(tree.same_comp(a,b)==(comp[a]==comp[b]));
+                if(comp[a]!=comp[b]){
+                    CHECK(tree.ret(a,b)==-1); CHECK(tree.dist(a,b)==-1);
+                    CHECK(tree.jump(a,b,0)==-1);
+                    auto id=[](){ if constexpr(requires { P::id(); }) return P::id(); else return typename P::node(); };
+                    CHECK(tree.query(a,b).v==id().v); continue;
+                }
+                int u=a,v=b;
+                while(dep[u]>dep[v]) u=par[u];
+                while(dep[v]>dep[u]) v=par[v];
+                while(u!=v){ u=par[u]; v=par[v]; }
+                CHECK(tree.ret(a,b)==u);
+                vector<int> prev(n+1,-1); queue<int> q; q.push(a); prev[a]=a;
+                while(!q.empty()){
+                    int cur=q.front();q.pop();
+                    for(auto [w,c]:adj[cur]) if(prev[w]==-1){ prev[w]=cur;q.push(w); }
+                }
+                vector<int> path{b};
+                while(path.back()!=a) path.push_back(prev[path.back()]);
+                reverse(path.begin(),path.end());
+                auto expected=[](){ if constexpr(requires { P::id(); }) return P::id(); else return typename P::node(); }();
+                for(int i=1;i<(int)path.size();i++)
+                    for(auto [w,c]:adj[path[i-1]]) if(w==path[i]) expected=P::merge(expected,P::lift(c));
+                CHECK(tree.query(a,b).v==expected.v);
+                CHECK(tree.dist(a,b)==(int)path.size()-1);
+                for(int k=0;k<(int)path.size();k++) CHECK(tree.jump(a,b,k)==path[k]);
+                CHECK(tree.jump(a,b,-1)==-1); CHECK(tree.jump(a,b,path.size())==-1);
+            }
+        }
+    };
+    tree.build(); verify(); tree.build(); verify();
+    for(int root=base+1;root<=n;root++) if(tree.parent(root)==-1) add(base,root);
+    tree.build(); verify();
+    tree.clear(base,base); tree.build();
+    CHECK(tree.ret(base,base)==base); CHECK(tree.dist(base,base)==0);
+    auto id=[](){ if constexpr(requires { P::id(); }) return P::id(); else return typename P::node(); };
+    CHECK(tree.query(base,base).v==id().v);
+    tree.clear(0,base); tree.build(); tree.build();
+    if(!base) CHECK(tree.query(0,0).v==id().v);
+}
 int main(){
     try {
-        for(bool base : {false,true}){ check_bcc(base); check_cycles(base); }
-        cout << "PASS " << checks << " stored-graph-result checks\n";
+        for(bool base : {false,true}){ check_bcc(base); check_cycles(base); check_lca_order(base); }
+        for(bool base : {false,true}) for(int mode=0;mode<4;mode++) for(unsigned seed=1;seed<=8;seed++){
+            check_lca_paths<lca_text>(base,mode,seed);
+            check_lca_paths<lca_matrix>(base,mode,seed);
+        }
+        cout << "PASS " << checks << " graph-result/directional-LCA checks\n";
         return 0;
     } catch(const exception& e){ cerr << "FAIL " << e.what() << '\n'; return 1; }
 }
