@@ -626,8 +626,9 @@ public:
         bool flag = 0; ll now = 0;
         seq[cur] = mn[cur] = ++cnt;
 
+        bool skipped_parent = false;
         for(auto& nxt : adj[cur]){
-            if(nxt == pre) continue;
+            if(nxt == pre && !skipped_parent){ skipped_parent = true; continue; }
             
             if(seq[nxt]) mn[cur] = min(mn[cur], seq[nxt]);
             else{   
@@ -644,8 +645,9 @@ public:
     void dfs_line(vector <pll>& arr, ll cur, ll pre = -1){
         seq[cur] = mn[cur] = ++cnt;
 
+        bool skipped_parent = false;
         for(auto& nxt : adj[cur]){
-            if(nxt == pre) continue;
+            if(nxt == pre && !skipped_parent){ skipped_parent = true; continue; }
             
             if(seq[nxt]) mn[cur] = min(mn[cur], seq[nxt]);
             else{   
@@ -660,8 +662,9 @@ public:
     void dfs_ret(vector<vector <pll>>& arr, ll cur, ll pre = -1){
         seq[cur] = mn[cur] = ++cnt;
 
+        bool skipped_parent = false;
         for(auto& nxt : adj[cur]){
-            if(nxt == pre) continue;
+            if(nxt == pre && !skipped_parent){ skipped_parent = true; continue; }
             
             if(seq[cur] > seq[nxt]) st.push({cur, nxt});
             if(seq[nxt]) mn[cur] = min(mn[cur], seq[nxt]);

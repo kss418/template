@@ -2,7 +2,7 @@
 "line": {
   "prefix": ">>line",
   "body": [
-    "class _line{",
+    "class _line{ ",
     "public:",
     "    _frac a, b; i128 x = 0; bool vert = false;",
     "    _line() = default;",
@@ -44,7 +44,8 @@
     "    }",
     "",
     "    bool same(const _line& ot) const{",
-    "        if(vert && ot.vert) return x == ot.x;",
+    "        if(vert != ot.vert) return false;",
+    "        if(vert) return x == ot.x;",
     "        return a == ot.a && b == ot.b;",
     "    }",
     "};"

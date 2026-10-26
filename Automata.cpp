@@ -188,9 +188,13 @@ public:
     u64 min(u64 x) const{ return x ^ argmin(x); } // O(max_bit)
     u64 argmin(u64 x) const{ return arg(x, 0); } // O(max_bit)
 
-    int greater(u64 x, u64 k){ return size() - less(x, k + 1); } // O(max_bit)
-    int eqaul(u64 x, u64 k){ return less(x, k + 1) - less(x, k); } // O(max_bit)
+    int greater(u64 x, u64 k){ return k == numeric_limits<u64>::max() ? 0 : size() - less(x, k + 1); } // O(max_bit)
+    int eqaul(u64 x, u64 k){ return k == numeric_limits<u64>::max() ? size() - less(x, k) : less(x, k + 1) - less(x, k); } // O(max_bit)
     int less(u64 x, u64 k){ // O(max_bit)
+        if(m < 63){
+            u64 high_x = x >> (m + 1), high_k = k >> (m + 1);
+            if(high_x != high_k) return high_x < high_k ? size() : 0;
+        }
         int cur = 0, ret = 0;
         for(int i = m;i >= 0;i--){
             bool kb = (k >> i) & 1ull, xb = (x >> i) & 1ull;

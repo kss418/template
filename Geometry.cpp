@@ -323,7 +323,8 @@ public:
     }
 
     bool same(const _line& ot) const{
-        if(vert && ot.vert) return x == ot.x;
+        if(vert != ot.vert) return false;
+        if(vert) return x == ot.x;
         return a == ot.a && b == ot.b;
     }
 };
