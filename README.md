@@ -147,3 +147,33 @@ flow.augment(1, n);         // 이미 포화되어 추가 유량 0
 ```
 
 전체 회귀 검사: `python tests/run_tests.py` (GNU C++20).
+
+
+## BCC / cycle 계산과 조회
+
+BCC는 `build()` 한 번으로 단절점, 단절선, BCC를 모두 계산합니다.
+`point()`, `line()`, `ret()`은 저장한 목록의 `const&`를 O(1)에 반환하며 재계산하지 않습니다.
+반환한 결과 내용은 다음 `build()`/`clear()`에서 바뀝니다. 이전 결과를 보관하려면 복사합니다.
+
+```cpp
+_bcc g(n);
+g.add(1, 2);
+g.build();
+const auto& points = g.point();
+const auto& bridges = g.line();
+const auto& blocks = g.ret();
+```
+
+`_3cycle`, `_4cycle`은 `build(mod = 0)`에서 개수를 계산하고 반환합니다.
+`ret() const`는 저장한 개수를 O(1)에 반환합니다. 기존 `ret(mod)`는 `build(mod)`로 옮겼습니다.
+`mod=0`은 나머지를 취하지 않으며 결과가 `ll` 범위에 들어와야 합니다.
+
+```cpp
+_3cycle cycles(n);
+cycles.add(1, 2); cycles.add(2, 3); cycles.add(3, 1);
+cycles.build(1'000'000'007);
+cout << cycles.ret();
+```
+
+입력 수정 후에는 다시 `build()`해야 합니다. 그 전의 조회는 계약상 UB이며 검사하지 않습니다.
+같은 입력으로 `build()`를 다시 호출하면 처음부터 재계산합니다.

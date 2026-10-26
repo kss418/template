@@ -99,7 +99,7 @@ void check_graphs(bool base){
     graphs::_2sat impossible(n,base);impossible.add_eq(impossible.pos(first),impossible.pos(n));impossible.add_true(impossible.pos(first));impossible.add_false(impossible.pos(n));CHECK(!impossible.build());
     graphs::_bm match(n,n,base);for(int i=first;i<=n;++i)match.addsol(i,i);CHECK(match.build()==count);
     graphs::_clist<int> list(n,base);CHECK(list.size()==count);list[first].push_front(7);CHECK(list[first].front()==7);
-    graphs::_bcc bcc(n,base);for(int i=first+1;i<=n;++i)bcc.add(first,i);CHECK(bcc.point()==vector<long long>{first});CHECK((int)bcc.line().size()==count-1);
+    graphs::_bcc bcc(n,base);for(int i=first+1;i<=n;++i)bcc.add(first,i);bcc.build();CHECK(bcc.point()==vector<long long>{first});CHECK((int)bcc.line().size()==count-1);
     int last=first+3;
     graphs::_3cycle triangle(last,base);triangle.add(first,first+1);triangle.add(first+1,first+2);triangle.add(first+2,first);triangle.add(first,first+3);triangle.build();CHECK(triangle.ret()==1);
     graphs::_4cycle square(last,base);for(int i=first;i<=last;++i)square.add(i,i==last?first:i+1);square.build();CHECK(square.ret()==1);

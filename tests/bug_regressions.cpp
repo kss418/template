@@ -117,14 +117,15 @@ Edge canonical(int a, int b){ return {min(a,b), max(a,b)}; }
 
 void check_bcc_parallel(){
     for(bool base : {false,true}){
-        graphs::_bcc parallel(base+1, base); parallel.add(base,base+1); parallel.add(base,base+1);
+        graphs::_bcc parallel(base+1, base); parallel.add(base,base+1); parallel.add(base,base+1); parallel.build();
         CHECK(parallel.line().empty()); CHECK(parallel.point().empty());
         auto blocks = parallel.ret(); CHECK(blocks.size() == 1); CHECK(blocks[0].size() == 2);
-        parallel.add(base+1,base); CHECK(parallel.line().empty());
+        parallel.add(base+1,base); parallel.build(); CHECK(parallel.line().empty());
         blocks = parallel.ret(); CHECK(blocks.size() == 1); CHECK(blocks[0].size() == 3);
         graphs::_bcc joined(base+4, base);
         vector<Edge> fixture = {{0,1},{0,1},{1,2},{2,3},{3,1},{3,4}};
         for(auto [a,b] : fixture) joined.add(a+base,b+base);
+        joined.build();
         auto groups = joined.ret(); vector<vector<Edge>> actual;
         for(const auto& group : groups){
             vector<Edge> normalized;
@@ -141,6 +142,7 @@ void check_bcc_parallel(){
                 int a = rng()%count, b = rng()%count; if(a == b) continue;
                 edges.push_back({a,b}); graph.add(a+base,b+base);
             }
+            graph.build();
             int before = components(count,edges);
             vector<Edge> want_bridges, got_bridges;
             for(int i = 0; i < (int)edges.size(); ++i) if(components(count,edges,i) > before)

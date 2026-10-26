@@ -51,6 +51,10 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
 - Queries requiring preprocessing before the first build, or after input changes and
   before rebuilding, are UB by contract. Do not enforce lifecycle validity with asserts,
   exceptions, automatic rebuilds, or runtime checks. Bounds/algebra preconditions are separate.
+- Precomputed-result getters only read stored results. Do not run preprocessing,
+  recalculate answers, or lazily rebuild from getters. Array/tree query aggregation
+  keeps its normal algorithmic cost. Store BCC results during `build()`; cycle
+  counters use `build(mod = 0)` and expose the stored answer through `ret() const`.
 - Preserve input across builds; clear derived visitation, aggregate counts, heaps,
   matches, potentials, residual capacities and other work state before recalculation.
   Input and derived data sharing storage must be separated or reconstructible.

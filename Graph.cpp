@@ -594,148 +594,84 @@ public:
 //BCC
 class _bcc{
     bool base; // indices base..n
+    vector <ll> points;
+    vector <pll> lines;
+    vector <vector <pll>> blocks;
+
+    void dfs(ll cur, ll pre = -1){
+        seq[cur] = mn[cur] = ++cnt;
+        ll children = 0; bool cut = false, skipped_parent = false;
+        for(auto nxt : adj[cur]){
+            if(nxt == pre && !skipped_parent){ skipped_parent = true; continue; }
+            if(seq[nxt]){
+                mn[cur] = min(mn[cur], seq[nxt]);
+                if(seq[nxt] < seq[cur]) st.push({cur, nxt});
+                continue;
+            }
+
+            st.push({cur, nxt}); dfs(nxt, cur); children++;
+            mn[cur] = min(mn[cur], mn[nxt]);
+            if(mn[nxt] > seq[cur]) lines.push_back({min(cur, nxt), max(cur, nxt)});
+            if(mn[nxt] >= seq[cur]){
+                if(pre != -1){ cut = true; num[cur]++; }
+                vector <pll> block;
+                while(true){
+                    auto edge = st.top(); st.pop(); block.push_back(edge);
+                    if(edge == pll(cur, nxt)) break;
+                }
+                blocks.push_back(move(block));
+            }
+        }
+        if(pre == -1 && children >= 2){ cut = true; num[cur] = children; }
+        if(cut) points.push_back(cur);
+    }
 public:
     vector <vector <ll>> adj;
     vector <ll> mn, seq, num;
     ll n, cnt;
     stack <pll> st;
 
-    _bcc(ll n = 0, bool base = 1) : n(n), base(base) {
-        adj.resize(n + 1); mn.resize(n + 1);
-        seq.resize(n + 1); num.resize(n + 1);
-    }
-
+    _bcc(ll n = 0, bool base = 1){ clear(n, base); }
     void add(ll s, ll e){
-        adj[s].push_back(e);
-        adj[e].push_back(s);
+        adj[s].push_back(e); adj[e].push_back(s);
     }
 
     void clear(ll n, bool base = 1){
-        this->n = n; this->base = base; cnt = 0;
-        adj.assign(n + 1, {}); mn.assign(n + 1, 0); seq.assign(n + 1, 0); num.assign(n + 1, 0);
-        while(!st.empty()) st.pop();
+        this->n = n; this->base = base;
+        adj.assign(n + 1, {}); clear();
     }
-
     void clear(){
-        seq.clear(); mn.clear(); cnt = 0;
-        fill(all(num), 0); while(!st.empty()) st.pop();
-        seq.resize(n + 1); mn.resize(n + 1);
+        seq.assign(n + 1, 0); mn.assign(n + 1, 0); num.assign(n + 1, 0); cnt = 0;
+        while(!st.empty()) st.pop();
+        points.clear(); lines.clear(); blocks.clear();
     }
 
-    void dfs_point(vector <ll>& arr, ll cur, ll pre = -1){
-        bool flag = 0; ll now = 0;
-        seq[cur] = mn[cur] = ++cnt;
-
-        bool skipped_parent = false;
-        for(auto& nxt : adj[cur]){
-            if(nxt == pre && !skipped_parent){ skipped_parent = true; continue; }
-            
-            if(seq[nxt]) mn[cur] = min(mn[cur], seq[nxt]);
-            else{   
-                dfs_point(arr, nxt, cur); now++;
-                mn[cur] = min(mn[cur], mn[nxt]);
-                if(pre != -1 && mn[nxt] >= seq[cur]) flag = 1, num[cur]++;
-            }
-        }
-
-        if(pre == -1 && now >= 2) flag = 1, num[cur] = now;
-        if(flag) arr.push_back(cur);
+    void build(){ // O(n + m)
+        clear();
+        for(int i = base;i <= n;i++) if(!seq[i]) dfs(i);
     }
-
-    void dfs_line(vector <pll>& arr, ll cur, ll pre = -1){
-        seq[cur] = mn[cur] = ++cnt;
-
-        bool skipped_parent = false;
-        for(auto& nxt : adj[cur]){
-            if(nxt == pre && !skipped_parent){ skipped_parent = true; continue; }
-            
-            if(seq[nxt]) mn[cur] = min(mn[cur], seq[nxt]);
-            else{   
-                dfs_line(arr, nxt, cur);
-                mn[cur] = min(mn[cur], mn[nxt]);
-                ll l = min(cur, nxt), r = max(cur, nxt);
-                if(mn[nxt] > seq[cur]) arr.push_back({l, r});
-            }
-        }
-    }
-
-    void dfs_ret(vector<vector <pll>>& arr, ll cur, ll pre = -1){
-        seq[cur] = mn[cur] = ++cnt;
-
-        bool skipped_parent = false;
-        for(auto& nxt : adj[cur]){
-            if(nxt == pre && !skipped_parent){ skipped_parent = true; continue; }
-            
-            if(seq[cur] > seq[nxt]) st.push({cur, nxt});
-            if(seq[nxt]) mn[cur] = min(mn[cur], seq[nxt]);
-            else{   
-                dfs_ret(arr, nxt, cur); 
-                mn[cur] = min(mn[cur], mn[nxt]);
-                if(mn[nxt] >= seq[cur]){
-                    vector <pll> now;
-                    while(st.top() != pll(cur, nxt)){
-                        now.push_back(st.top());
-                        st.pop();
-                    }
-                    now.push_back({cur, nxt});
-                    st.pop();
-                    arr.push_back(now);
-                }
-            }
-        }
-    }
-
-    // 단절점 반환
-    vector <ll> point(){
-        vector <ll> ret; clear();
-        for(int i = base;i <= n;i++){
-            if(seq[i]) continue;
-            dfs_point(ret, i);
-        }
-
-        return ret;
-    }
-
-    // 단절선 반환
-    vector <pll> line(){
-        vector <pll> ret; clear();
-        for(int i = base;i <= n;i++){
-            if(seq[i]) continue;
-            dfs_line(ret, i);
-        }
-
-        return ret;
-    }
-
-    // bcc 반환, 테스트 해봐야 함
-    vector <vector <pll>> ret(){
-        vector <vector <pll>> ret; clear();
-        for(int i = base;i <= n;i++){
-            if(seq[i]) continue;
-            dfs_ret(ret, i);
-        }
-
-        return ret;
-    }
+    const vector<ll>& point() const{ return points; } // O(1)
+    const vector<pll>& line() const{ return lines; } // O(1)
+    const vector<vector<pll>>& ret() const{ return blocks; } // O(1)
 };
 
 class _3cycle{
     bool base; // indices base..n
 private:
     vector <vector<int>> tmp, adj;
-    vector <int> cnt; int n; bool built = 0;
+    vector <int> cnt; int n; ll result = 0;
 public: 
     _3cycle(int n = 0, bool base = 1){ clear(n, base); } // O(n)
     void clear(int n, bool base = 1){ // O(n);
-        this->n = n; this->base = base; adj.assign(n + 1, {}); built = 0;
+        this->n = n; this->base = base; adj.assign(n + 1, {}); result = 0;
         cnt.assign(n + 1, 0); tmp.assign(n + 1, {});
     }
 
     void addsol(int st, int en){ tmp[st].push_back(en); } // O(1)
     void add(int st, int en){ addsol(st, en); addsol(en, st); } // O(1)
 
-    void build(){ // O(n + m)
-        adj.assign(n + 1, {}); fill(all(cnt), 0); built = 1;
+    ll build(ll mod = 0){ // O(n + m sqrt m)
+        adj.assign(n + 1, {}); fill(all(cnt), 0); result = 0;
         for(int i = base;i <= n;i++){
             for(auto& j : tmp[i]){
                 if(tmp[i].size() < tmp[j].size()) continue;
@@ -743,9 +679,7 @@ public:
                 adj[i].push_back(j);
             }
         }
-    }
 
-    ll ret(ll mod = 0){ // O(m sqrt m)
         ll c = 0;
         for(int i = base;i <= n;i++){
             for(auto& j : adj[i]) cnt[j]++;
@@ -757,15 +691,16 @@ public:
             }
             for(auto& j : adj[i]) cnt[j]--;
         }
-        return c;
-    } 
+        return result = c;
+    }
+    ll ret() const{ return result; } // O(1)
 };
 
 class _4cycle{
     bool base; // indices base..n
 private:
     vector <vector<int>> tmp, adj;
-    vector <int> cnt; int n; bool built = 0;
+    vector <int> cnt; int n; ll result = 0;
     bool less(int a, int b){
         if(tmp[a].size() < tmp[b].size()) return 1;
         return tmp[a].size() == tmp[b].size() && a <= b;
@@ -773,15 +708,15 @@ private:
 public:
     _4cycle(int n = 0, bool base = 1){ clear(n, base); } // O(n)
     void clear(int n, bool base = 1){ // O(n)
-        this->n = n; this->base = base; adj.assign(n + 1, {}); built = 0;
+        this->n = n; this->base = base; adj.assign(n + 1, {}); result = 0;
         cnt.assign(n + 1, 0); tmp.assign(n + 1, {});
     }
 
     void addsol(int st, int en){ tmp[st].push_back(en); } // O(1)
     void add(int st, int en){ addsol(st, en); addsol(en, st); } // O(1)
 
-    void build(){ // O(n + m)
-        adj.assign(n + 1, {}); fill(all(cnt), 0); built = 1;
+    ll build(ll mod = 0){ // O(n + m sqrt m)
+        adj.assign(n + 1, {}); fill(all(cnt), 0); result = 0;
         for(int i = base;i <= n;i++){
             for(auto& j : tmp[i]){
                 if(tmp[i].size() < tmp[j].size()) continue;
@@ -789,9 +724,7 @@ public:
                 adj[i].push_back(j);
             }
         }
-    }
 
-    ll ret(ll mod = 0){ // O(m sqrt m)
         ll c = 0;
         for(int i = base;i <= n;i++){
             vector <int> use;
@@ -805,8 +738,9 @@ public:
             }
             for(auto& j : use) cnt[j] = 0;
         }
-        return c;
-    } 
+        return result = c;
+    }
+    ll ret() const{ return result; } // O(1)
 };
 
 template <class T>
