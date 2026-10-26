@@ -10,13 +10,14 @@ static_assert(is_same_v<decltype(declval<const graphs::_bcc&>().line()), const v
 static_assert(is_same_v<decltype(declval<const graphs::_bcc&>().ret()), const vector<vector<pair<long long,long long>>>&>);
 static_assert(is_same_v<decltype(graphs::lca_policy::cost::v),long long>);
 static_assert(!is_default_constructible_v<graphs::lca_policy::node>);
+template<class T>
+concept has_path_query = requires(T& tree){ tree.query(0,0); };
+static_assert(!has_path_query<graphs::_lca>);
+static_assert(has_path_query<graphs::_lca_path<>>);
+static_assert(is_base_of_v<graphs::_lca,graphs::_lca_path<>>);
 
-class lca_max : public graphs::lca_policy {
-public:
-    static constexpr bool use_node = 1;
-};
 void check_lca_numeric(bool base){
-    graphs::_lca<lca_max> tree(base+3,base);
+    graphs::_lca_path<> tree(base+3,base);
     tree.add(base,base+1,-5000000000000LL,-7000000000000LL);
     tree.add(base+1,base+2,3000000000000LL,9000000000000LL);
     tree.build();
@@ -27,6 +28,15 @@ void check_lca_numeric(bool base){
     CHECK(tree.query(base,base).v == graphs::lca_policy::id().v);
     CHECK(tree.query(base,base+3).v == graphs::lca_policy::id().v);
     tree.build(); CHECK(tree.query(base+2,base).v == 9000000000000LL);
+    CHECK(as_const(tree).ret(base,base+2) == base);
+    CHECK(as_const(tree).query(base+2,base).v == 9000000000000LL);
+    tree.clear(base+1,base); tree.add(base,base+1); tree.build();
+    CHECK(tree.query(base,base+1).v == 0);
+    tree.clear(base+1,base);
+    tree.addsol(base,base+1,2,3); tree.addsol(base,base+1,5,7); tree.build();
+    CHECK(tree.query(base,base+1).v == 2);
+    CHECK(tree.query(base+1,base).v == 3);
+    graphs::_lca_path<> empty; empty.build(); empty.build();
 }
 
 void check_bcc(bool base){
@@ -89,13 +99,12 @@ public:
         node(string v) : v(move(v)) {}
     };
     using cost = string;
-    static constexpr bool use_node = 1;
     static node id(){ return {""}; }
     static node lift(const cost& v){ return {v}; }
     static node merge(const node& a, const node& b){ return {a.v+b.v}; }
 };
 void check_lca_order(bool base){
-    graphs::_lca<lca_text> tree(base+5,base);
+    graphs::_lca_path<lca_text> tree(base+5,base);
     tree.add(base,base+1,"a"); tree.add(base+1,base+2,"b");
     tree.add(base+1,base+3,"c"); tree.add(base+3,base+4,"d");
     tree.build();
@@ -122,7 +131,6 @@ public:
         cost v;
         explicit node(cost v) : v(v) {}
     };
-    static constexpr bool use_node = 1;
     static node id(){ return node({1,0,0,1}); }
     static node lift(const cost& v){ return node(v); }
     static node merge(const node& a, const node& b){
@@ -138,7 +146,8 @@ void check_lca_paths(bool base, int mode, unsigned seed){
     using cost = typename P::cost;
     mt19937 rng(seed);
     int count=3+rng()%23, n=base+count-1;
-    graphs::_lca<P> tree(n,base);
+    graphs::_lca_path<P> tree(n,base);
+    graphs::_lca plain(n,base);
     vector<vector<pair<int,cost>>> adj(n+1);
     auto value=[&]() -> cost {
         if constexpr(is_same_v<cost,string>) return "["+to_string(rng()%1000)+"]";
@@ -146,6 +155,7 @@ void check_lca_paths(bool base, int mode, unsigned seed){
     };
     auto add=[&](int a,int b){
         cost ab=value(), ba=mode%2 ? value() : ab;
+        if(mode>=2) plain.addsol(a,b); else plain.add(a,b);
         if(mode>=2){
             if(mode%2) tree.addsol(a,b,ab,ba);
             else tree.addsol(a,b,ab);
@@ -158,6 +168,7 @@ void check_lca_paths(bool base, int mode, unsigned seed){
     };
     for(int v=base+1;v<=n;v++) if(rng()%4) add(base+rng()%(v-base),v);
     auto verify=[&](){
+        plain.build();
         vector<int> par(n+1,-1), dep(n+1,-1), comp(n+1,-1);
         for(int root=base;root<=n;root++) if(dep[root]==-1){
             queue<int> q; q.push(root); dep[root]=0; comp[root]=root;
@@ -168,11 +179,24 @@ void check_lca_paths(bool base, int mode, unsigned seed){
                 }
             }
         }
+        vector<int> forward, backward, extended;
+        as_const(plain).it<false>([&](int v){forward.push_back(v);});
+        plain.it([&](int v){backward.push_back(v);});
+        tree.template it<false>([&](int v){extended.push_back(v);});
+        CHECK(forward==extended);
+        CHECK(vector<int>(forward.rbegin(),forward.rend())==backward);
+        CHECK((int)forward.size()==count);
+        vector<int> pos(n+1,-1);
+        for(int i=0;i<count;i++){ CHECK(pos[forward[i]]==-1); pos[forward[i]]=i; }
         for(int a=base;a<=n;a++){
             CHECK(tree.parent(a)==par[a]); CHECK(tree.depth(a)==dep[a]);
+            CHECK(as_const(plain).parent(a)==par[a]); CHECK(plain.depth(a)==dep[a]);
+            CHECK(tree.component(a)==plain.component(a));
+            if(par[a]!=-1) CHECK(pos[par[a]]<pos[a]);
             CHECK(tree.ancestor(a,0)==a); CHECK(tree.ancestor(a,dep[a]+1)==-1);
             for(int b=base;b<=n;b++){
                 CHECK(tree.same_comp(a,b)==(comp[a]==comp[b]));
+                CHECK(plain.ret(a,b)==tree.ret(a,b)); CHECK(plain.dist(a,b)==tree.dist(a,b));
                 if(comp[a]!=comp[b]){
                     CHECK(tree.ret(a,b)==-1); CHECK(tree.dist(a,b)==-1);
                     CHECK(tree.jump(a,b,0)==-1);
@@ -197,6 +221,7 @@ void check_lca_paths(bool base, int mode, unsigned seed){
                 CHECK(tree.query(a,b).v==expected.v);
                 CHECK(tree.dist(a,b)==(int)path.size()-1);
                 for(int k=0;k<(int)path.size();k++) CHECK(tree.jump(a,b,k)==path[k]);
+                for(int k=0;k<(int)path.size();k++) CHECK(as_const(plain).jump(a,b,k)==path[k]);
                 CHECK(tree.jump(a,b,-1)==-1); CHECK(tree.jump(a,b,path.size())==-1);
             }
         }
@@ -209,6 +234,8 @@ void check_lca_paths(bool base, int mode, unsigned seed){
     CHECK(tree.query(base,base).v==P::id().v);
     tree.clear(0,base); tree.build(); tree.build();
     if(!base) CHECK(tree.query(0,0).v==P::id().v);
+    tree.clear(2,!base); tree.add(!base,2,value()); tree.build();
+    CHECK(tree.ret(!base,2)==!base); CHECK(tree.dist(!base,2)==1);
 }
 int main(){
     try {

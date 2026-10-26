@@ -37,7 +37,7 @@ void check_automata(){
 }
 void check_rebuild(bool base){
     int first=base,n=first+3;
-    graphs::_lca<> l(n,base);l.add(first,first+1);l.add(first+2,n);l.build();CHECK(!l.same_comp(first,n));l.add(first+1,first+2);l.build();CHECK(l.dist(first,n)==3);l.build();CHECK(l.dist(first,n)==3);
+    graphs::_lca l(n,base);l.add(first,first+1);l.add(first+2,n);l.build();CHECK(!l.same_comp(first,n));l.add(first+1,first+2);l.build();CHECK(l.dist(first,n)==3);l.build();CHECK(l.dist(first,n)==3);
     range_templates::_hld<range_templates::_seg<>> h(n,0,base);h.add(first,first+1);h.add(first+2,n);h.build();for(int i=first;i<=n;++i)h.set(i,{i-first+1});h.add(first+1,first+2);h.build();CHECK(h.query(first,n).v==10);h.build();for(int i=first;i<=n;++i)CHECK(h.query(i).v==i-first+1);
     range_templates::_hld<range_templates::_prop<>> lazy(n,0,base);lazy.add(first,first+1);lazy.add(first+2,n);lazy.build();vector<range_templates::action::node> init(n+1,range_templates::action::leaf());for(int i=0;i<4;++i)init[i]={i+1,1};lazy.seg.make(init);lazy.update(first,first+1,{2});lazy.add(first+1,first+2);lazy.build();CHECK(lazy.query(first,n).v==14);lazy.update(first,n,{1});CHECK(lazy.query(first,n).v==18);
     graphs::_mst<> mst(n,base);for(int i=first;i<n;++i)mst.add(i,i+1,3);CHECK(mst.build());CHECK(mst.ret()==9);CHECK(mst.build());CHECK(mst.ret()==9);mst.add(first,n,1);CHECK(mst.build());CHECK(mst.ret()==7);

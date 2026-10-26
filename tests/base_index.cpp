@@ -36,7 +36,6 @@ public:
         node(long long v):v(v){}
     };
     using cost=long long;
-    static constexpr bool use_node=1;
     static node id(){return {0};}
     static node lift(cost v){return {v};}
     static node merge(const node&a,const node&b){return {a.v+b.v};}
@@ -84,7 +83,7 @@ void check_sets(bool base){
 }
 void check_graphs(bool base){
     int n=4, first=base, count=n-first+1;
-    graphs::_lca<> lca(n,base);graphs::_lca<lift_sum> weighted(n,base);
+    graphs::_lca lca(n,base);graphs::_lca_path<lift_sum> weighted(n,base);
     range_templates::_hld<range_templates::_seg<>> hld(n,0,base);
     graphs::_vtree vt(n,base);graphs::_mst<> mst(n,base);
     for(int i=first;i<n;++i){lca.add(i,i+1);weighted.add(i,i+1,1);hld.add(i,i+1);vt.add(i,i+1);mst.add(i,i+1,1);}
@@ -132,7 +131,7 @@ void check_defaults(){
     graphs::_scc scc;scc.build();CHECK(scc.comp_cnt()==0);
     graphs::_2sat sat;CHECK(sat.build());graphs::_bm bm;CHECK(bm.build()==0);
     graphs::_hungarian<> assignment;CHECK(assignment.build()==0);
-    graphs::_lca<> lca;lca.build();graphs::_vtree vt;vt.build();CHECK(vt.make({}).empty());
+    graphs::_lca lca;lca.build();graphs::_vtree vt;vt.build();CHECK(vt.make({}).empty());
     range_templates::_hld<range_templates::_seg<>> hld;hld.build();
     range_templates::_mt<> single(0,0);single.update(0,{3});CHECK(single.eq(0,0,{3})==1);
     vector<range_templates::monoid::node> empty;

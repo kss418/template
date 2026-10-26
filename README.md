@@ -32,7 +32,7 @@
   - GF(2) Linear Algebra (`_gf2`)
   - XOR Basis (`_xor_basis`)
 - `Graph.cpp`
-  - LCA (`_lca`)
+  - LCA / Path Aggregation (`_lca`, `_lca_path`)
   - Virtual Tree (`_vtree`)
   - Binary Lifting Table (`_st`)
   - MST (`_mst`)

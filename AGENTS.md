@@ -143,11 +143,17 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
   tags using its rev flag before calling the public backend's update function.
 
 ## LCA path aggregation
-- `_lca<policy>` uses `policy::cost`, `policy::node`, `use_node`, `lift(cost)`, and
-  associative `merge(left,right)`. Aggregation policies must provide `policy::id()`
-  for the two-sided identity; never infer it from `node()`. The built-in node has
-  no default constructor, and the built-in cost stores `ll v` with default value 0.
-  Aggregation tables are allocated only with `use_node=1`.
+- `_lca` is a non-template topology-only class. Use `_lca tree(n,base)` for
+  LCA/distance/ancestor/jump/component queries and parent/child traversal order.
+  It takes unweighted `add(a,b)` and `addsol(a,b)` input and has no path query.
+- `_lca_path<policy>` publicly extends `_lca` and retains all its read APIs.
+  Use the extension's own `add`, `addsol`, `clear`, and `build`; mutating through
+  a base-class reference bypasses retained weights and is unsupported.
+  Do not add a `use_node` switch: the extension always builds aggregation tables.
+- Path policies provide `cost`, `node`, `lift(cost)`, associative `merge(left,right)`,
+  and `id()` for the two-sided identity; never infer identity from `node()`.
+  The built-in node has no default constructor; its cost stores `ll v` with
+  default value 0, and the default aggregation is maximum.
 - `query(a,b)` folds edge values in a-to-b order, excluding the LCA vertex.
   It stores both traversal orders internally, so policies need no reversal hook
   or bidirectional adapter. Equal endpoints and disconnected endpoints return identity.
@@ -158,5 +164,8 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
   input must be reachable from each component's smallest active vertex, which is
   selected as root during build. `ret`, `dist`, `ancestor`, and `jump` retain their APIs.
 - Both aggregation orders are rebuilt from retained edges on every `build()`.
+  Store upward/downward values together in one internal path type/table.
   Complexity is O(n log n) preprocessing/storage and O(log n) per path query,
   assuming constant-time policy values and operations.
+- Keep `>>lca` topology-only. `>>lca_path` contains the default path policy and
+  aggregation extension and requires expanding `>>lca` first.
