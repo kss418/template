@@ -86,6 +86,8 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
   definitions when creating or modifying them. State access with explicit
   `public:`/`private:` sections and use explicit public inheritance where required.
   Preserve the public API when converting an existing struct.
+- Add only time-complexity code comments by default. Add other code comments
+  only when explicitly requested by the user.
 - C++17/20/23 as used in the repo (follow existing).
 - Keep headers minimal; prefer `#include <bits/stdc++.h>` if the repo standard uses it.
 - Use consistent type aliases/macros as already present.
