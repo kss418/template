@@ -110,3 +110,16 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
   Only compare raw hashes produced with identical settings and equal lengths.
   `same` checks lengths, while `ret` returns only the hash value. Hash collisions
   remain possible. Keep both hash implementations and their snippets aligned.
+
+
+## Policy snippets and bidirectional adapters
+- Keep standalone monoid/action snippets synchronized with their definitions in
+  Segtree.cpp and with the bundled seg/prop snippets. Do not change existing triggers.
+- `bidirectional<P>` stores forward/backward aggregates; reverse combination is
+  `P::op(right.backward, left.backward)`. `lift(value)` duplicates a leaf value;
+  explicitly supply both values for direction-dependent leaves.
+- `bidirectional_action<P>` reuses the same tag/compose in both directions.
+  Override `apply` when the problem requires direction-dependent updates.
+  Its standalone snippet depends on the common bidirectional snippet.
+- Adapters provide aggregate storage only. Do not claim that HLD traversal order
+  is supported until its path decomposition/query logic has been implemented.

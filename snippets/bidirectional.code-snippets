@@ -1,0 +1,23 @@
+{
+  "bidirectional": {
+    "prefix": ">>bidirectional",
+    "body": [
+      "template <class P>",
+      "struct bidirectional{",
+      "    using value = typename P::node;",
+      "    struct node{",
+      "        value forward, backward;",
+      "        node(value forward, value backward)",
+      "            : forward(std::move(forward)), backward(std::move(backward)){}",
+      "    };",
+      "    static node lift(const value& v){ return {v, v}; }",
+      "    static node id(){ return lift(P::id()); }",
+      "    static node leaf(){ return lift(P::leaf()); }",
+      "    static node op(const node& l, const node& r){",
+      "        return {P::op(l.forward, r.forward), P::op(r.backward, l.backward)};",
+      "    }",
+      "};"
+    ],
+    "description": "Forward/backward monoid adapter; provide the original policy separately."
+  }
+}

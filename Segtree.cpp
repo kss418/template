@@ -756,3 +756,32 @@ public:
         update(y, x, d);
     }
 };
+
+// Bidirectional aggregates. HLD path ordering is handled separately.
+template <class P>
+struct bidirectional{
+    using value = typename P::node;
+    struct node{
+        value forward, backward;
+        node(value forward, value backward)
+            : forward(std::move(forward)), backward(std::move(backward)){}
+    };
+    static node lift(const value& v){ return {v, v}; }
+    static node id(){ return lift(P::id()); }
+    static node leaf(){ return lift(P::leaf()); }
+    static node op(const node& l, const node& r){
+        return {P::op(l.forward, r.forward), P::op(r.backward, l.backward)};
+    }
+};
+
+// Uniform updates use the same tag in both directions.
+template <class P>
+struct bidirectional_action : bidirectional<P>{
+    using node = typename bidirectional<P>::node;
+    using lazy = typename P::lazy;
+    static lazy lz_id(){ return P::lz_id(); }
+    static void apply(node& value, const lazy& tag){
+        P::apply(value.forward, tag); P::apply(value.backward, tag);
+    }
+    static void compose(lazy& old, const lazy& next){ P::compose(old, next); }
+};

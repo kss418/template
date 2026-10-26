@@ -70,6 +70,7 @@
   - Fenwick Tree (`_fw`)
   - 2D Fenwick Tree (`_fw2d`)
   - Persistent Segment Tree (`_pst`)
+  - Bidirectional Adapters (`bidirectional`, `bidirectional_action`)
 - `Shortest_Path.cpp`
   - Dijkstra (`_dij`)
   - Floyd–Warshall (`_floyd`)
@@ -84,3 +85,13 @@
 
 `snippets/`에는 VS Code용 code snippets이 들어있습니다. 각 알고리즘명에 대응하는
 `.code-snippets` 파일이 존재하며 위 템플릿 파일들과 1:1로 매칭됩니다.
+
+- `>>monoid`: 기본 합 monoid policy만 삽입합니다.
+- `>>action`: 기본 구간 합·덧셈 action policy만 삽입합니다.
+- `>>bidirectional`: 정·역방향 집계를 저장하는 공통 어댑터를 삽입합니다.
+- `>>bidirectional_action`: lazy 어댑터를 삽입합니다. 먼저 `>>bidirectional`과 원본 action policy가 필요합니다.
+
+`>>seg`와 `>>prop`는 각각 기본 monoid/action을 포함하므로 독립 policy 스니펫과 중복 선언하지 않습니다.
+양방향 어댑터의 `lift(value)`는 양쪽 값을 같게 만들고, 방향별 값이 다르면 `{forward, backward}`를 직접 넣습니다.
+일반 lazy 어댑터는 양쪽에 같은 태그를 적용하며, 방향별 갱신이 다르면 `apply`를 확장합니다.
+HLD의 경로 방향 처리는 현재 별도 작업이며 어댑터 추가만으로 활성화되지 않습니다.

@@ -1,0 +1,21 @@
+{
+  "monoid": {
+    "prefix": ">>monoid",
+    "body": [
+      "struct monoid{",
+      "    struct node {",
+      "        ll v;",
+      "        node(ll v) : v(v){}",
+      "    };",
+      "    static node id(){ return {0}; }",
+      "    static node leaf(){ return {0}; }",
+      "    static node op(const node& l, const node& r){",
+      "        return {",
+      "            l.v + r.v",
+      "        };",
+      "    }",
+      "};"
+    ],
+    "description": "Standalone sum monoid policy; already included in >>seg."
+  }
+}

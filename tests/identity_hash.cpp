@@ -211,9 +211,108 @@ void check_hash_operations(){
         }
     }
 }
+namespace bidirectional_checks {
+using namespace range_templates;
+struct text_monoid {
+    using node=string;
+    static node id(){return "";}
+    static node leaf(){return "";}
+    static node op(const node&a,const node&b){return a+b;}
+};
+struct matrix_monoid {
+    struct node {
+        long long a,b,c,d;
+        node(long long a,long long b,long long c,long long d):a(a),b(b),c(c),d(d){}
+        bool operator==(const node&)const=default;
+    };
+    static node id(){return {1,0,0,1};}
+    static node leaf(){return id();}
+    static node op(const node&l,const node&r){
+        return {l.a*r.a+l.b*r.c,l.a*r.b+l.b*r.d,l.c*r.a+l.d*r.c,l.c*r.b+l.d*r.d};
+    }
+};
+struct text_action {
+    struct node {
+        string text;int sz;
+        node(string text,int sz):text(move(text)),sz(sz){}
+    };
+    struct lazy {
+        bool has;char value;
+        lazy(bool has,char value):has(has),value(value){}
+        bool operator==(const lazy&)const=default;
+    };
+    static node id(){return {"",0};}
+    static node leaf(){return {"x",1};}
+    static lazy lz_id(){return {false,0};}
+    static node op(const node&l,const node&r){return {l.text+r.text,l.sz+r.sz};}
+    static void apply(node&value,const lazy&tag){if(tag.has)value.text=string(value.sz,tag.value);}
+    static void compose(lazy&old,const lazy&next){if(next.has)old=next;}
+};
+struct signed_action : bidirectional_action<action> {
+    static void apply(node&value,const lazy&tag){
+        action::apply(value.forward,tag);action::apply(value.backward,{-tag.v});
+    }
+};
+static_assert(!is_default_constructible_v<bidirectional<monoid>::node>);
+
+void check_monoids(bool base){
+    using P=bidirectional<text_monoid>;
+    int n=base+2;vector<P::node> input(n+1,P::id());
+    input[base]=P::lift("ab");input[base+1]=P::lift("cd");input[n]=P::lift("E");
+    _seg<P> tree(n,base);tree.make(input);
+    CHECK(tree.query(base,n).forward=="abcdE");CHECK(tree.query(base,n).backward=="Ecdab");
+    CHECK(tree.query(base,base+1).forward=="abcd");CHECK(tree.query(base,base+1).backward=="cdab");
+    CHECK(tree.max_right(base,[](const auto&v){return v.forward.size()<=2;})==base);
+    CHECK(tree.query(n+1,n).forward.empty());CHECK(tree.query(n+1,n).backward.empty());
+    tree.set(base+1,{"F","R"});
+    CHECK(tree.query(base,n).forward=="abFE");CHECK(tree.query(base,n).backward=="ERab");
+    CHECK(tree.min_left(n,[](const auto&v){return v.forward.size()<=2;})==base+1);
+    tree.make(vector<P::node>{});CHECK(tree.query(base,n).forward.empty());
+    tree.make(input);CHECK(tree.query(base,n).backward=="Ecdab");
+    using M=bidirectional<matrix_monoid>;
+    _seg<M> matrix(base+1,base);
+    matrix.set(base,M::lift({1,1,0,1}));matrix.set(base+1,M::lift({1,0,1,1}));
+    auto result=matrix.query(base,base+1);
+    CHECK((result.forward==matrix_monoid::node{2,1,1,1}));
+    CHECK((result.backward==matrix_monoid::node{1,1,1,2}));
+    CHECK(matrix.query(base+2,base+1).forward==matrix_monoid::id());
+    using S=bidirectional<monoid>;
+    _seg<S> costs(base+1,base);costs.set(base,{{3},{-3}});costs.set(base+1,{{5},{-5}});
+    CHECK(costs.query(base,base+1).forward.v==8);CHECK(costs.query(base,base+1).backward.v==-8);
+    _seg<S> empty(base-1,base);CHECK(empty.query(base,base).forward.v==0);
+}
+void check_actions(bool base){
+    using A=bidirectional_action<text_action>;
+    int n=base+2;vector<A::node> input(n+1,A::id());
+    input[base]=A::lift({"ab",1});input[base+1]=A::lift({"cd",1});input[n]=A::lift({"E",1});
+    _prop<A> tree(n,base);tree.make(input);
+    CHECK(tree.query(base,n).forward.text=="abcdE");CHECK(tree.query(base,n).backward.text=="Ecdab");
+    tree.update(base,base+1,{true,'X'});
+    CHECK(tree.query(base,n).forward.text=="XXE");CHECK(tree.query(base,n).backward.text=="EXX");
+    tree.update(base+1,n,{true,'Y'});
+    CHECK(tree.query(base,n).forward.text=="XYY");CHECK(tree.query(base,n).backward.text=="YYX");
+    tree.update(base,n,A::lz_id());CHECK(tree.query(base,n).forward.text=="XYY");
+    CHECK(tree.query(base,n).forward.sz==3);CHECK(tree.query(base,n).backward.sz==3);
+    CHECK(tree.query(n+1,n).forward.sz==0);CHECK(tree.query(n+1,n).backward.sz==0);
+    tree.clear(n,base);CHECK(tree.query(base,n).forward.text=="xxx");
+    tree.make(vector<A::node>{});CHECK(tree.query(base,n).backward.text.empty());
+    using Add=bidirectional_action<action>;
+    vector<Add::node> costs{Add::id(),{{3,1},{-3,1}},{{5,1},{-5,1}}};
+    _prop<Add> uniform{span<const Add::node>(costs)};uniform.update(1,2,{2});
+    CHECK(uniform.query(1,2).forward.v==12);CHECK(uniform.query(1,2).backward.v==-4);
+    _prop<signed_action> directed{span<const signed_action::node>(costs)};directed.update(1,2,{2});
+    CHECK(directed.query(1,2).forward.v==12);CHECK(directed.query(1,2).backward.v==-12);
+    directed.update(1,2,{-2});CHECK(directed.query(1,2).forward.v==8);CHECK(directed.query(1,2).backward.v==-8);
+    _prop<Add> zero(n,base);zero.update(base,n,{3});
+    CHECK(zero.query(base,n).forward.v==9);CHECK(zero.query(base,n).backward.v==9);
+    CHECK(zero.query(base,n).forward.sz==3);CHECK(zero.query(base,n).backward.sz==3);
+}
+void run(){for(bool base:{false,true}){check_monoids(base);check_actions(base);}}
+}
+
 int main(){
     int failures = 0;
-    for(auto [name,test]:vector<pair<string,void(*)()>>{{"lazy_equality",check_lazy_equality},{"factory_construction",check_factory_construction},{"default_lazy",check_default_lazy},{"explicit_id",check_explicit_id},
+    for(auto [name,test]:vector<pair<string,void(*)()>>{{"bidirectional",bidirectional_checks::run},{"lazy_equality",check_lazy_equality},{"factory_construction",check_factory_construction},{"default_lazy",check_default_lazy},{"explicit_id",check_explicit_id},
         {"affine",check_affine},{"hash_defaults",check_hash_defaults},{"hash_operations",check_hash_operations}}){
         try{test();cout<<"PASS "<<name<<'\n';}catch(const exception& e){++failures;cerr<<"FAIL "<<name<<": "<<e.what()<<'\n';}
     }

@@ -1,0 +1,30 @@
+{
+  "action": {
+    "prefix": ">>action",
+    "body": [
+      "struct action{",
+      "    struct node {",
+      "        ll v; int sz;",
+      "        node(ll v, int sz = 1) : v(v), sz(sz){}",
+      "    };",
+      "    struct lazy{",
+      "        ll v;",
+      "        lazy(ll v) : v(v){}",
+      "        bool operator==(const lazy&) const = default;",
+      "    };",
+      "    static node id(){ return {0, 0}; }",
+      "    static node leaf(){ return {0, 1}; }",
+      "    static lazy lz_id(){ return {0}; }",
+      "    static node op(const node& l, const node& r){",
+      "        return node{",
+      "            l.v + r.v,",
+      "            l.sz + r.sz",
+      "        };",
+      "    }",
+      "    static void apply(node& seg, const lazy& lz){ seg.v += lz.v * seg.sz; }",
+      "    static void compose(lazy& s, const lazy& p){ s.v += p.v; }",
+      "};"
+    ],
+    "description": "Standalone sum-add lazy action policy; already included in >>prop."
+  }
+}

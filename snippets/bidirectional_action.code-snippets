@@ -1,0 +1,18 @@
+{
+  "bidirectional_action": {
+    "prefix": ">>bidirectional_action",
+    "body": [
+      "template <class P>",
+      "struct bidirectional_action : bidirectional<P>{",
+      "    using node = typename bidirectional<P>::node;",
+      "    using lazy = typename P::lazy;",
+      "    static lazy lz_id(){ return P::lz_id(); }",
+      "    static void apply(node& value, const lazy& tag){",
+      "        P::apply(value.forward, tag); P::apply(value.backward, tag);",
+      "    }",
+      "    static void compose(lazy& old, const lazy& next){ P::compose(old, next); }",
+      "};"
+    ],
+    "description": "Forward/backward lazy action adapter; requires >>bidirectional and the original action policy."
+  }
+}
