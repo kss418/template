@@ -10,64 +10,72 @@ constexpr ll INF = 0x3f3f3f3f3f3f3f3f;
 constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 
 namespace alphabet {
-class lowercase {
-public:
-    static constexpr int size = 26;
-    static constexpr int encode(unsigned char c){
-        assert('a' <= c && c <= 'z');
-        return c - 'a';
-    }
-    static constexpr unsigned char decode(int i){
-        assert(0 <= i && i < size);
-        return 'a' + i;
-    }
-};
-class digits {
-public:
-    static constexpr int size = 10;
-    static constexpr int encode(unsigned char c){
-        assert('0' <= c && c <= '9');
-        return c - '0';
-    }
-    static constexpr unsigned char decode(int i){
-        assert(0 <= i && i < size);
-        return '0' + i;
-    }
-};
-class alnum {
-public:
-    static constexpr int size = 62;
-    static constexpr int encode(unsigned char c){
-        if('0' <= c && c <= '9') return c - '0';
-        if('A' <= c && c <= 'Z') return 10 + c - 'A';
-        assert('a' <= c && c <= 'z');
-        return 36 + c - 'a';
-    }
-    static constexpr unsigned char decode(int i){
-        assert(0 <= i && i < size);
-        if(i < 10) return '0' + i;
-        if(i < 36) return 'A' + i - 10;
-        return 'a' + i - 36;
-    }
-};
-class bytes {
-public:
-    static constexpr int size = 256;
-    static constexpr int encode(unsigned char c){ return c; }
-    static constexpr unsigned char decode(int i){
-        assert(0 <= i && i < size);
-        return static_cast<unsigned char>(i);
-    }
-};
+    class lowercase{
+    public:
+        static constexpr int size = 26;
+        static constexpr int encode(unsigned char c){
+            return c - 'a';
+        }
+        static constexpr unsigned char decode(int i){
+            return 'a' + i;
+
+        }
+    };
+
+    class uppercase{
+    public:
+        static constexpr int size = 26;
+        static constexpr int encode(unsigned char c){
+            return c - 'A';
+        }
+        static constexpr unsigned char decode(int i){
+            return 'A' + i;
+        }
+    };
+
+    class digits{
+    public:
+        static constexpr int size = 10;
+        static constexpr int encode(unsigned char c){
+            return c - '0';
+        }
+        static constexpr unsigned char decode(int i){
+            return '0' + i;
+        }
+    };
+
+    class alnum{
+    public:
+        static constexpr int size = 62;
+        static constexpr int encode(unsigned char c){
+            if('0' <= c && c <= '9') return c - '0';
+            if('A' <= c && c <= 'Z') return 10 + c - 'A';
+            return 36 + c - 'a';
+        }
+        static constexpr unsigned char decode(int i){
+            if(i < 10) return '0' + i;
+            if(i < 36) return 'A' + i - 10;
+            return 'a' + i - 36;
+        }
+    };
+
+    class bytes{
+    public:
+        static constexpr int size = 256;
+        static constexpr int encode(unsigned char c){ return c; }
+        static constexpr unsigned char decode(int i){
+            return static_cast<unsigned char>(i);
+        }
+    };
 }
 
-template <int M, class Alphabet = alphabet::lowercase>
+template <class Alphabet = alphabet::lowercase>
 class _trie { // 0-based index
 private:
-    vector <array<int, M>> adj;
+    vector <array<int, Alphabet::size>> adj;
     vector <int> cnt, pass;
     int new_node(){
-        adj.push_back(array<int, M>{}); cnt.push_back(0); pass.push_back(0);
+        adj.push_back(array<int, Alphabet::size>{}); cnt.push_back(0); pass.push_back(0);
         return (int)adj.size() - 1;
     }
     vector <int> tf(const string& s) const{
@@ -79,7 +87,6 @@ private:
     int get_state(span<const int> v) const{
         int cur = 0;
         for(auto& c : v){
-            assert(0 <= c && c < M);
             if (!adj[cur][c]) return -1;
             cur = adj[cur][c];
         }
@@ -98,7 +105,6 @@ public:
     void insert(span<const int> v){ // O(|v|)
         int cur = 0; pass[cur]++;
         for(auto &c : v){
-            assert(0 <= c && c < M);
             if(!adj[cur][c]) adj[cur][c] = new_node();
             cur = adj[cur][c]; pass[cur]++;
         }
@@ -122,11 +128,10 @@ public:
     int prefix_count(span<const int> v) const { return prefix_count(get_state(v)); } // O(|v|)
     int prefix_count(int state) const{ return (state == -1 ? 0 : pass[state]); } // O(1)
 
-    int rank(const string& s) const{ auto v = tf(s); return rank(v); } // O(|s| * m)
-    int rank(span<const int> v) const{ // O(|v| * m)
+    int rank(const string& s) const{ auto v = tf(s); return rank(v); } // O(|s| * Alphabet::size)
+    int rank(span<const int> v) const{ // O(|v| * Alphabet::size)
         int ret = 0, cur = 0;
         for(auto& c : v){
-            assert(0 <= c && c < M);
             ret += cnt[cur];
             for(int x = 0;x < c;x++){
                 int nxt = adj[cur][x];
@@ -138,13 +143,13 @@ public:
         return ret;
     }
 
-    vector <int> kth(int k) const{ // O(max_len * m)
+    vector <int> kth(int k) const{ // O(max_len * Alphabet::size)
         if(k <= 0 || k > pass[0]) return {};
         vector <int> ret; int cur = 0;
         while(1){
             if(k <= cnt[cur]) break;
             k -= cnt[cur];
-            for(int c = 0;c < M;c++){
+            for(int c = 0;c < Alphabet::size;c++){
                 int nxt = adj[cur][c];
                 if(!nxt) continue;
                 if(pass[nxt] >= k){
@@ -159,7 +164,6 @@ public:
 
     int go(int state, int c) const{ // O(1)
         if(state < 0 || state >= (int)adj.size()) return -1;
-        assert(0 <= c && c < M);
         int nxt = adj[state][c];
         return nxt ? nxt : -1;
     }
@@ -268,10 +272,10 @@ public:
     }
 };
 
-template <int M = 26, class Alphabet = alphabet::lowercase>
+template <class Alphabet = alphabet::lowercase>
 class _ac{
 private:
-    vector <array<int, M>> adj;
+    vector <array<int, Alphabet::size>> adj;
     vector<int> cnt, terminal_count, f, dep, dict;
     vector <bool> end; bool built;
     vector <int> tf(const string& s) const{
@@ -281,7 +285,7 @@ private:
     }
 
     int new_node(){
-        adj.push_back(array<int, M>{}); f.push_back(0); cnt.push_back(0); terminal_count.push_back(0);
+        adj.push_back(array<int, Alphabet::size>{}); f.push_back(0); cnt.push_back(0); terminal_count.push_back(0);
         end.push_back(0); dict.push_back(0); dep.push_back(0);
         return (int)adj.size() - 1;
     }
@@ -304,7 +308,6 @@ public:
     void insert(span<const int> v){ // O(|v|)
         int cur = 0;
         for(auto &c : v){
-            assert(0 <= c && c < M);
             int nxt = adj[cur][c];
             if(!nxt || dep[nxt] != dep[cur] + 1){
                 nxt = new_node();
@@ -316,14 +319,14 @@ public:
         end[cur] = 1; terminal_count[cur]++;
     }
     
-    void build(){ // O(max_node * m)
+    void build(){ // O(max_node * Alphabet::size)
         cnt = terminal_count; fill(all(f), 0); fill(all(dict), 0);
-        for(int cur = 0; cur < (int)adj.size(); ++cur) for(int c = 0; c < M; ++c){
+        for(int cur = 0; cur < (int)adj.size(); ++cur) for(int c = 0; c < Alphabet::size; ++c){
             int nxt = adj[cur][c];
             if(nxt && dep[nxt] != dep[cur] + 1) adj[cur][c] = 0;
         }
         built = 1; deque <int> q;
-        for(int c = 0;c < M;c++){
+        for(int c = 0;c < Alphabet::size;c++){
             int nxt = adj[0][c];
             if(!nxt) continue;
             f[nxt] = 0; dict[nxt] = 0; q.push_back(nxt);
@@ -333,7 +336,7 @@ public:
             int cur = q.front(); q.pop_front();
             cnt[cur] += cnt[f[cur]];
             dict[cur] = end[f[cur]] ? f[cur] : dict[f[cur]];
-            for(int c = 0;c < M;c++){
+            for(int c = 0;c < Alphabet::size;c++){
                 int nxt = adj[cur][c];
                 if(!nxt) adj[cur][c] = adj[f[cur]][c];
                 else{
@@ -352,7 +355,6 @@ public:
     }
 
     int go(int state, int c) const{ // O(1)
-        assert(0 <= c && c < M);
         return adj[state][c];
     }
 
@@ -362,7 +364,6 @@ public:
     void it_state(span<const int> v, const F& f) const{ // O(|v|)
         int cur = 0;
         for(auto& c : v){
-            assert(0 <= c && c < M);
             cur = go(cur, c), f(cur);
         }
     }

@@ -178,6 +178,11 @@ public:
 };
 class span_only_alphabet {
 public:
+    static constexpr int size=3;
+    static int encode(unsigned char)=delete;
+};
+class sparse_span_only_alphabet {
+public:
     static int encode(unsigned char)=delete;
 };
 template<class A>
@@ -190,7 +195,7 @@ void check_alphabet_trie(){
     for(int i=0;i<A::size;i++){
         unsigned char c=A::decode(i);CHECK(!seen[c]);seen[c]=1;CHECK(A::encode(c)==i);
     }
-    automata::_trie<A::size,A> tree;tree.reserve(1024);
+    automata::_trie<A> tree;tree.reserve(1024);
     vector<string> words{"",""};
     for(int i=0;i<A::size;i++)words.push_back(string(1,char(A::decode(i))));
     mt19937 rng(431+A::size);
@@ -227,7 +232,7 @@ void check_alphabet_trie(){
 
 template<class A>
 void check_alphabet_ac(){
-    automata::_ac<A::size,A> dense,dense_span;
+    automata::_ac<A> dense,dense_span;
     automata::_sparse_ac<int,A> sparse,sparse_span;
     vector<string> patterns;string text;
     for(int i=0;i<A::size;i++){
@@ -268,24 +273,25 @@ void check_alphabet_ac(){
 void check_alphabets(){
     using namespace automata;
     static_assert(alphabet::lowercase::encode('a')==0&&alphabet::lowercase::encode('z')==25);
+    static_assert(alphabet::uppercase::encode('A')==0&&alphabet::uppercase::encode('Z')==25);
     static_assert(alphabet::digits::encode('0')==0&&alphabet::digits::encode('9')==9);
     static_assert(alphabet::alnum::encode('A')==10&&alphabet::alnum::encode('a')==36);
     static_assert(alphabet::bytes::encode(0)==0&&alphabet::bytes::encode(255)==255);
-    check_alphabet_trie<alphabet::lowercase>();check_alphabet_trie<alphabet::digits>();
+    check_alphabet_trie<alphabet::lowercase>();check_alphabet_trie<alphabet::uppercase>();check_alphabet_trie<alphabet::digits>();
     check_alphabet_trie<alphabet::alnum>();check_alphabet_trie<alphabet::bytes>();check_alphabet_trie<reverse_alphabet>();
-    check_alphabet_ac<alphabet::lowercase>();check_alphabet_ac<alphabet::digits>();
+    check_alphabet_ac<alphabet::lowercase>();check_alphabet_ac<alphabet::uppercase>();check_alphabet_ac<alphabet::digits>();
     check_alphabet_ac<alphabet::alnum>();check_alphabet_ac<alphabet::bytes>();check_alphabet_ac<reverse_alphabet>();
-    _trie<62,alphabet::alnum> mixed;mixed.insert("a");CHECK(mixed.count("A")==0);CHECK(mixed.count("0")==0);
-    _trie<26,folded_alphabet> folded;folded.insert("Ab");CHECK(folded.count("aB")==1);
-    _trie<3,span_only_alphabet> numeric;vector<int> word{2,0,1};numeric.insert(span<const int>(word));
+    _trie<alphabet::alnum> mixed;mixed.insert("a");CHECK(mixed.count("A")==0);CHECK(mixed.count("0")==0);
+    _trie<folded_alphabet> folded;folded.insert("Ab");CHECK(folded.count("aB")==1);
+    _trie<span_only_alphabet> numeric;vector<int> word{2,0,1};numeric.insert(span<const int>(word));
     CHECK(numeric.count(span<const int>(word))==1);CHECK(numeric.kth(1)==word);
-    _ac<3,span_only_alphabet> d;_sparse_ac<int,span_only_alphabet> s;
+    _ac<span_only_alphabet> d;_sparse_ac<int,span_only_alphabet> s;
     d.insert(span<const int>(word));s.insert(span<const int>(word));d.build();s.build();
     CHECK(d.count(span<const int>(word))==1);CHECK(s.count(span<const int>(word))==1);
-    vector<int> arbitrary{-200,1000,-7};_sparse_ac<int,span_only_alphabet> arbitrary_sparse;
+    vector<int> arbitrary{-200,1000,-7};_sparse_ac<int,sparse_span_only_alphabet> arbitrary_sparse;
     arbitrary_sparse.insert(span<const int>(arbitrary));arbitrary_sparse.build();CHECK(arbitrary_sparse.count(span<const int>(arbitrary))==1);
     _sparse_ac<> raw;raw.insert("a");raw.build();CHECK(raw.count("aA0")==1);
-    _trie<26> legacy;legacy.insert("ab");CHECK(legacy.count("ab")==1);
+    _trie<> legacy;legacy.insert("ab");CHECK(legacy.count("ab")==1);
     _ac<> legacy_ac;legacy_ac.insert("ab");legacy_ac.build();CHECK(legacy_ac.count("abab")==2);
 }
 

@@ -90,6 +90,9 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
   only when explicitly requested by the user.
 - Do not leave blank lines immediately before public/protected/private access
   sections or class/struct closing braces. Keep ordinary spacing between methods.
+- Follow manually edited layout in touched regions. Alphabet policies use four-space
+  indentation inside the namespace, attached class opening braces, and a blank line
+  between sibling class definitions; preserve those line breaks when editing them.
 - C++17/20/23 as used in the repo (follow existing).
 - Keep headers minimal; prefer `#include <bits/stdc++.h>` if the repo standard uses it.
 - Use consistent type aliases/macros as already present.
@@ -262,25 +265,27 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
   has_inv and Fenwick implementations/snippets intact when changing the PST APIs.
 
 ## Alphabet policies
-- Shared `alphabet::lowercase`, `digits`, `alnum`, and `bytes` policies provide
-  constexpr size, encode(unsigned char), and decode(int). Lowercase orders a-z;
-  digits orders 0-9; alnum orders 0-9, then A-Z, then a-z; bytes orders unsigned
+- Shared `alphabet::lowercase`, `uppercase`, `digits`, `alnum`, and `bytes` policies
+  provide constexpr size, encode(unsigned char), and decode(int). Lowercase orders
+  a-z; uppercase orders A-Z; digits orders 0-9; alnum orders 0-9, then A-Z, then a-z; bytes orders unsigned
   values 0-255, including NUL and high bytes. Built-in policies are injective.
-- Keep `_trie<int M,class Alphabet=alphabet::lowercase>` and
-  `_ac<int M=26,class Alphabet=alphabet::lowercase>` first template arguments
-  compatible. M is the capacity of direct integer labels, not an automatic alphabet
-  selector: mixed case/digits require explicitly selecting alnum even when M=62.
-  String encodings must lie in [0,M); custom numeric-only uses may choose M
-  independently of the built-in policy size.
+- `_trie<class Alphabet=alphabet::lowercase>` and
+  `_ac<class Alphabet=alphabet::lowercase>` use Alphabet::size directly for dense
+  arrays and traversal bounds. Do not add a separate int M template argument or
+  cached M constant. Encoded strings and direct numeric labels must lie in
+  [0,Alphabet::size); numeric-only dense policies also provide constexpr size.
 - `_sparse_ac<class T=ll,class Alphabet=alphabet::bytes>` retains its original
   raw-byte default. Selecting the same policy gives dense and sparse structures
   the same string-to-symbol interpretation; sparse T must distinguish encoded
-  labels after conversion. Custom string policies need static encode(unsigned char);
-  size/decode are conveniences supplied by the built-ins, not numeric-span requirements.
+  labels after conversion. Custom string policies need static encode(unsigned char).
+  decode is optional for custom policies; sparse numeric-only input needs neither
+  size nor an encoder, while dense numeric-only input still needs size.
 - String overloads encode through unsigned char before passing labels to the
   algorithm. Default lowercase does not fold uppercase or digits. Unsupported
-  characters violate the alphabet/bounds precondition; do not silently alias them.
+  characters are outside the alphabet/bounds contract; callers provide valid inputs.
   Intentional case folding can be supplied as an explicit custom policy.
+- Do not add assert calls to alphabet policies, Trie or dense AC. Alphabet and label
+  validity are caller preconditions, without replacement runtime checks or guards.
 - Existing span<const int> trie/dense-AC input and span<const T> sparse-AC input
   remain direct, unencoded symbol sequences. go() likewise takes an encoded label.
   Numeric-only use must not instantiate or call an encoder, even if it is deleted.
