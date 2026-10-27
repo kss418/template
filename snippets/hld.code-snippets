@@ -34,7 +34,6 @@
     "        }",
     "        out[cur] = cnt - 1;",
     "    }",
-    "",
     "public:",
     "    _hld(int n = 0, int m = 0, bool base = 1){ clear(n, m, base); } // O(n)",
     "    void clear(int n, int m = 0, bool base = 1){ // O(n)",
@@ -85,7 +84,6 @@
     "        if(l <= r) f(l, r, rev);",
     "        for(auto it = tail.rbegin();it != tail.rend();++it) f(it->first, it->second, 0);",
     "    }",
-    "",
     "};"
   ],
   "description": "hld"

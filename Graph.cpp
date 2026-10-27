@@ -454,7 +454,6 @@ public:
     void it_group(int cid, const F& f) const{ // O(n)
         for(auto& cur : group[cid]) f(cur);
     }
-
 };
 
 class _scc_dag : public _scc {

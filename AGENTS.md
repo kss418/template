@@ -88,6 +88,8 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
   Preserve the public API when converting an existing struct.
 - Add only time-complexity code comments by default. Add other code comments
   only when explicitly requested by the user.
+- Do not leave blank lines immediately before public/protected/private access
+  sections or class/struct closing braces. Keep ordinary spacing between methods.
 - C++17/20/23 as used in the repo (follow existing).
 - Keep headers minimal; prefer `#include <bits/stdc++.h>` if the repo standard uses it.
 - Use consistent type aliases/macros as already present.

@@ -297,7 +297,6 @@ private:
         }
         out[cur] = cnt - 1;
     }
-
 public:
     _hld(int n = 0, int m = 0, bool base = 1){ clear(n, m, base); } // O(n)
     void clear(int n, int m = 0, bool base = 1){ // O(n)
@@ -348,7 +347,6 @@ public:
         if(l <= r) f(l, r, rev);
         for(auto it = tail.rbegin();it != tail.rend();++it) f(it->first, it->second, 0);
     }
-
 };
 
 template<class P>
@@ -531,12 +529,10 @@ public:
     using node = typename policy::node;
     node op(const node& l, const node& r) const{ return policy::op(l, r); }
     node id() const{ return policy::id(); }
-
 protected:
     vector <int> lv, rv;
     vector <node> seg;
     int n;
-
 private:
     int clone(int idx){
         int l = lv[idx], r = rv[idx];
@@ -586,8 +582,6 @@ private:
         if(ret > m + 1) return ret;
         return bisect(lv[idx], s, m, p, right, f, v);
     }
-
-
 public:
     _pst(int n = 0, bool base = 1){ clear(n, base); }
 
@@ -631,7 +625,6 @@ public:
         node v = id();
         return bisect(rt, base, n, r, 0, f, v);
     }
-
 };
 
 template<class policy = group> requires has_inv<policy>
@@ -674,7 +667,6 @@ private:
         if(ret > m + 1) return ret;
         return bisect_diff(lv[idx1], lv[idx2], s, m, p, right, f, v);
     }
-
 public:
     _pst_diff(int n = 0, bool base = 1) : tree(n, base){}
 

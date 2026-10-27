@@ -62,7 +62,6 @@
       "        if(ret > m + 1) return ret;",
       "        return bisect_diff(lv[idx1], lv[idx2], s, m, p, right, f, v);",
       "    }",
-      "",
       "public:",
       "    _pst_diff(int n = 0, bool base = 1) : tree(n, base){}",
       "",

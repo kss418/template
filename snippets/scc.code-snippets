@@ -58,7 +58,6 @@
     "    void it_group(int cid, const F& f) const{ // O(n)",
     "        for(auto& cur : group[cid]) f(cur);",
     "    }",
-    "",
     "};"
   ],
   "description": "scc"

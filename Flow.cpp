@@ -279,5 +279,4 @@ public:
     pair<F, C> build(int st, int en, F limit = FINF){
         reset(); return augment(st, en, limit);
     }
-
 };
