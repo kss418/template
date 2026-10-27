@@ -36,7 +36,7 @@
   - Virtual Tree (`_vtree`)
   - Binary Lifting Table (`_st`)
   - MST (`_mst`)
-  - SCC (`_scc`)
+  - SCC / Condensation DAG (`_scc`, `_scc_dag`)
   - 2-SAT (`_2sat`)
   - Bipartite Matching (`_bm`)
   - Hungarian Algorithm (`_hungarian`)

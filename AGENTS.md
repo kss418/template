@@ -204,3 +204,28 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
   assuming constant-time policy values and operations.
 - Keep `>>lca` topology-only. `>>lca_path` contains the default path policy and
   aggregation extension and requires expanding `>>lca` first.
+
+## SCC and condensation DAG
+- `_scc` computes component IDs/groups and exposes component/group queries plus
+  `it_cid`, `it_all`, and `it_group`. Keep DAG state and operations out of this
+  base class; 2-SAT continues to use `_scc` alone with unchanged SCC numbering.
+- `_scc_dag` publicly extends `_scc`. Its build recomputes SCCs and then caches
+  deduplicated condensation edges in both directions, indegrees/outdegrees, and
+  Kahn traversal orders for both orientations. Exclude intra-component/self edges;
+  parallel original edges produce only one edge per ordered component pair.
+- External vertices follow `[base,n]` with default `bool base = 1`; component IDs
+  and all DAG vector indices are always zero-based `[0,comp_cnt()-1]`.
+  `dag()`, `ind()`, and `outd()` return const references to cached forward adjacency,
+  indegree, and outdegree vectors in O(1). Their contents are replaced by build/clear.
+- `it_dag(f)` traverses cached forward edges. `it_top<REV=true>(merge,done)` uses
+  the cached Kahn order and selected adjacency, with done(cur) before its outgoing
+  merge(cur,nxt) calls. REV=false follows forward edges; the default REV=true follows
+  reversed edges. Preserve the previous FIFO Kahn tie order in both directions.
+  Neither traversal reconstructs a graph or recomputes degrees/topological order;
+  each takes O(k+e), where k is the component count and e the condensed edge count.
+- After addsol, rebuild through the extension before querying any derived result.
+  Base clear/build invoked through an upcast bypasses DAG caches and is unsupported.
+  Queries before build or after modifying input before rebuilding remain UB;
+  do not add lifecycle guards or automatic rebuilds.
+- `>>scc` contains only the base class. `>>scc_dag` requires `>>scc`; `>>2sat`
+  continues to require only `>>scc` and must not depend on the DAG extension.

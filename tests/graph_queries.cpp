@@ -237,6 +237,90 @@ void check_lca_paths(bool base, int mode, unsigned seed){
     tree.clear(2,!base); tree.add(!base,2,value()); tree.build();
     CHECK(tree.ret(!base,2)==!base); CHECK(tree.dist(!base,2)==1);
 }
+template<class T>
+concept has_scc_dag = requires(const T& g){ g.ind(); g.outd(); g.it_dag([](int,int){}); };
+static_assert(!has_scc_dag<graphs::_scc>);
+static_assert(has_scc_dag<graphs::_scc_dag>);
+static_assert(is_base_of_v<graphs::_scc,graphs::_scc_dag>);
+static_assert(is_same_v<decltype(declval<const graphs::_scc_dag&>().ind()),const vector<int>&>);
+static_assert(is_same_v<decltype(declval<const graphs::_scc_dag&>().outd()),const vector<int>&>);
+static_assert(is_same_v<decltype(declval<const graphs::_scc_dag&>().dag()),const vector<vector<int>>&>);
+
+void check_scc_dag(bool base,unsigned seed){
+    mt19937 rng(seed);int count=1+rng()%12,n=base+count-1;
+    graphs::_scc plain(n,base);graphs::_scc_dag graph(n,base);
+    vector<vector<int>> input(n+1);
+    auto add=[&](int a,int b){plain.addsol(a,b);graph.addsol(a,b);input[a].push_back(b);};
+    for(int a=base;a<=n;a++)for(int b=base;b<=n;b++)if(rng()%7==0){
+        add(a,b);if(rng()%2)add(a,b);
+    }
+    auto verify=[&]{
+        plain.build();graph.build();const auto& g=graph;int k=g.comp_cnt();
+        CHECK(k==plain.comp_cnt());
+        vector<vector<bool>> reach(n+1,vector<bool>(n+1,0));
+        for(int a=base;a<=n;a++){reach[a][a]=1;for(int b:input[a])reach[a][b]=1;}
+        for(int m=base;m<=n;m++)for(int a=base;a<=n;a++)for(int b=base;b<=n;b++)reach[a][b]=reach[a][b]||(reach[a][m]&&reach[m][b]);
+        vector<int> seen(n+1,0),ids,all_vertices;
+        g.it_cid([&](int cid){ids.push_back(cid);});
+        CHECK((int)ids.size()==k);for(int i=0;i<k;i++)CHECK(ids[i]==i);
+        g.it_all([&](int v){all_vertices.push_back(v);seen[v]++;});
+        CHECK((int)all_vertices.size()==count);
+        vector<vector<int>> expected(k),reverse(k);vector<int> indegree(k,0),outdegree(k,0),mark(k,-1);
+        for(int cid=0;cid<k;cid++){
+            vector<int> members;g.it_group(cid,[&](int v){members.push_back(v);});
+            CHECK((int)members.size()==g.group_size(cid));CHECK(!members.empty());CHECK(g.root(cid)==members[0]);
+            for(int a:members){
+                CHECK(g.component(a)==cid);
+                for(int b:input[a]){
+                    int dest=g.component(b);
+                    if(dest==cid||mark[dest]==cid)continue;
+                    mark[dest]=cid;expected[cid].push_back(dest);reverse[dest].push_back(cid);indegree[dest]++;outdegree[cid]++;
+                }
+            }
+        }
+        for(int a=base;a<=n;a++){
+            CHECK(seen[a]==1);CHECK(g.component(a)==plain.component(a));
+            for(int b=base;b<=n;b++)CHECK(g.same(a,b)==(reach[a][b]&&reach[b][a]));
+        }
+        const auto* stored_ind=&g.ind();const auto* stored_out=&g.outd();const auto* stored_dag=&g.dag();
+        for(int repeat=0;repeat<3;repeat++){
+            CHECK(&g.ind()==stored_ind);CHECK(&g.outd()==stored_out);CHECK(&g.dag()==stored_dag);
+            CHECK(g.ind()==indegree);CHECK(g.outd()==outdegree);CHECK(g.dag()==expected);
+            vector<pair<int,int>> edges,expected_edges;
+            g.it_dag([&](int a,int b){edges.push_back({a,b});});
+            for(int a=0;a<k;a++)for(int b:expected[a])expected_edges.push_back({a,b});
+            CHECK(edges==expected_edges);
+            auto check_top=[&]<bool REV>(){
+                const auto& adj=REV?reverse:expected;auto degree=REV?outdegree:indegree;
+                deque<int> q;for(int v=0;v<k;v++)if(!degree[v])q.push_back(v);
+                vector<pair<int,int>> reference,actual;
+                while(!q.empty()){
+                    int cur=q.front();q.pop_front();reference.push_back({cur,-1});
+                    for(int nxt:adj[cur]){reference.push_back({cur,nxt});if(!--degree[nxt])q.push_back(nxt);}
+                }
+                g.it_top<REV>([&](int a,int b){actual.push_back({a,b});},[&](int v){actual.push_back({v,-1});});
+                CHECK(actual==reference);
+                int done=0;for(auto [a,b]:actual)if(b==-1)done++;CHECK(done==k);
+                if constexpr(REV){
+                    vector<pair<int,int>> defaults;
+                    g.it_top([&](int a,int b){defaults.push_back({a,b});},[&](int v){defaults.push_back({v,-1});});
+                    CHECK(defaults==actual);
+                }
+            };
+            check_top.template operator()<false>();check_top.template operator()<true>();
+        }
+    };
+    verify();verify();
+    for(int v=base;v<n;v++)add(v,v+1);verify();
+    add(n,base);verify();CHECK(graph.comp_cnt()==1);CHECK(graph.dag()==vector<vector<int>>(1));
+    graph.clear(0,base);graph.build();graph.build();
+    CHECK(graph.comp_cnt()==(!base));CHECK(graph.ind()==vector<int>(!base,0));CHECK(graph.outd()==vector<int>(!base,0));
+    int calls=0;graph.it_dag([&](int,int){calls++;});CHECK(calls==0);
+    graph.it_top([&](int,int){calls++;},[&](int){calls++;});CHECK(calls==(!base));
+    graph.clear(1,!base);graph.build();CHECK(graph.comp_cnt()==2-int(!base));
+    graph.addsol(!base,1);graph.build();CHECK(graph.component(!base)>=0);
+}
+
 int main(){
     try {
         for(bool base : {false,true}){ check_bcc(base); check_cycles(base); check_lca_order(base); check_lca_numeric(base); }
@@ -244,7 +328,8 @@ int main(){
             check_lca_paths<lca_text>(base,mode,seed);
             check_lca_paths<lca_matrix>(base,mode,seed);
         }
-        cout << "PASS " << checks << " graph-result/directional-LCA checks\n";
+        for(bool base:{false,true})for(unsigned seed=1;seed<=24;seed++)check_scc_dag(base,seed);
+        cout << "PASS " << checks << " graph/LCA/SCC checks\n";
         return 0;
     } catch(const exception& e){ cerr << "FAIL " << e.what() << '\n'; return 1; }
 }
