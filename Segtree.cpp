@@ -265,19 +265,13 @@ public:
     int min_left(int r, const F& f){  return bisect(r, 0, f); } // O(log n)
 };
 
-template <class P>
-concept is_action = requires(P s, int l, int r, const typename P::lazy& z){ s.update(l, r, z); };
-
-template <class policy>
 class _hld {
+protected:
     bool base;
-public:
-    using node = typename policy::node;
-    policy seg;
+    vector<vector<int>> adj, tmp;
+    vector<int> sz, top, d, in, out, p, at;
+    int n, m, cnt = 0;
 private:
-    vector <vector <int>> adj, tmp;
-    vector <int> sz, top, d, in, out, p;
-    int n, m, cnt = 0; bool built = 0;
     void build_tree(int cur, int pre = -1){
         for(auto& nxt : tmp[cur]){
             if(pre == nxt) continue;
@@ -296,7 +290,7 @@ private:
     }
 
     void dfs2(int cur){
-        in[cur] = cnt++;
+        in[cur] = cnt++; at[in[cur]] = cur;
         for(auto& nxt : adj[cur]){
             top[nxt] = (nxt == adj[cur][0] ? top[cur] : nxt);
             dfs2(nxt);
@@ -305,45 +299,32 @@ private:
     }
 
 public:
-    _hld(int n = 0, int m = 0, bool base = 1){ clear(n, m, base); }
-    void clear(int n, int m = 0, bool base = 1){
+    _hld(int n = 0, int m = 0, bool base = 1){ clear(n, m, base); } // O(n)
+    void clear(int n, int m = 0, bool base = 1){ // O(n)
         this->n = n; this->base = base; this->m = m; cnt = 0;
-        adj.assign(n + 1, {}); tmp.assign(n + 1, {}); 
+        adj.assign(n + 1, {}); tmp.assign(n + 1, {});
         top.assign(n + 1, -1); d.assign(n + 1, 0);
         in.assign(n + 1, 0); out.assign(n + 1, 0);
-        p.assign(n + 1, -1); sz.assign(n + 1, 0);
-        if constexpr (requires(policy& s){ s.clear(n, 0); }) seg.clear(n, 0);
-        else seg.clear(n);
-        built = 0;
+        p.assign(n + 1, -1); sz.assign(n + 1, 0); at.assign(n + 1, -1);
     }
 
-    void addsol(int s, int e){ tmp[s].push_back(e); }
-    void add(int s, int e){ addsol(s, e); addsol(e, s); }
-    void build(){
-        vector<node> values;
-        if(built){
-            values.assign(n + 1, seg.id());
-            for(int v = base; v <= n; ++v) values[v] = seg.query(in[v], in[v]);
-        }
+    void addsol(int s, int e){ tmp[s].push_back(e); } // O(1)
+    void add(int s, int e){ addsol(s, e); addsol(e, s); } // O(1)
+    void build(){ // O(n)
         cnt = 0; adj.assign(n + 1, {});
         fill(all(sz), 0); fill(all(top), -1); fill(all(d), 0);
-        fill(all(in), 0); fill(all(out), 0); fill(all(p), -1);
-        for(int i = base;i <= n;i++){
-            if(sz[i]) continue; top[i] = i;
-            build_tree(i); dfs1(i); dfs2(i);
+        fill(all(in), 0); fill(all(out), 0); fill(all(p), -1); fill(all(at), -1);
+        for(int i = base; i <= n; i++){
+            if(sz[i]) continue;
+            top[i] = i; build_tree(i); dfs1(i); dfs2(i);
         }
-        if(built){
-            vector<node> ordered(n + 1, seg.id());
-            for(int v = base; v <= n; ++v) ordered[in[v]] = values[v];
-            if constexpr (requires(policy& s, span<const node> a){ s.make(a); }) seg.make(ordered);
-            else {
-                if constexpr (requires(policy& s){ s.clear(n, 0); }) seg.clear(n, 0);
-                else seg.clear(n);
-                for(int v = base; v <= n; ++v) seg.set(in[v], values[v]);
-            }
-        }
-        built = 1;
     }
+
+    int index(int v) const{ return in[v]; } // O(1)
+    int vertex(int i) const{ return at[i]; } // O(1)
+    int parent(int v) const{ return p[v]; } // O(1)
+    int depth(int v) const{ return d[v]; } // O(1)
+    pair<int,int> subtree(int v) const{ return {in[v] + m, out[v]}; } // O(1)
 
     template<class F>
     void it_path(int st, int en, const F& f) const{ // O(log n)
@@ -368,6 +349,47 @@ public:
         for(auto it = tail.rbegin();it != tail.rend();++it) f(it->first, it->second, 0);
     }
 
+};
+
+template<class P>
+concept is_action = requires(P s, int l, int r, const typename P::lazy& z){ s.update(l, r, z); };
+
+template<class backend>
+class _hld_path : public _hld {
+public:
+    using node = typename backend::node;
+    backend seg;
+private:
+    bool built = 0;
+    void reset_seg(){
+        if constexpr (requires(backend& s){ s.clear(n, 0); }) seg.clear(n, 0);
+        else seg.clear(n);
+    }
+public:
+    _hld_path(int n = 0, int m = 0, bool base = 1) : _hld(n, m, base){ reset_seg(); }
+    void clear(int n, int m = 0, bool base = 1){
+        _hld::clear(n, m, base); reset_seg(); built = 0;
+    }
+
+    void build(){
+        vector<node> values;
+        if(built){
+            values.assign(n + 1, seg.id());
+            for(int v = base; v <= n; ++v) values[v] = seg.query(in[v], in[v]);
+        }
+        _hld::build();
+        if(built){
+            vector<node> ordered(n + 1, seg.id());
+            for(int v = base; v <= n; ++v) ordered[in[v]] = values[v];
+            if constexpr (requires(backend& s, span<const node> a){ s.make(a); }) seg.make(ordered);
+            else {
+                reset_seg();
+                for(int v = base; v <= n; ++v) seg.set(in[v], values[v]);
+            }
+        }
+        built = 1;
+    }
+
     node query(int x){
         return seg.query(in[x], in[x]);
     }
@@ -384,27 +406,27 @@ public:
         return ret;
     }
 
-    node query_sub(int x){ return seg.query(in[x] + m, out[x]); }
+    node query_sub(int x){ auto [l, r] = subtree(x); return seg.query(l, r); }
     void set(int x, const node& v)
-        requires requires(policy s, int i, const node& nv){ s.set(i, nv); }
+        requires requires(backend s, int i, const node& nv){ s.set(i, nv); }
     { seg.set(in[x], v); }
 
     void update(int x, const node& v)
-        requires requires(policy s, int i, const node& nv){ s.update(i, nv); }
+        requires requires(backend s, int i, const node& nv){ s.update(i, nv); }
     { seg.update(in[x], v); }
 
-    template<class P = policy>
+    template<class P = backend>
     void update(int st, int en, const typename P::lazy& lz)
         requires is_action<P>
     {
         it_path(st, en, [&](int l, int r, bool){ seg.update(l, r, lz); });
     }
 
-    template<class P = policy>
+    template<class P = backend>
     void update_sub(int x, const typename P::lazy& lz)
         requires is_action<P>
-    { seg.update(in[x] + m, out[x], lz); }
-}; 
+    { auto [l, r] = subtree(x); seg.update(l, r, lz); }
+};
 
 struct mt_policy {
     struct node {

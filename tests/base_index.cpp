@@ -84,14 +84,14 @@ void check_sets(bool base){
 void check_graphs(bool base){
     int n=4, first=base, count=n-first+1;
     graphs::_lca lca(n,base);graphs::_lca_path<lift_sum> weighted(n,base);
-    range_templates::_hld<range_templates::_seg<>> hld(n,0,base);
+    range_templates::_hld_path<range_templates::_seg<>> hld(n,0,base);
     graphs::_vtree vt(n,base);graphs::_mst<> mst(n,base);
     for(int i=first;i<n;++i){lca.add(i,i+1);weighted.add(i,i+1,1);hld.add(i,i+1);vt.add(i,i+1);mst.add(i,i+1,1);}
     lca.build();weighted.build();hld.build();vt.build();
     CHECK(lca.depth(first)==0);CHECK(lca.ancestor(n,n-first)==first);CHECK(lca.ret(first,n)==first);CHECK(lca.dist(first,n)==n-first);
     CHECK(weighted.query(first,n).v==n-first);CHECK(vt.dist_tree(first,n)==n-first);CHECK(vt.make({first,n}).front()==first);
     for(int i=first;i<=n;++i)hld.set(i,{1});CHECK(hld.query(first,n).v==count);CHECK(hld.query_sub(first).v==count);
-    range_templates::_hld<range_templates::_seg<>> edge_hld(n,1,base);
+    range_templates::_hld_path<range_templates::_seg<>> edge_hld(n,1,base);
     for(int i=first;i<n;++i)edge_hld.add(i,i+1);
     edge_hld.build();edge_hld.set(first,{99});for(int i=first+1;i<=n;++i)edge_hld.set(i,{2});
     CHECK(edge_hld.query(first,n).v==2*(count-1));CHECK(edge_hld.query_sub(first).v==2*(count-1));
@@ -132,7 +132,7 @@ void check_defaults(){
     graphs::_2sat sat;CHECK(sat.build());graphs::_bm bm;CHECK(bm.build()==0);
     graphs::_hungarian<> assignment;CHECK(assignment.build()==0);
     graphs::_lca lca;lca.build();graphs::_vtree vt;vt.build();CHECK(vt.make({}).empty());
-    range_templates::_hld<range_templates::_seg<>> hld;hld.build();
+    range_templates::_hld_path<range_templates::_seg<>> hld;hld.build();
     range_templates::_mt<> single(0,0);single.update(0,{3});CHECK(single.eq(0,0,{3})==1);
     vector<range_templates::monoid::node> empty;
     range_templates::_seg<> seg(span<const range_templates::monoid::node>(empty),0);CHECK(seg.query(0,0).v==0);

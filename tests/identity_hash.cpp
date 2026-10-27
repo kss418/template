@@ -160,7 +160,7 @@ void check_affine(){
                 CHECK(tree.query(l,r).v == want); CHECK(tree.query(l,r).sz == r-l+1);
             }
         }
-        range_templates::_hld<range_templates::_prop<>> hld(n,0,base);
+        range_templates::_hld_path<range_templates::_prop<>> hld(n,0,base);
         for(int i=base;i<n;++i)hld.add(i,i+1);hld.build();hld.update(base,n,{3});
         CHECK(hld.query(base,n).v == 21); CHECK(hld.query(base,n).sz == 7);
         hld.build(); CHECK(hld.query(base,n).v == 21); CHECK(hld.query(base,n).sz == 7);
@@ -339,7 +339,7 @@ vector<int> storage_vertices(const H& h,int count,int base){
 void check_hld_order(bool base){
     using P=bidirectional<text_monoid>;
     const int count=7,n=base+count-1;auto adj=sample_tree();
-    _hld<_seg<P>> h(n,0,base);add_edges(h,adj,base);h.build();
+    _hld_path<_seg<P>> h(n,0,base);add_edges(h,adj,base);h.build();
     vector<string> values{"A","bc","D","ef","G","hi","J"};
     for(int v=0;v<count;++v)h.set(v+base,P::lift(values[v]));
     auto at=storage_vertices(h,count,base);
@@ -360,9 +360,9 @@ void check_hld_order(bool base){
         }
     };
     verify();values[3]="XYZ";h.set(base+3,P::lift(values[3]));verify();h.build();at=storage_vertices(h,count,base);verify();
-    _hld<_seg<>> sum(n,0,base);add_edges(sum,adj,base);sum.build();for(int v=0;v<count;++v)sum.set(v+base,{v+1});
+    _hld_path<_seg<>> sum(n,0,base);add_edges(sum,adj,base);sum.build();for(int v=0;v<count;++v)sum.set(v+base,{v+1});
     for(int st=0;st<count;++st)for(int en=0;en<count;++en){long long expected=0;for(int v:path_vertices(adj,st,en))expected+=v+1;CHECK(sum.query(st+base,en+base).v==expected);}
-    using M=bidirectional<matrix_monoid>;_hld<_seg<M>> matrix(n,0,base);add_edges(matrix,adj,base);matrix.build();
+    using M=bidirectional<matrix_monoid>;_hld_path<_seg<M>> matrix(n,0,base);add_edges(matrix,adj,base);matrix.build();
     vector<matrix_monoid::node> matrices(count,matrix_monoid::id());
     for(int v=0;v<count;++v){matrices[v]=v%2?matrix_monoid::node{1,0,1,1}:matrix_monoid::node{1,1,0,1};matrix.set(v+base,M::lift(matrices[v]));}
     for(int st=0;st<count;++st)for(int en=0;en<count;++en){
@@ -374,7 +374,7 @@ void check_hld_order(bool base){
 }
 void check_hld_edges(bool base){
     using P=bidirectional<text_monoid>;const int count=7,n=base+count-1;auto adj=sample_tree();
-    _hld<_seg<P>> vertex(n,0,base),edge(n,1,base);add_edges(vertex,adj,base);add_edges(edge,adj,base);vertex.build();edge.build();
+    _hld_path<_seg<P>> vertex(n,0,base),edge(n,1,base);add_edges(vertex,adj,base);add_edges(edge,adj,base);vertex.build();edge.build();
     auto at=storage_vertices(vertex,count,base);vector<int> parent(count,-1);
     for(int v=1;v<count;++v){auto path=path_vertices(adj,0,v);parent[v]=path[path.size()-2];edge.set(v+base,{"d"+to_string(v),"u"+to_string(v)});}
     edge.set(base,{"ROOT-F","ROOT-B"});
@@ -394,7 +394,7 @@ void check_hld_edges(bool base){
 }
 void check_hld_lazy(bool base){
     using P=bidirectional_action<text_action>;const int count=7,n=base+count-1;auto adj=sample_tree();
-    _hld<_prop<P>> h(n,0,base);add_edges(h,adj,base);h.build();vector<char> values(count,'x');mt19937 rng(927);
+    _hld_path<_prop<P>> h(n,0,base);add_edges(h,adj,base);h.build();vector<char> values(count,'x');mt19937 rng(927);
     for(int round=0;round<30;++round){
         int st=rng()%count,en=rng()%count;char c='A'+rng()%4;h.update(st+base,en+base,{true,c});
         for(int v:path_vertices(adj,st,en))values[v]=c;
@@ -406,7 +406,7 @@ void check_hld_lazy(bool base){
             CHECK(result.forward.sz==(int)path.size());CHECK(result.backward.sz==(int)path.size());
         }
     }
-    _hld<_prop<signed_action>> edge(n,1,base);add_edges(edge,adj,base);edge.build();vector<long long> weights(count,0);vector<int> parent(count,-1);
+    _hld_path<_prop<signed_action>> edge(n,1,base);add_edges(edge,adj,base);edge.build();vector<long long> weights(count,0);vector<int> parent(count,-1);
     for(int v=1;v<count;++v){auto path=path_vertices(adj,0,v);parent[v]=path[path.size()-2];}
     for(int round=0;round<25;++round){
         int st=rng()%count,en=rng()%count;long long delta=(int)(rng()%9)-4;auto path=path_vertices(adj,st,en);
@@ -428,14 +428,130 @@ void check_hld_lazy(bool base){
 void check_hld_forest(bool base){
     using P=bidirectional<text_monoid>;int count=8,n=base+count-1;vector<vector<int>> adj(count);
     auto add=[&](int a,int b){adj[a].push_back(b);adj[b].push_back(a);};add(0,1);add(1,2);add(3,4);add(4,5);
-    _hld<_seg<P>> h(n,0,base);add_edges(h,adj,base);h.build();vector<string> values;
+    _hld_path<_seg<P>> h(n,0,base);add_edges(h,adj,base);h.build();vector<string> values;
     for(int v=0;v<count;++v){values.push_back("["+to_string(v)+"]");h.set(v+base,P::lift(values[v]));}
     auto verify=[&]{for(int a=0;a<count;++a)for(int b=0;b<count;++b){auto path=path_vertices(adj,a,b);if(path.empty())continue;
         string expected;for(int v:path)expected+=values[v];CHECK(h.query(a+base,b+base).forward==expected);}};
     verify();for(auto [a,b]:vector<pair<int,int>>{{2,3},{0,6},{6,7}}){add(a,b);h.add(a+base,b+base);}h.build();verify();h.build();verify();
-    _hld<_seg<P>> empty(0,0,base);empty.build();
+    _hld_path<_seg<P>> empty(0,0,base);empty.build();
 }
-void check_hld_direction(){for(bool base:{false,true}){check_hld_order(base);check_hld_edges(base);check_hld_lazy(base);check_hld_forest(base);}}
+template<class H>
+concept owns_hld_backend = requires(H& h){ h.seg; };
+static_assert(!owns_hld_backend<_hld>);
+static_assert(owns_hld_backend<_hld_path<_seg<>>>);
+static_assert(is_base_of_v<_hld,_hld_path<_seg<>>>);
+
+class point_backend {
+public:
+    using node = monoid::node;
+    vector<node> values;
+    node id() const{ return monoid::id(); }
+    node op(const node& a,const node& b) const{ return monoid::op(a,b); }
+    void clear(int n){ values.assign(n+1,id()); }
+    void set(int i,const node& v){ values[i]=v; }
+    node query(int l,int r) const{
+        node result=id();
+        for(int i=l;i<=r;i++) result=op(result,values[i]);
+        return result;
+    }
+};
+
+void check_hld_parts(bool base,int mode,unsigned seed){
+    mt19937 rng(seed);int count=1+rng()%20,n=base+count-1;
+    _hld plain(n,mode,base);_hld_path<_seg<>> wrapped(n,mode,base);
+    vector<vector<int>> adj(count);
+    auto add=[&](int a,int b){
+        if(seed%2){plain.addsol(a+base,b+base);wrapped.addsol(a+base,b+base);}
+        else{plain.add(a+base,b+base);wrapped.add(a+base,b+base);}
+        adj[a].push_back(b);adj[b].push_back(a);
+    };
+    for(int v=1;v<count;v++)if(rng()%4)add(rng()%v,v);
+    plain.build();wrapped.build();
+    for(int v=0;v<count;v++)wrapped.set(v+base,{v+1});
+    auto verify=[&]{
+        vector<int> parent(count,-1),depth(count,-1),comp(count,-1);
+        for(int root=0;root<count;root++)if(depth[root]==-1){
+            queue<int> q;q.push(root);depth[root]=0;comp[root]=root;
+            while(!q.empty()){
+                int cur=q.front();q.pop();
+                for(int v:adj[cur])if(depth[v]==-1){parent[v]=cur;depth[v]=depth[cur]+1;comp[v]=root;q.push(v);}
+            }
+        }
+        const auto& view=plain;
+        vector<int> seen(count,0);
+        for(int v=0;v<count;v++){
+            int i=view.index(v+base);CHECK(i>=0&&i<count);CHECK(!seen[i]);seen[i]=1;
+            CHECK(view.vertex(i)==v+base);CHECK(wrapped.index(v+base)==i);CHECK(wrapped.vertex(i)==v+base);
+            CHECK(view.parent(v+base)==(parent[v]==-1?-1:parent[v]+base));CHECK(view.depth(v+base)==depth[v]);
+            CHECK(wrapped.parent(v+base)==view.parent(v+base));CHECK(wrapped.depth(v+base)==depth[v]);
+            auto [l,r]=view.subtree(v+base);CHECK(l==i+mode);CHECK(r<count);
+            CHECK(wrapped.subtree(v+base)==make_pair(l,r));
+            vector<int> expected,actual;
+            for(int w=0;w<count;w++){
+                int cur=w;while(cur!=-1&&cur!=v)cur=parent[cur];
+                if(cur==v&&(!mode||w!=v))expected.push_back(w);
+            }
+            for(int k=l;k<=r;k++)actual.push_back(view.vertex(k)-base);
+            sort(actual.begin(),actual.end());CHECK(actual==expected);
+            long long total=0;for(int w:expected)total+=w+1;
+            CHECK(wrapped.query_sub(v+base).v==total);
+        }
+        for(int st=0;st<count;st++)for(int en=0;en<count;en++)if(comp[st]==comp[en]){
+            auto path=path_vertices(adj,st,en);vector<int> expected;
+            if(!mode)expected=path;
+            else for(int i=1;i<(int)path.size();i++)expected.push_back(parent[path[i]]==path[i-1]?path[i]:path[i-1]);
+            vector<int> actual;vector<tuple<int,int,bool>> intervals,other;
+            view.it_path(st+base,en+base,[&](int l,int r,bool rev){
+                CHECK(l>=0&&l<=r&&r<count);intervals.push_back({l,r,rev});
+                if(rev)for(int i=r;i>=l;i--)actual.push_back(view.vertex(i)-base);
+                else for(int i=l;i<=r;i++)actual.push_back(view.vertex(i)-base);
+            });
+            wrapped.it_path(st+base,en+base,[&](int l,int r,bool rev){other.push_back({l,r,rev});});
+            CHECK(actual==expected);CHECK(intervals==other);
+            long long total=0;for(int v:expected)total+=v+1;
+            CHECK(wrapped.query(st+base,en+base).v==total);
+        }
+    };
+    verify();plain.build();wrapped.build();verify();
+    vector<int> roots;for(int v=1;v<count;v++)if(plain.parent(v+base)==-1)roots.push_back(v);
+    for(int root:roots)add(0,root);
+    plain.build();wrapped.build();verify();
+    plain.clear(0,mode,base);wrapped.clear(0,mode,base);plain.build();wrapped.build();
+    if(!base){CHECK(plain.index(0)==0);CHECK(plain.vertex(0)==0);CHECK(wrapped.query(0,0).v==0);}
+    plain.clear(1,mode,!base);wrapped.clear(1,mode,!base);plain.build();wrapped.build();
+    CHECK(plain.vertex(plain.index(!base))==!base);
+}
+
+void check_hld_fallback(bool base){
+    _hld_path<point_backend> h(base+3,0,base);
+    h.add(base,base+1);h.add(base+2,base+3);h.build();
+    for(int i=0;i<4;i++)h.set(base+i,{i+1});
+    h.add(base+1,base+3);h.build();CHECK(h.query(base,base+2).v==10);
+    h.build();for(int i=0;i<4;i++)CHECK(h.query(base+i).v==i+1);
+    h.clear(base+1,1,base);h.add(base,base+1);h.build();h.set(base+1,{7});
+    CHECK(h.query(base,base+1).v==7);CHECK(h.query_sub(base+1).v==0);
+}
+
+void check_hld_subtree(bool base,int mode){
+    auto adj=sample_tree();_hld_path<_prop<>> h(base+6,mode,base);
+    add_edges(h,adj,base);h.build();h.update_sub(base+1,{5});
+    vector<long long> values(7,0);
+    values[3]=values[4]=5;if(!mode)values[1]=5;
+    for(int v=0;v<7;v++)CHECK(h.query(v+base).v==values[v]);
+    CHECK(h.query_sub(base+1).v==(!mode?15:10));
+    h.build();h.update_sub(base+3,{2});if(!mode)values[3]+=2;
+    for(int v=0;v<7;v++)CHECK(h.query(v+base).v==values[v]);
+    long long expected=0;for(int v:path_vertices(adj,3,6))expected+=values[v];
+    CHECK(h.query(base+3,base+6).v==expected);
+}
+
+void check_hld_direction(){
+    for(bool base:{false,true}){
+        check_hld_order(base);check_hld_edges(base);check_hld_lazy(base);check_hld_forest(base);check_hld_fallback(base);
+        for(int mode=0;mode<2;mode++)check_hld_subtree(base,mode);
+        for(int mode=0;mode<2;mode++)for(unsigned seed=1;seed<=16;seed++)check_hld_parts(base,mode,seed);
+    }
+}
 
 void run(){for(bool base:{false,true}){check_monoids(base);check_actions(base);}}
 }

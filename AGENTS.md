@@ -130,17 +130,44 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
   Override `apply` when the problem requires direction-dependent updates.
   Its standalone snippet depends on the common bidirectional snippet.
 - Bidirectional nodes provide `node reversed() const` by swapping cached directions.
-  HLD `query(u,v)` folds segments in u-to-v order and invokes this hook on upward
+  `_hld_path::query(u,v)` folds segments in u-to-v order and invokes this hook on upward
   segments. Nodes without the hook retain the commutative-aggregation contract.
-- HLD `it_path(u,v,f)` emits inclusive zero-based backend ranges `(l,r,rev)` in
+- `_hld::it_path(u,v,f)` emits inclusive zero-based backend ranges `(l,r,rev)` in
   path order; `rev=1` means visit r down to l. Endpoints must be in one component.
   Vertex mode includes the LCA; edge mode stores each edge at its child and excludes
   the LCA/root dummy. Edge forward/backward values mean parent-to-child/child-to-parent.
   Vertex values should be direction-independent (use `lift`). Subtree queries keep
   backend DFS order rather than a path order.
-- Built-in HLD path updates apply the same tag in the backend's canonical orientation
+- `_hld_path` updates apply the same tag in the backend's canonical orientation
   to each segment. For updates relative to u-to-v direction, use `it_path` and map
   tags using its rev flag before calling the public backend's update function.
+
+## HLD decomposition and backends
+- `_hld` is a non-template decomposition-only class. Constructors and clear use
+  `(n,m=0,base=1)`, where m=0 selects vertices and m=1 selects child-stored edges.
+  It owns no backend, values, aggregation policy, or query/update operations.
+- After build, `index(v)` maps an external vertex to its zero-based DFS position;
+  `vertex(i)` is its inverse. `parent(v)` uses -1 for roots and `depth(v)` starts
+  at 0. Forest roots are the smallest active vertices, and directed input must
+  be reachable from those roots. Input must be a forest.
+- `subtree(v)` returns an inclusive `(l,r)` interval using the configured mode.
+  Vertex mode includes v; edge mode excludes v's slot. An edge-mode leaf returns
+  an empty interval with l>r. `it_path` retains endpoint order and the rev flag.
+- `_hld_path<backend>` publicly extends `_hld`, retains its decomposition APIs,
+  and owns public `seg` plus point/path/subtree queries and supported updates.
+  Only the extension manages backend values and preserves each logical vertex's
+  stored node across repeated build and supported input modifications. Edge values
+  remain indexed by the logical child slot, as before; users own any reinterpretation
+  needed when changing which vertex is the child of a particular edge.
+- Use the extension's own clear/build; invoking base mutators through an upcast
+  bypasses backend handling and is unsupported. Base-only build recomputes numbering;
+  external backends attached manually to `_hld` must be remapped by their owner.
+- Backend storage remains zero-based. Prefer clear(n,0), falling back to clear(n)
+  for backends that inherently use zero-based indices. Rebuild uses make(arr) when
+  available, otherwise clear plus point set; it always uses backend id() for padding.
+  Lazy updates and direction reversal retain their existing capability requirements.
+- `>>hld` contains only the decomposition class. `>>hld_path` contains the backend
+  adapter and is_action concept and requires `>>hld` and the chosen backend snippet.
 
 ## LCA path aggregation
 - `_lca` is a non-template topology-only class. Use `_lca tree(n,base)` for

@@ -65,7 +65,7 @@
 - `Segtree.cpp`
   - Segment Tree (`_seg`)
   - Lazy Propagation (`_prop`)
-  - HLD (`_hld`)
+  - HLD / Path Operations (`_hld`, `_hld_path`)
   - Merge Sort Tree (`_mt`)
   - Fenwick Tree (`_fw`)
   - 2D Fenwick Tree (`_fw2d`)
