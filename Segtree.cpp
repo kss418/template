@@ -378,16 +378,18 @@ public:
             for(int v = base; v <= n; ++v) values[v] = seg.query(in[v], in[v]);
         }
         _hld::build();
-        if(built){
-            vector<node> ordered(n + 1, seg.id());
-            for(int v = base; v <= n; ++v) ordered[in[v]] = values[v];
-            if constexpr (requires(backend& s, span<const node> a){ s.make(a); }) seg.make(ordered);
-            else {
-                reset_seg();
-                for(int v = base; v <= n; ++v) seg.set(in[v], values[v]);
-            }
-        }
+        if(built) make(values);
         built = 1;
+    }
+
+    void make(span<const node> values){
+        vector<node> ordered(n + 1, seg.id());
+        for(int v = base; v <= n && v < (int)values.size(); ++v) ordered[in[v]] = values[v];
+        if constexpr (requires(backend& s, span<const node> a){ s.make(a); }) seg.make(ordered);
+        else {
+            reset_seg();
+            for(int v = base; v <= n; ++v) seg.set(in[v], ordered[in[v]]);
+        }
     }
 
     node query(int x){

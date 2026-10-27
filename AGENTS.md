@@ -162,6 +162,14 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
 - Use the extension's own clear/build; invoking base mutators through an upcast
   bypasses backend handling and is unsupported. Base-only build recomputes numbering;
   external backends attached manually to `_hld` must be remapped by their owner.
+- `_hld_path::make(arr)` replaces stored nodes using external vertex indices:
+  arr[v] belongs to vertex v, and base=1 skips arr[0]. It requires a fresh topology
+  build, with UB before build or after modifying edges before rebuilding; add no
+  lifecycle checks or automatic build. It preserves topology, n, mode, and base.
+  Unlike array-only templates, HLD make does not resize the graph to match input:
+  missing vertices get backend id(), excess input is ignored, and empty input
+  resets values to identity. Supplied nodes are used verbatim, including root
+  dummy slots in edge mode. Use the same remapping/loading logic during rebuild.
 - Backend storage remains zero-based. Prefer clear(n,0), falling back to clear(n)
   for backends that inherently use zero-based indices. Rebuild uses make(arr) when
   available, otherwise clear plus point set; it always uses backend id() for padding.

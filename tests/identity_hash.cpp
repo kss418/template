@@ -545,10 +545,72 @@ void check_hld_subtree(bool base,int mode){
     CHECK(h.query(base+3,base+6).v==expected);
 }
 
+void check_hld_make(bool base,int mode){
+    auto adj=sample_tree();int n=base+6;
+    _hld_path<_seg<>> h(n,mode,base);add_edges(h,adj,base);h.build();
+    vector<monoid::node> values(n+3,monoid::id());
+    for(int i=0;i<(int)values.size();i++)values[i]={100+i};
+    h.make(values);
+    for(int v=base;v<=n;v++)CHECK(h.query(v).v==values[v].v);
+    for(int st=0;st<7;st++)for(int en=0;en<7;en++){
+        auto path=path_vertices(adj,st,en);long long expected=0;
+        if(!mode)for(int v:path)expected+=values[v+base].v;
+        else for(int i=1;i<(int)path.size();i++){
+            int a=path[i-1]+base,b=path[i]+base;
+            expected+=values[h.parent(b)==a?b:a].v;
+        }
+        CHECK(h.query(st+base,en+base).v==expected);
+    }
+    h.build();for(int v=base;v<=n;v++)CHECK(h.query(v).v==values[v].v);
+    vector<monoid::node> short_values{{77},{88}};h.make(short_values);
+    for(int v=base;v<=n;v++)CHECK(h.query(v).v==(v<2?short_values[v].v:0));
+    h.make(vector<monoid::node>{});
+    for(int v=base;v<=n;v++)CHECK(h.query(v).v==0);
+    h.make(values);h.build();for(int v=base;v<=n;v++)CHECK(h.query(v).v==values[v].v);
+
+    _hld_path<_prop<>> lazy(n,mode,base);add_edges(lazy,adj,base);lazy.build();
+    vector<action::node> a(n+1,action::leaf());for(int v=0;v<=n;v++)a[v]={v+10,1};
+    lazy.update(base,base+6,{100});lazy.make(a);
+    for(int v=base;v<=n;v++){CHECK(lazy.query(v).v==v+10);CHECK(lazy.query(v).sz==1);}
+    lazy.update_sub(base,{3});lazy.build();
+    for(int v=base;v<=n;v++)CHECK(lazy.query(v).v==v+10+(!mode||v!=base?3:0));
+    lazy.make(a);for(int v=base;v<=n;v++)CHECK(lazy.query(v).v==v+10);
+    lazy.make(vector<action::node>{});CHECK(lazy.query(base,base+6).v==0);CHECK(lazy.query(base,base+6).sz==0);
+
+    using P=bidirectional<text_monoid>;
+    _hld_path<_seg<P>> text(n,mode,base);add_edges(text,adj,base);text.build();
+    vector<P::node> words(n+1,P::id());
+    for(int v=base;v<=n;v++)words[v]=mode?P::node{"d"+to_string(v),"u"+to_string(v)}:P::lift("v"+to_string(v));
+    text.make(words);
+    for(int st=0;st<7;st++)for(int en=0;en<7;en++){
+        auto path=path_vertices(adj,st,en);string expected;
+        if(!mode)for(int v:path)expected+=words[v+base].forward;
+        else for(int i=1;i<(int)path.size();i++){
+            int a=path[i-1]+base,b=path[i]+base;
+            expected+=text.parent(b)==a?words[b].forward:words[a].backward;
+        }
+        CHECK(text.query(st+base,en+base).forward==expected);
+    }
+    text.build();for(int v=base;v<=n;v++)CHECK(text.query(v).forward==words[v].forward);
+
+    _hld_path<point_backend> fallback(base+3,mode,base);
+    fallback.add(base,base+1);fallback.add(base+2,base+3);fallback.build();fallback.make(values);
+    fallback.add(base+1,base+3);fallback.build();
+    for(int v=base;v<=base+3;v++)CHECK(fallback.query(v).v==values[v].v);
+    fallback.make(short_values);for(int v=base;v<=base+3;v++)CHECK(fallback.query(v).v==(v<2?short_values[v].v:0));
+    fallback.make(vector<monoid::node>{});CHECK(fallback.query(base,base+2).v==0);
+
+    h.clear(0,mode,base);h.build();h.make(values);h.make(vector<monoid::node>{});h.build();
+    if(!base){h.make(vector<monoid::node>{{9}});CHECK(h.query(0).v==9);}
+    h.clear(1,mode,!base);h.build();h.make(values);
+    CHECK(h.query(!base).v==values[!base].v);
+}
+
 void check_hld_direction(){
     for(bool base:{false,true}){
         check_hld_order(base);check_hld_edges(base);check_hld_lazy(base);check_hld_forest(base);check_hld_fallback(base);
         for(int mode=0;mode<2;mode++)check_hld_subtree(base,mode);
+        for(int mode=0;mode<2;mode++)check_hld_make(base,mode);
         for(int mode=0;mode<2;mode++)for(unsigned seed=1;seed<=16;seed++)check_hld_parts(base,mode,seed);
     }
 }
