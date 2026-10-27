@@ -523,20 +523,21 @@ struct group{
     }
 };
 
-template <class policy = group>
+template <class policy = monoid>
 class _pst{
+protected:
     bool base;
 public:
     using node = typename policy::node;
     node op(const node& l, const node& r) const{ return policy::op(l, r); }
     node id() const{ return policy::id(); }
-    node inv(const node& a) const requires has_inv<policy>{ return policy::inv(a); }
 
-private:
+protected:
     vector <int> lv, rv;
     vector <node> seg;
     int n;
 
+private:
     int clone(int idx){
         int l = lv[idx], r = rv[idx];
         node v = seg[idx];
@@ -565,10 +566,6 @@ private:
         return op(ln, rn);
     }
 
-    node diff_seg(int idx1, int idx2) const requires has_inv<policy>{
-        return op(seg[idx2], inv(seg[idx1]));
-    }
-
     template<class F>
     int bisect(int idx, int s, int e, int p, bool right, const F& f, node& v) const{
         if(right && e < p) return p - 1;
@@ -590,27 +587,6 @@ private:
         return bisect(lv[idx], s, m, p, right, f, v);
     }
 
-    template<class F>
-    int bisect_diff(int idx1, int idx2, int s, int e, int p, bool right, const F& f, node& v) const requires has_inv<policy>{
-        if(right && e < p) return p - 1;
-        if(!right && p < s) return p + 1;
-        if(!idx1 && !idx2) return right ? e : s;
-        if((right && p <= s) || (!right && e <= p)){
-            node diff = diff_seg(idx1, idx2);
-            node nxt = right ? op(v, diff) : op(diff, v);
-            if(f(nxt)){ v = nxt; return right ? e : s; }
-            if(s == e) return right ? s - 1 : s + 1;
-        }
-        int m = (s + e) >> 1;
-        if(right){
-            int ret = bisect_diff(lv[idx1], lv[idx2], s, m, p, right, f, v);
-            if(ret < m) return ret;
-            return bisect_diff(rv[idx1], rv[idx2], m + 1, e, p, right, f, v);
-        }
-        int ret = bisect_diff(rv[idx1], rv[idx2], m + 1, e, p, right, f, v);
-        if(ret > m + 1) return ret;
-        return bisect_diff(lv[idx1], lv[idx2], s, m, p, right, f, v);
-    }
 
 public:
     _pst(int n = 0, bool base = 1){ clear(n, base); }
@@ -640,16 +616,6 @@ public:
         return query(rt, base, n, l, r);
     }
 
-    node diff_get(int rt1, int rt2, int idx) const requires has_inv<policy>{
-        return diff_query(rt1, rt2, idx, idx);
-    }
-
-    node diff_query(int rt1, int rt2, int l, int r) const requires has_inv<policy>{
-        l = max((int)base, l); r = min(n, r);
-        if(l > r) return id();
-        return op(query(rt2, base, n, l, r), inv(query(rt1, base, n, l, r)));
-    }
-
     template<class F>
     int max_right(int rt, int l, const F& f) const{
         assert(base <= l && l <= n + 1); assert(f(id()));
@@ -666,8 +632,64 @@ public:
         return bisect(rt, base, n, r, 0, f, v);
     }
 
+};
+
+template<class policy = group> requires has_inv<policy>
+class _pst_diff : public _pst<policy> {
+private:
+    using tree = _pst<policy>;
+    using tree::base;
+    using tree::n;
+    using tree::lv;
+    using tree::rv;
+    using tree::seg;
+public:
+    using node = typename tree::node;
+    using tree::op;
+    using tree::id;
+    node inv(const node& a) const{ return policy::inv(a); }
+private:
+    node diff_seg(int idx1, int idx2) const{
+        return op(seg[idx2], inv(seg[idx1]));
+    }
+
     template<class F>
-    int diff_max_right(int rt1, int rt2, int l, const F& f) const requires has_inv<policy>{
+    int bisect_diff(int idx1, int idx2, int s, int e, int p, bool right, const F& f, node& v) const{
+        if(right && e < p) return p - 1;
+        if(!right && p < s) return p + 1;
+        if(!idx1 && !idx2) return right ? e : s;
+        if((right && p <= s) || (!right && e <= p)){
+            node diff = diff_seg(idx1, idx2);
+            node nxt = right ? op(v, diff) : op(diff, v);
+            if(f(nxt)){ v = nxt; return right ? e : s; }
+            if(s == e) return right ? s - 1 : s + 1;
+        }
+        int m = (s + e) >> 1;
+        if(right){
+            int ret = bisect_diff(lv[idx1], lv[idx2], s, m, p, right, f, v);
+            if(ret < m) return ret;
+            return bisect_diff(rv[idx1], rv[idx2], m + 1, e, p, right, f, v);
+        }
+        int ret = bisect_diff(rv[idx1], rv[idx2], m + 1, e, p, right, f, v);
+        if(ret > m + 1) return ret;
+        return bisect_diff(lv[idx1], lv[idx2], s, m, p, right, f, v);
+    }
+
+public:
+    _pst_diff(int n = 0, bool base = 1) : tree(n, base){}
+
+    node diff_get(int rt1, int rt2, int idx) const{
+        return diff_query(rt1, rt2, idx, idx);
+    }
+
+    node diff_query(int rt1, int rt2, int l, int r) const{
+        l = max((int)base, l); r = min(n, r);
+        if(l > r) return id();
+        return op(this->query(rt2, l, r), inv(this->query(rt1, l, r)));
+    }
+
+    template<class F>
+    int diff_max_right(int rt1, int rt2, int l, const F& f) const{
         assert(base <= l && l <= n + 1); assert(f(id()));
         if(l > n) return n;
         node v = id();
@@ -675,7 +697,7 @@ public:
     }
 
     template<class F>
-    int diff_min_left(int rt1, int rt2, int r, const F& f) const requires has_inv<policy>{
+    int diff_min_left(int rt1, int rt2, int r, const F& f) const{
         assert(base - 1 <= r && r <= n); assert(f(id()));
         if(r < base) return base;
         node v = id();

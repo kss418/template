@@ -69,7 +69,7 @@
   - Merge Sort Tree (`_mt`)
   - Fenwick Tree (`_fw`)
   - 2D Fenwick Tree (`_fw2d`)
-  - Persistent Segment Tree (`_pst`)
+  - Persistent Segment Tree / Version Difference (`_pst`, `_pst_diff`)
   - Bidirectional Adapters (`bidirectional`, `bidirectional_action`)
 - `Shortest_Path.cpp`
   - Dijkstra (`_dij`)

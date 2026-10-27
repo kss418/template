@@ -229,3 +229,32 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
   do not add lifecycle guards or automatic rebuilds.
 - `>>scc` contains only the base class. `>>scc_dag` requires `>>scc`; `>>2sat`
   continues to require only `>>scc` and must not depend on the DAG extension.
+
+## Persistent trees and version differences
+- `_pst<policy=monoid>` owns persistent node storage and set/get/query plus
+  max_right/min_left. Its policy needs associative op() and a two-sided id();
+  it may be noncommutative and need not provide inv() or leaf(). Keep inverse
+  and diff_* APIs out of the base. Root 0 represents all identities, independently
+  of the configured external index base; preserve old roots after every set.
+- `_pst_diff<policy=group>` publicly extends `_pst<policy>` and shares the same
+  node pool, root handles, creation, clear and ordinary read/search operations.
+  It adds inv, diff_get/diff_query and diff_max_right/diff_min_left. A single
+  class-level has_inv requirement checks the inverse signature; group laws remain
+  semantic requirements. Do not duplicate the tree storage or add feature flags.
+- Difference policies must be commutative groups: op must be associative and
+  commutative, id must be a two-sided identity, and inv must be a true inverse.
+  diff_query(a,b,l,r) means aggregate(b) op inv(aggregate(a)), equivalent to
+  aggregating pointwise version-b minus version-a differences under this contract.
+  Merely having an inv method does not establish these algebraic properties.
+- All boundary searches require f(id())=true and monotone acceptance as the
+  interval grows in the searched direction. Difference searches additionally need
+  this property for the chosen pointwise difference array. Nonnegative frequency
+  differences with a sum bound are a common valid case; chronological version
+  order alone does not guarantee it after arbitrary updates. Difference queries
+  themselves allow either root order, including negative sum differences.
+- Preserve inclusive external ranges, clipping and boundary sentinels for both
+  bases. Queries do not allocate or change persistent nodes. clear resets the shared
+  pool and invalidates old root handles; the extension owns no extra derived state.
+- `>>pst` bundles the default monoid and basic tree. `>>pst_diff` bundles has_inv,
+  the default group and the extension and requires `>>pst`. Keep shared group,
+  has_inv and Fenwick implementations/snippets intact when changing the PST APIs.

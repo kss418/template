@@ -59,7 +59,7 @@ void check_ranges(bool base){
     CHECK(seg.min_left(first,zero)==first+1);CHECK(seg.min_left(n,zero)==n+1);
     CHECK(prop.max_right(n,zero)==n-1);CHECK(prop.min_left(first,zero)==first+1);
     prop.update(first,n,{2});CHECK(prop.query(first,n).v==total+2*count);
-    range_templates::_pst<> pst(n,base);int root=0;
+    range_templates::_pst_diff<> pst(n,base);int root=0;
     for(int i=first;i<=n;++i)root=pst.set(root,i,{i+1});
     CHECK(pst.query(root,-5,n+5).v==total);CHECK(pst.query(0,first,n).v==0);
     CHECK(pst.diff_query(0,root,first,n).v==total);
