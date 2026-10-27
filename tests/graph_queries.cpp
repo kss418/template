@@ -290,24 +290,24 @@ void check_scc_dag(bool base,unsigned seed){
             g.it_dag([&](int a,int b){edges.push_back({a,b});});
             for(int a=0;a<k;a++)for(int b:expected[a])expected_edges.push_back({a,b});
             CHECK(edges==expected_edges);
-            auto check_top=[&]<bool REV>(){
-                const auto& adj=REV?reverse:expected;auto degree=REV?outdegree:indegree;
+            auto check_top=[&](bool rev){
+                const auto& adj=rev?reverse:expected;auto degree=rev?outdegree:indegree;
                 deque<int> q;for(int v=0;v<k;v++)if(!degree[v])q.push_back(v);
                 vector<pair<int,int>> reference,actual;
                 while(!q.empty()){
                     int cur=q.front();q.pop_front();reference.push_back({cur,-1});
                     for(int nxt:adj[cur]){reference.push_back({cur,nxt});if(!--degree[nxt])q.push_back(nxt);}
                 }
-                g.it_top<REV>([&](int a,int b){actual.push_back({a,b});},[&](int v){actual.push_back({v,-1});});
+                g.it_top([&](int a,int b){actual.push_back({a,b});},[&](int v){actual.push_back({v,-1});},rev);
                 CHECK(actual==reference);
                 int done=0;for(auto [a,b]:actual)if(b==-1)done++;CHECK(done==k);
-                if constexpr(REV){
+                if(rev){
                     vector<pair<int,int>> defaults;
                     g.it_top([&](int a,int b){defaults.push_back({a,b});},[&](int v){defaults.push_back({v,-1});});
                     CHECK(defaults==actual);
                 }
             };
-            check_top.template operator()<false>();check_top.template operator()<true>();
+            check_top(false);check_top(true);
         }
     };
     verify();verify();

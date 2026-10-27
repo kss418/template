@@ -217,9 +217,9 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
   and all DAG vector indices are always zero-based `[0,comp_cnt()-1]`.
   `dag()`, `ind()`, and `outd()` return const references to cached forward adjacency,
   indegree, and outdegree vectors in O(1). Their contents are replaced by build/clear.
-- `it_dag(f)` traverses cached forward edges. `it_top<REV=true>(merge,done)` uses
+- `it_dag(f)` traverses cached forward edges. `it_top(merge,done,rev=true)` uses
   the cached Kahn order and selected adjacency, with done(cur) before its outgoing
-  merge(cur,nxt) calls. REV=false follows forward edges; the default REV=true follows
+  merge(cur,nxt) calls. The runtime bool rev=false follows forward edges; default true follows
   reversed edges. Preserve the previous FIFO Kahn tie order in both directions.
   Neither traversal reconstructs a graph or recomputes degrees/topological order;
   each takes O(k+e), where k is the component count and e the condensed edge count.
