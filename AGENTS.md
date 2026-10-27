@@ -260,3 +260,33 @@ Prefer small, surgical diffs; avoid rewriting unrelated files.
 - `>>pst` bundles the default monoid and basic tree. `>>pst_diff` bundles has_inv,
   the default group and the extension and requires `>>pst`. Keep shared group,
   has_inv and Fenwick implementations/snippets intact when changing the PST APIs.
+
+## Alphabet policies
+- Shared `alphabet::lowercase`, `digits`, `alnum`, and `bytes` policies provide
+  constexpr size, encode(unsigned char), and decode(int). Lowercase orders a-z;
+  digits orders 0-9; alnum orders 0-9, then A-Z, then a-z; bytes orders unsigned
+  values 0-255, including NUL and high bytes. Built-in policies are injective.
+- Keep `_trie<int M,class Alphabet=alphabet::lowercase>` and
+  `_ac<int M=26,class Alphabet=alphabet::lowercase>` first template arguments
+  compatible. M is the capacity of direct integer labels, not an automatic alphabet
+  selector: mixed case/digits require explicitly selecting alnum even when M=62.
+  String encodings must lie in [0,M); custom numeric-only uses may choose M
+  independently of the built-in policy size.
+- `_sparse_ac<class T=ll,class Alphabet=alphabet::bytes>` retains its original
+  raw-byte default. Selecting the same policy gives dense and sparse structures
+  the same string-to-symbol interpretation; sparse T must distinguish encoded
+  labels after conversion. Custom string policies need static encode(unsigned char);
+  size/decode are conveniences supplied by the built-ins, not numeric-span requirements.
+- String overloads encode through unsigned char before passing labels to the
+  algorithm. Default lowercase does not fold uppercase or digits. Unsupported
+  characters violate the alphabet/bounds precondition; do not silently alias them.
+  Intentional case folding can be supplied as an explicit custom policy.
+- Existing span<const int> trie/dense-AC input and span<const T> sparse-AC input
+  remain direct, unencoded symbol sequences. go() likewise takes an encoded label.
+  Numeric-only use must not instantiate or call an encoder, even if it is deleted.
+- Trie rank returns the number of stored words strictly smaller in encoded-label
+  lexicographic order, including multiplicities. kth is 1-based and still returns
+  vector<int> labels; use Alphabet::decode to reconstruct characters. Empty words
+  precede their nonempty extensions. Numeric-span order remains integer-label order.
+- `>>alphabet` contains the shared policies. `>>trie`, `>>ac`, and `>>sparse_ac`
+  require it; preserve their existing triggers. XOR trie does not depend on it.

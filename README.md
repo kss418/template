@@ -1,9 +1,10 @@
 ## 알고리즘 위치 안내
 
 - `Automata.cpp`
+  - Alphabet Policies (`alphabet`)
   - Trie (`_trie`)
   - XOR Trie (`_xor_trie`)
-  - Aho–Corasick (`_ac`)
+  - Aho–Corasick (`_ac`, `_sparse_ac`)
 - `Combinatorics.cpp`
   - Combination Table (`_comb`)
   - Lucas's Theorem (`_lucas`)

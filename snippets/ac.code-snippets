@@ -2,7 +2,7 @@
   "ac": {
     "prefix": ">>ac",
     "body": [
-      "template <int M = 26>",
+      "template <int M = 26, class Alphabet = alphabet::lowercase>",
       "class _ac{",
       "private:",
       "    vector <array<int, M>> adj;",
@@ -10,11 +10,7 @@
       "    vector <bool> end; bool built;",
       "    vector <int> tf(const string& s) const{",
       "        vector <int> ret; ret.reserve(s.size());",
-      "        for(auto& i : s){",
-      "            if('a' <= i && i <= 'z') ret.push_back(i - 'a');",
-      "            else if('A' <= i && i <= 'Z') ret.push_back(i - 'A');",
-      "            else ret.push_back(i - '0');",
-      "        }",
+      "        for(unsigned char c : s) ret.push_back(Alphabet::encode(c));",
       "        return ret;",
       "    }",
       "",

@@ -2,7 +2,7 @@
   "sparse_ac": {
     "prefix": ">>sparse_ac",
     "body": [
-      "template <class T = ll>",
+      "template <class T = ll, class Alphabet = alphabet::bytes>",
       "class _sparse_ac{",
       "private:",
       "    vector <ll> cnt, terminal_count;",
@@ -44,7 +44,7 @@
       "",
       "    vector <T> tf(const string& s) const{",
       "        vector <T> ret; ret.reserve(s.size());",
-      "        for(unsigned char c : s) ret.push_back((T)c);",
+      "        for(unsigned char c : s) ret.push_back(static_cast<T>(Alphabet::encode(c)));",
       "        return ret;",
       "    }",
       "    ",

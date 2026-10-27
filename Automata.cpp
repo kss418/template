@@ -9,7 +9,59 @@ using pll = pair<ll, ll>; using tll = tuple<ll, ll, ll>;
 constexpr ll INF = 0x3f3f3f3f3f3f3f3f;
 constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 
-template <int M>
+namespace alphabet {
+class lowercase {
+public:
+    static constexpr int size = 26;
+    static constexpr int encode(unsigned char c){
+        assert('a' <= c && c <= 'z');
+        return c - 'a';
+    }
+    static constexpr unsigned char decode(int i){
+        assert(0 <= i && i < size);
+        return 'a' + i;
+    }
+};
+class digits {
+public:
+    static constexpr int size = 10;
+    static constexpr int encode(unsigned char c){
+        assert('0' <= c && c <= '9');
+        return c - '0';
+    }
+    static constexpr unsigned char decode(int i){
+        assert(0 <= i && i < size);
+        return '0' + i;
+    }
+};
+class alnum {
+public:
+    static constexpr int size = 62;
+    static constexpr int encode(unsigned char c){
+        if('0' <= c && c <= '9') return c - '0';
+        if('A' <= c && c <= 'Z') return 10 + c - 'A';
+        assert('a' <= c && c <= 'z');
+        return 36 + c - 'a';
+    }
+    static constexpr unsigned char decode(int i){
+        assert(0 <= i && i < size);
+        if(i < 10) return '0' + i;
+        if(i < 36) return 'A' + i - 10;
+        return 'a' + i - 36;
+    }
+};
+class bytes {
+public:
+    static constexpr int size = 256;
+    static constexpr int encode(unsigned char c){ return c; }
+    static constexpr unsigned char decode(int i){
+        assert(0 <= i && i < size);
+        return static_cast<unsigned char>(i);
+    }
+};
+}
+
+template <int M, class Alphabet = alphabet::lowercase>
 class _trie { // 0-based index
 private:
     vector <array<int, M>> adj;
@@ -18,13 +70,9 @@ private:
         adj.push_back(array<int, M>{}); cnt.push_back(0); pass.push_back(0);
         return (int)adj.size() - 1;
     }
-    vector <int> tf(const string& s) const{  
-        vector <int> ret;
-        for(auto& i : s){
-            if('a' <= i && i <= 'z') ret.push_back(i - 'a');
-            else if('A' <= i && i <= 'Z') ret.push_back(i - 'A');
-            else ret.push_back(i - '0');
-        }
+    vector <int> tf(const string& s) const{
+        vector <int> ret; ret.reserve(s.size());
+        for(unsigned char c : s) ret.push_back(Alphabet::encode(c));
         return ret;
     }
 
@@ -220,7 +268,7 @@ public:
     }
 };
 
-template <int M = 26>
+template <int M = 26, class Alphabet = alphabet::lowercase>
 class _ac{
 private:
     vector <array<int, M>> adj;
@@ -228,11 +276,7 @@ private:
     vector <bool> end; bool built;
     vector <int> tf(const string& s) const{
         vector <int> ret; ret.reserve(s.size());
-        for(auto& i : s){
-            if('a' <= i && i <= 'z') ret.push_back(i - 'a');
-            else if('A' <= i && i <= 'Z') ret.push_back(i - 'A');
-            else ret.push_back(i - '0');
-        }
+        for(unsigned char c : s) ret.push_back(Alphabet::encode(c));
         return ret;
     }
 
@@ -340,7 +384,7 @@ public:
     }
 };
 
-template <class T = ll>
+template <class T = ll, class Alphabet = alphabet::bytes>
 class _sparse_ac{
 private:
     vector <ll> cnt, terminal_count;
@@ -382,7 +426,7 @@ public:
 
     vector <T> tf(const string& s) const{
         vector <T> ret; ret.reserve(s.size());
-        for(unsigned char c : s) ret.push_back((T)c);
+        for(unsigned char c : s) ret.push_back(static_cast<T>(Alphabet::encode(c)));
         return ret;
     }
     

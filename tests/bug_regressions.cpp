@@ -163,11 +163,137 @@ void check_bcc_parallel(){
     }
 }
 
+class reverse_alphabet {
+public:
+    static constexpr int size=26;
+    static int encode(unsigned char c){return 25-(c-'a');}
+    static unsigned char decode(int i){return 'z'-i;}
+};
+class folded_alphabet : public automata::alphabet::lowercase {
+public:
+    static int encode(unsigned char c){
+        if('A'<=c&&c<='Z')c=c-'A'+'a';
+        return automata::alphabet::lowercase::encode(c);
+    }
+};
+class span_only_alphabet {
+public:
+    static int encode(unsigned char)=delete;
+};
+template<class A>
+vector<int> encoded(const string& s){
+    vector<int> result;for(unsigned char c:s)result.push_back(A::encode(c));return result;
+}
+template<class A>
+void check_alphabet_trie(){
+    vector<int> seen(256,0);
+    for(int i=0;i<A::size;i++){
+        unsigned char c=A::decode(i);CHECK(!seen[c]);seen[c]=1;CHECK(A::encode(c)==i);
+    }
+    automata::_trie<A::size,A> tree;tree.reserve(1024);
+    vector<string> words{"",""};
+    for(int i=0;i<A::size;i++)words.push_back(string(1,char(A::decode(i))));
+    mt19937 rng(431+A::size);
+    for(int i=0;i<35;i++){
+        string s;for(int j=0,len=rng()%5;j<len;j++)s+=char(A::decode(rng()%A::size));words.push_back(s);
+    }
+    multiset<vector<int>> expected;
+    for(const string& s:words){tree.insert(s);expected.insert(encoded<A>(s));}
+    auto verify=[&]{
+        CHECK(tree.size()==(int)expected.size());int k=1;
+        for(const auto& word:expected){CHECK(tree.kth(k)==word);k++;}
+        for(const string& s:words){
+            auto word=encoded<A>(s);
+            CHECK(tree.count(s)==(int)expected.count(word));CHECK(tree.count(span<const int>(word))==tree.count(s));
+            CHECK(tree.rank(s)==distance(expected.begin(),expected.lower_bound(word)));
+            CHECK(tree.rank(span<const int>(word))==tree.rank(s));
+            int prefixes=0;for(const auto& candidate:expected)if(candidate.size()>=word.size()&&equal(word.begin(),word.end(),candidate.begin()))prefixes++;
+            CHECK(tree.prefix_count(s)==prefixes);CHECK(tree.prefix_count(span<const int>(word))==prefixes);
+            int state=0;for(int c:word)state=tree.go(state,c);
+            CHECK(tree.count(state)==tree.count(s));CHECK(tree.prefix_count(state)==prefixes);
+        }
+    };
+    verify();
+    for(int i=0;i<(int)words.size();i+=3){
+        auto word=encoded<A>(words[i]);auto it=expected.find(word);CHECK(it!=expected.end());
+        CHECK(tree.erase(words[i]));expected.erase(it);
+    }
+    verify();
+    string missing(8,char(A::decode(0)));CHECK(!tree.erase(missing));
+    auto raw=encoded<A>(missing);tree.insert(span<const int>(raw));CHECK(tree.count(missing)==1);
+    CHECK(tree.erase(span<const int>(raw)));CHECK(tree.count(missing)==0);
+    tree.clear();CHECK(tree.size()==0);CHECK(tree.prefix_count(string())==0);
+}
+
+template<class A>
+void check_alphabet_ac(){
+    automata::_ac<A::size,A> dense,dense_span;
+    automata::_sparse_ac<int,A> sparse,sparse_span;
+    vector<string> patterns;string text;
+    for(int i=0;i<A::size;i++){
+        string s(1,char(A::decode(i)));patterns.push_back(s);text+=s;
+    }
+    mt19937 rng(704+A::size);
+    for(int i=0;i<20;i++){
+        string s;for(int j=0,len=1+rng()%4;j<len;j++)s+=char(A::decode(rng()%A::size));patterns.push_back(s);
+    }
+    patterns.push_back(patterns[0]);
+    for(int i=0;i<100;i++)text+=char(A::decode(rng()%A::size));
+    auto insert=[&](const string& s){
+        auto codes=encoded<A>(s);dense.insert(s);sparse.insert(s);
+        dense_span.insert(span<const int>(codes));sparse_span.insert(span<const int>(codes));
+    };
+    for(const string& s:patterns)insert(s);
+    auto verify=[&]{
+        dense.build();sparse.build();dense_span.build();sparse_span.build();
+        long long expected=0;for(const string& s:patterns)for(size_t i=0;i+s.size()<=text.size();i++)expected+=text.compare(i,s.size(),s)==0;
+        auto codes=encoded<A>(text);
+        CHECK(dense.count(text)==expected);CHECK(sparse.count(text)==expected);
+        CHECK(dense.count(span<const int>(codes))==expected);CHECK(sparse.count(span<const int>(codes))==expected);
+        CHECK(dense_span.count(text)==expected);CHECK(sparse_span.count(text)==expected);
+        vector<int> states,other;
+        dense.it_state(text,[&](int s){states.push_back(s);});dense.it_state(span<const int>(codes),[&](int s){other.push_back(s);});CHECK(states==other);
+        int cur=0;for(int i=0;i<(int)codes.size();i++){cur=dense.go(cur,codes[i]);CHECK(cur==states[i]);}
+        for(int i=0;i<(int)text.size();i++){
+            set<int,greater<int>> lengths;
+            for(const string& s:patterns)if(s.size()<=size_t(i+1)&&text.compare(i+1-s.size(),s.size(),s)==0)lengths.insert(s.size());
+            vector<int> actual;dense.it_match_lens(states[i],[&](int len){actual.push_back(len);});
+            CHECK(actual==vector<int>(lengths.begin(),lengths.end()));CHECK(dense.max_match_len(states[i])==*lengths.begin());
+        }
+    };
+    verify();verify();patterns.push_back(text.substr(0,3));insert(patterns.back());verify();
+    dense.clear();sparse.clear();dense.build();sparse.build();CHECK(dense.count(text)==0);CHECK(sparse.count(text)==0);
+}
+
+void check_alphabets(){
+    using namespace automata;
+    static_assert(alphabet::lowercase::encode('a')==0&&alphabet::lowercase::encode('z')==25);
+    static_assert(alphabet::digits::encode('0')==0&&alphabet::digits::encode('9')==9);
+    static_assert(alphabet::alnum::encode('A')==10&&alphabet::alnum::encode('a')==36);
+    static_assert(alphabet::bytes::encode(0)==0&&alphabet::bytes::encode(255)==255);
+    check_alphabet_trie<alphabet::lowercase>();check_alphabet_trie<alphabet::digits>();
+    check_alphabet_trie<alphabet::alnum>();check_alphabet_trie<alphabet::bytes>();check_alphabet_trie<reverse_alphabet>();
+    check_alphabet_ac<alphabet::lowercase>();check_alphabet_ac<alphabet::digits>();
+    check_alphabet_ac<alphabet::alnum>();check_alphabet_ac<alphabet::bytes>();check_alphabet_ac<reverse_alphabet>();
+    _trie<62,alphabet::alnum> mixed;mixed.insert("a");CHECK(mixed.count("A")==0);CHECK(mixed.count("0")==0);
+    _trie<26,folded_alphabet> folded;folded.insert("Ab");CHECK(folded.count("aB")==1);
+    _trie<3,span_only_alphabet> numeric;vector<int> word{2,0,1};numeric.insert(span<const int>(word));
+    CHECK(numeric.count(span<const int>(word))==1);CHECK(numeric.kth(1)==word);
+    _ac<3,span_only_alphabet> d;_sparse_ac<int,span_only_alphabet> s;
+    d.insert(span<const int>(word));s.insert(span<const int>(word));d.build();s.build();
+    CHECK(d.count(span<const int>(word))==1);CHECK(s.count(span<const int>(word))==1);
+    vector<int> arbitrary{-200,1000,-7};_sparse_ac<int,span_only_alphabet> arbitrary_sparse;
+    arbitrary_sparse.insert(span<const int>(arbitrary));arbitrary_sparse.build();CHECK(arbitrary_sparse.count(span<const int>(arbitrary))==1);
+    _sparse_ac<> raw;raw.insert("a");raw.build();CHECK(raw.count("aA0")==1);
+    _trie<26> legacy;legacy.insert("ab");CHECK(legacy.count("ab")==1);
+    _ac<> legacy_ac;legacy_ac.insert("ab");legacy_ac.build();CHECK(legacy_ac.count("abab")==2);
+}
+
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
         {"manacher",check_manacher},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
-        {"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel}}){
+        {"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets}}){
         try { test(); cout << "PASS " << name << '\n'; }
         catch(const exception& e){ ++failures; cerr << "FAIL " << name << ": " << e.what() << '\n'; }
     }
