@@ -1,297 +1,46 @@
-# AGENTS.md (PS C++ templates repo)
+# 템플릿 작업 규칙
 
-## Goal
-Maintain a clean, reliable competitive-programming template repository.
-Prefer small, surgical diffs; avoid rewriting unrelated files.
+## 작업·동기화
+- 기존 파일 안에서 필요한 부분만 수정하고, 사용자 변경과 기존 API를 존중한다.
+- 시작 시 `git fetch --all --prune`; 기본 브랜치가 깨끗할 때 `git pull --ff-only`.
+  사용자 변경을 덮어쓰거나 임의로 `git reset --hard`하지 않는다.
+- 재사용 코드를 바꾸면 레포와 VS Code 사용자 스니펫도 같은 작업에서 동기화한다.
+  기존 트리거를 유지하고, 기본·확장 스니펫의 의존성을 명확히 한다.
+- README에는 알고리즘 위치 안내와 간단한 스니펫 설명만 둔다.
+- AGENTS는 핵심 규칙만 유지한다. 알고리즘별 사용법·구현 설명·작업 이력은 추가하지 않는다.
 
-## Snippets sync
-- If you change any reusable template code, also update the corresponding editor snippets
-  (e.g., VS Code user/project snippets) in the same change.
-- Keep snippet triggers/prefixes and the expanded code consistent with the repository templates.
-- Do not defer snippet updates; treat snippets as part of the template interface.
+## 코드 스타일
+- 새로 만들거나 수정하는 타입은 `class`와 명시적 접근 지정자를 사용한다.
+- 사용자가 수정한 줄바꿈·들여쓰기를 따른다. namespace 안은 4칸 들여쓰고,
+  `class 이름{` 형태와 클래스 사이 빈 줄을 유지한다.
+- 접근 지정자 앞과 블록 끝의 불필요한 빈 줄은 넣지 않고, 함수 사이 간격은 유지한다.
+- 명시적으로 요청받지 않은 코드 주석은 시간 복잡도만 허용한다.
+- 기존 별칭·매크로·C++ 버전을 따르고, 불필요한 새 `.cpp` 파일을 만들지 않는다.
 
-- README.md must contain only the algorithm/file-location guide and a brief
-  snippets overview. Do not append API contracts, code examples, index/lifecycle
-  rules, or adapter/HLD usage details, even inside the snippets section.
-  Maintain those details in AGENTS.md or source comments.
+## 인덱스·입력
+- 위치·정점 범위의 `n`은 최대 외부 인덱스다. 범위는 `[base,n]`, 기본은 `bool base = 1`.
+  base 인자는 기존 선택 인자 뒤에 두며, 숫자 `1`로 표기한다.
+- base는 객체에 저장한다. `make(arr)`에는 base를 받지 않으며 `arr[i]`는 외부 인덱스 i에 대응한다.
+  base=1이면 arr[0]을 건너뛴다. 0번 정점은 실제 정점이며, 부재 표시는 -1 등으로 구분한다.
+- `n=0,base=1`은 빈 범위, `n=0,base=0`은 원소 하나다. 행렬 차원·수론 상한에는 이 규칙을 적용하지 않는다.
 
-## Index base contract
-- For templates whose constructor takes a positional or vertex range, `n` is the
-  maximum external index, not the number of elements. Use `bool base = 1` in
-  constructors and range-resetting `clear` APIs; spell the default as `1`, not `true`.
-- The active range is inclusive: `base=1` means `[1,n]`, and `base=0` means `[0,n]`.
-  Compute element, vertex, component, and required-edge counts from `n-base+1`.
-  For two-dimensional ranges, apply the same base to both axes.
-- Append `base` after existing optional parameters so their positions are preserved.
-  Store the selected base in the object. `make(arr)` must not accept a base parameter:
-  it uses and preserves the stored base, including empty input and resizing.
-  Only constructors and `clear` select a new base; calculation-only `build` also preserves it.
-  Internal helpers may use their own indexing, but configure and translate it explicitly.
-- `n=0, base=1` is empty; `n=0, base=0` contains index 0. Include both cases when
-  changing range initialization or boundary behavior.
-- Array `span` inputs remain index-aligned: `arr[i]` represents external index `i`.
-  With `base=1`, skip `arr[0]`; a nonempty span has maximum index `arr.size()-1`.
-  Do not reinterpret the span as a packed list starting at the selected base.
-- Iterate over all active indices, including 0 when `base=0`. Treat vertex 0 as
-  a real vertex, not an absent parent or dummy vertex. Use `-1`, root self-links,
-  or explicit external/internal index conversion for sentinels.
-- Keep algorithm-specific mappings consistent: `_2sat` uses `n-base+1` as its
-  literal offset; `_ufset` returns boundary sentinels `base-1` and `n+1`.
-  Hungarian's internal dummy index must remain separate from external index 0.
-- Matrix dimensions, number-theory numeric bounds, hash capacities, and
-  input-derived string indices retain their own meaning; do not add range-base
-  parameters to them merely because a parameter is named `n`.
-- New and refactored range templates must follow this contract. Update the
-  matching snippets and README examples when their index behavior changes.
-  For index-behavior changes, run `python tests/run_base_index.py` with a GNU C++20
-  compiler and keep coverage for both bases, inclusive endpoints, counts, and sentinels.
+## 실행·조회
+- `build()`는 보존된 입력으로 매번 재계산한다. 입력 전체 교체는 `make`, 점 변경은 `set/update`, 추가는 `add/insert`.
+  증분 실행은 `augment`처럼 별도 이름으로 구분한다.
+- 전처리 전 또는 입력 수정 후 재빌드 전의 조회는 UB다. assert·예외·자동 재빌드로 검사하지 않는다.
+- 전처리 결과 getter는 저장된 결과만 읽는다. 온라인 자료구조의 조회·순회는 본래 계산 비용을 유지한다.
+- HLD 재빌드는 논리 정점별 값을 보존한다. HLD의 `make`는 build 뒤에 외부 정점 순서로 값을 넣고,
+  트리 크기·간선을 유지한다. 빠진 값은 id, 초과 입력은 무시한다.
 
-## Computation lifecycle contract
-- Use `build(...)` for preprocessing/calculation. Every call recomputes derived state
-  from the retained current input; do not silently continue previous calculations.
-- Use `make(...)` for whole-input replacement (arrays, strings, or a new virtual-tree
-  node set). A make operation may finish the preparation needed for immediate queries.
-  Keep point `set`/`update` and incremental input `add`/`insert` names.
-  Bulk `make(arr)` reuses the object's configured base; do not add a base argument.
-- Queries requiring preprocessing before the first build, or after input changes and
-  before rebuilding, are UB by contract. Do not enforce lifecycle validity with asserts,
-  exceptions, automatic rebuilds, or runtime checks. Bounds/algebra preconditions are separate.
-- Precomputed-result getters only read stored results. Do not run preprocessing,
-  recalculate answers, or lazily rebuild from getters. Array/tree query aggregation
-  keeps its normal algorithmic cost. Store BCC results during `build()`; cycle
-  counters use `build(mod = 0)` and expose the stored answer through `ret() const`.
-- Preserve input across builds; clear derived visitation, aggregate counts, heaps,
-  matches, potentials, residual capacities and other work state before recalculation.
-  Input and derived data sharing storage must be separated or reconstructible.
-- Build returns the full result or status. Explicit incremental execution uses a
-  separate name such as `augment`, whose result is the current call's increase.
-- Online data structures keep immediate-query semantics after supported updates.
-  HLD rebuilds preserve logical vertex values while changing DFS storage order.
-- When Mo policy owns external/static work state, call its optional `reset()` at each
-  build; policy authors must supply this hook when their state needs it.
-- Test repeated build and modify-build-query sequences, including both index bases;
-  never exercise UB query sequences as if they had a defined result. Keep snippets
-  and README examples synchronized with API renames.
+## 정책·확장
+- 기본 기능과 선택 기능을 분리하고, 확장에서는 기본 자료구조를 재사용한다.
+- 항등원·초기 원소·태그는 `id/leaf/lz_id`로 구분한다. 기본 monoid/group/action의 node·lazy에는 기본 생성자를 추가하지 않는다.
+  PST의 null root와 Fenwick 초기 상태는 id다. Lazy 항등 판정은 `tag == lz_id()`를 사용한다.
+- 비가환 경로 집계는 경로 순서와 정·역방향을 보존한다. 간선 모드는 자식 정점 칸에 값을 저장한다.
+- `_pst_diff`는 가환 group을 요구한다. 경계 탐색은 `f(id)=true`와 해당 원소·차이 배열에서의 단조성이 필요하다.
+- Trie·dense AC는 정책의 `size`를 직접 사용한다. 문자열만 encode하고, 정수 span/go는 라벨을 그대로 사용한다.
+  기본은 소문자(sparse AC는 바이트), alnum 순서는 `0-9/A-Z/a-z`다. Automata.cpp에 assert를 추가하지 않는다.
 
-## Repo sync (web tasks)
-- At the start of a task, run:
-  - git fetch --all --prune
-- If working on the default branch:
-  - ensure `git status --porcelain` is empty
-  - git pull --ff-only
-- Never use `git reset --hard` unless explicitly instructed.
-
-## Style / conventions
-- Use `class`, not `struct`, for algorithm, policy, adapter, node, and lazy type
-  definitions when creating or modifying them. State access with explicit
-  `public:`/`private:` sections and use explicit public inheritance where required.
-  Preserve the public API when converting an existing struct.
-- Add only time-complexity code comments by default. Add other code comments
-  only when explicitly requested by the user.
-- Do not leave blank lines immediately before public/protected/private access
-  sections or class/struct closing braces. Keep ordinary spacing between methods.
-- Follow manually edited layout in touched regions. Alphabet policies use four-space
-  indentation inside the namespace, attached class opening braces, and a blank line
-  between sibling class definitions; preserve those line breaks when editing them.
-- C++17/20/23 as used in the repo (follow existing).
-- Keep headers minimal; prefer `#include <bits/stdc++.h>` if the repo standard uses it.
-- Use consistent type aliases/macros as already present.
-- No extra I/O prompts; code should be contest-ready.
-
-
-## Identity, initial leaves, and hashes
-- `_seg`, `_prop`, `_pst`, `_fw`, and `_fw2d` require `policy::id()` for the
-  aggregation identity. Do not infer it from `node()`.
-- `_seg` and `_prop` also require `policy::leaf()` for each real initial leaf
-  in `[base,n]`. Padding and query accumulators use `id()`, not `leaf()`.
-  The default lazy policy has identity `{0,0}` and initial leaf `{0,1}`.
-- Built-in monoid/group/action nodes and action lazy tags have no default
-  constructors. Initialize through `policy::id()`, `policy::leaf()`, and
-  `policy::lz_id()`; value-taking constructors remain available. For example,
-  use `vector<policy::node>(n + 1, policy::leaf())` for an input array.
-- `_prop` requires `static lazy lz_id()` for the no-op tag. Do not infer the
-  lazy identity from `lazy()`. Custom action policies must provide this hook.
-- Lazy tags must support `operator==`. `_prop` checks `tag == policy::lz_id()`
-  directly; there is no `policy::is_lz_id()` hook. Use a canonical tag representation
-  or custom equality when inactive fields should be ignored. Equality with the
-  identity must never classify an effective update as a no-op.
-- `make(arr)` uses the caller's nodes verbatim and retains the stored base.
-  PST null roots and Fenwick reset state retain identity semantics; they do
-  not materialize the dense-tree `leaf()` value.
-- Default prefix/deque hashes use the same key pair `{911382323,972663749}`
-  and modulus pair `{1000000007,1000000009}`. Custom settings remain supported.
-  Only compare raw hashes produced with identical settings and equal lengths.
-  `same` checks lengths, while `ret` returns only the hash value. Hash collisions
-  remain possible. Keep both hash implementations and their snippets aligned.
-
-
-## Policy snippets and bidirectional adapters
-- Keep standalone monoid/action snippets synchronized with their definitions in
-  Segtree.cpp and with the bundled seg/prop snippets. Do not change existing triggers.
-- `bidirectional<P>` stores forward/backward aggregates; reverse combination is
-  `P::op(right.backward, left.backward)`. `lift(value)` duplicates a leaf value;
-  explicitly supply both values for direction-dependent leaves.
-- `bidirectional_action<P>` reuses the same tag/compose in both directions.
-  Override `apply` when the problem requires direction-dependent updates.
-  Its standalone snippet depends on the common bidirectional snippet.
-- Bidirectional nodes provide `node reversed() const` by swapping cached directions.
-  `_hld_path::query(u,v)` folds segments in u-to-v order and invokes this hook on upward
-  segments. Nodes without the hook retain the commutative-aggregation contract.
-- `_hld::it_path(u,v,f)` emits inclusive zero-based backend ranges `(l,r,rev)` in
-  path order; `rev=1` means visit r down to l. Endpoints must be in one component.
-  Vertex mode includes the LCA; edge mode stores each edge at its child and excludes
-  the LCA/root dummy. Edge forward/backward values mean parent-to-child/child-to-parent.
-  Vertex values should be direction-independent (use `lift`). Subtree queries keep
-  backend DFS order rather than a path order.
-- `_hld_path` updates apply the same tag in the backend's canonical orientation
-  to each segment. For updates relative to u-to-v direction, use `it_path` and map
-  tags using its rev flag before calling the public backend's update function.
-
-## HLD decomposition and backends
-- `_hld` is a non-template decomposition-only class. Constructors and clear use
-  `(n,m=0,base=1)`, where m=0 selects vertices and m=1 selects child-stored edges.
-  It owns no backend, values, aggregation policy, or query/update operations.
-- After build, `index(v)` maps an external vertex to its zero-based DFS position;
-  `vertex(i)` is its inverse. `parent(v)` uses -1 for roots and `depth(v)` starts
-  at 0. Forest roots are the smallest active vertices, and directed input must
-  be reachable from those roots. Input must be a forest.
-- `subtree(v)` returns an inclusive `(l,r)` interval using the configured mode.
-  Vertex mode includes v; edge mode excludes v's slot. An edge-mode leaf returns
-  an empty interval with l>r. `it_path` retains endpoint order and the rev flag.
-- `_hld_path<backend>` publicly extends `_hld`, retains its decomposition APIs,
-  and owns public `seg` plus point/path/subtree queries and supported updates.
-  Only the extension manages backend values and preserves each logical vertex's
-  stored node across repeated build and supported input modifications. Edge values
-  remain indexed by the logical child slot, as before; users own any reinterpretation
-  needed when changing which vertex is the child of a particular edge.
-- Use the extension's own clear/build; invoking base mutators through an upcast
-  bypasses backend handling and is unsupported. Base-only build recomputes numbering;
-  external backends attached manually to `_hld` must be remapped by their owner.
-- `_hld_path::make(arr)` replaces stored nodes using external vertex indices:
-  arr[v] belongs to vertex v, and base=1 skips arr[0]. It requires a fresh topology
-  build, with UB before build or after modifying edges before rebuilding; add no
-  lifecycle checks or automatic build. It preserves topology, n, mode, and base.
-  Unlike array-only templates, HLD make does not resize the graph to match input:
-  missing vertices get backend id(), excess input is ignored, and empty input
-  resets values to identity. Supplied nodes are used verbatim, including root
-  dummy slots in edge mode. Use the same remapping/loading logic during rebuild.
-- Backend storage remains zero-based. Prefer clear(n,0), falling back to clear(n)
-  for backends that inherently use zero-based indices. Rebuild uses make(arr) when
-  available, otherwise clear plus point set; it always uses backend id() for padding.
-  Lazy updates and direction reversal retain their existing capability requirements.
-- `>>hld` contains only the decomposition class. `>>hld_path` contains the backend
-  adapter and is_action concept and requires `>>hld` and the chosen backend snippet.
-
-## LCA path aggregation
-- `_lca` is a non-template topology-only class. Use `_lca tree(n,base)` for
-  LCA/distance/ancestor/jump/component queries and parent/child traversal order.
-  It takes unweighted `add(a,b)` and `addsol(a,b)` input and has no path query.
-- `_lca_path<policy>` publicly extends `_lca` and retains all its read APIs.
-  Use the extension's own `add`, `addsol`, `clear`, and `build`; mutating through
-  a base-class reference bypasses retained weights and is unsupported.
-  Do not add a `use_node` switch: the extension always builds aggregation tables.
-- Path policies provide `cost`, `node`, `lift(cost)`, associative `merge(left,right)`,
-  and `id()` for the two-sided identity; never infer identity from `node()`.
-  The built-in node has no default constructor; its cost stores `ll v` with
-  default value 0, and the default aggregation is maximum.
-- `query(a,b)` folds edge values in a-to-b order, excluding the LCA vertex.
-  It stores both traversal orders internally, so policies need no reversal hook
-  or bidirectional adapter. Equal endpoints and disconnected endpoints return identity.
-- `add(a,b,cost)` assigns the same value in both directions. The overload
-  `add(a,b,ab,ba)` assigns a-to-b and b-to-a costs independently, regardless of root.
-  `addsol` accepts the same cost forms but stores only the a-to-b adjacency;
-  its reverse cost is still available for upward path queries. Directed forest
-  input must be reachable from each component's smallest active vertex, which is
-  selected as root during build. `ret`, `dist`, `ancestor`, and `jump` retain their APIs.
-- Both aggregation orders are rebuilt from retained edges on every `build()`.
-  Store upward/downward values together in one internal path type/table.
-  Complexity is O(n log n) preprocessing/storage and O(log n) per path query,
-  assuming constant-time policy values and operations.
-- Keep `>>lca` topology-only. `>>lca_path` contains the default path policy and
-  aggregation extension and requires expanding `>>lca` first.
-
-## SCC and condensation DAG
-- `_scc` computes component IDs/groups and exposes component/group queries plus
-  `it_cid`, `it_all`, and `it_group`. Keep DAG state and operations out of this
-  base class; 2-SAT continues to use `_scc` alone with unchanged SCC numbering.
-- `_scc_dag` publicly extends `_scc`. Its build recomputes SCCs and then caches
-  deduplicated condensation edges in both directions, indegrees/outdegrees, and
-  Kahn traversal orders for both orientations. Exclude intra-component/self edges;
-  parallel original edges produce only one edge per ordered component pair.
-- External vertices follow `[base,n]` with default `bool base = 1`; component IDs
-  and all DAG vector indices are always zero-based `[0,comp_cnt()-1]`.
-  `dag()`, `ind()`, and `outd()` return const references to cached forward adjacency,
-  indegree, and outdegree vectors in O(1). Their contents are replaced by build/clear.
-- `it_dag(f)` traverses cached forward edges. `it_top(merge,done,rev=true)` uses
-  the cached Kahn order and selected adjacency, with done(cur) before its outgoing
-  merge(cur,nxt) calls. The runtime bool rev=false follows forward edges; default true follows
-  reversed edges. Preserve the previous FIFO Kahn tie order in both directions.
-  Neither traversal reconstructs a graph or recomputes degrees/topological order;
-  each takes O(k+e), where k is the component count and e the condensed edge count.
-- After addsol, rebuild through the extension before querying any derived result.
-  Base clear/build invoked through an upcast bypasses DAG caches and is unsupported.
-  Queries before build or after modifying input before rebuilding remain UB;
-  do not add lifecycle guards or automatic rebuilds.
-- `>>scc` contains only the base class. `>>scc_dag` requires `>>scc`; `>>2sat`
-  continues to require only `>>scc` and must not depend on the DAG extension.
-
-## Persistent trees and version differences
-- `_pst<policy=monoid>` owns persistent node storage and set/get/query plus
-  max_right/min_left. Its policy needs associative op() and a two-sided id();
-  it may be noncommutative and need not provide inv() or leaf(). Keep inverse
-  and diff_* APIs out of the base. Root 0 represents all identities, independently
-  of the configured external index base; preserve old roots after every set.
-- `_pst_diff<policy=group>` publicly extends `_pst<policy>` and shares the same
-  node pool, root handles, creation, clear and ordinary read/search operations.
-  It adds inv, diff_get/diff_query and diff_max_right/diff_min_left. A single
-  class-level has_inv requirement checks the inverse signature; group laws remain
-  semantic requirements. Do not duplicate the tree storage or add feature flags.
-- Difference policies must be commutative groups: op must be associative and
-  commutative, id must be a two-sided identity, and inv must be a true inverse.
-  diff_query(a,b,l,r) means aggregate(b) op inv(aggregate(a)), equivalent to
-  aggregating pointwise version-b minus version-a differences under this contract.
-  Merely having an inv method does not establish these algebraic properties.
-- All boundary searches require f(id())=true and monotone acceptance as the
-  interval grows in the searched direction. Difference searches additionally need
-  this property for the chosen pointwise difference array. Nonnegative frequency
-  differences with a sum bound are a common valid case; chronological version
-  order alone does not guarantee it after arbitrary updates. Difference queries
-  themselves allow either root order, including negative sum differences.
-- Preserve inclusive external ranges, clipping and boundary sentinels for both
-  bases. Queries do not allocate or change persistent nodes. clear resets the shared
-  pool and invalidates old root handles; the extension owns no extra derived state.
-- `>>pst` bundles the default monoid and basic tree. `>>pst_diff` bundles has_inv,
-  the default group and the extension and requires `>>pst`. Keep shared group,
-  has_inv and Fenwick implementations/snippets intact when changing the PST APIs.
-
-## Alphabet policies
-- Shared `alphabet::lowercase`, `uppercase`, `digits`, `alnum`, and `bytes` policies
-  provide constexpr size, encode(unsigned char), and decode(int). Lowercase orders
-  a-z; uppercase orders A-Z; digits orders 0-9; alnum orders 0-9, then A-Z, then a-z; bytes orders unsigned
-  values 0-255, including NUL and high bytes. Built-in policies are injective.
-- `_trie<class Alphabet=alphabet::lowercase>` and
-  `_ac<class Alphabet=alphabet::lowercase>` use Alphabet::size directly for dense
-  arrays and traversal bounds. Do not add a separate int M template argument or
-  cached M constant. Encoded strings and direct numeric labels must lie in
-  [0,Alphabet::size); numeric-only dense policies also provide constexpr size.
-- `_sparse_ac<class T=ll,class Alphabet=alphabet::bytes>` retains its original
-  raw-byte default. Selecting the same policy gives dense and sparse structures
-  the same string-to-symbol interpretation; sparse T must distinguish encoded
-  labels after conversion. Custom string policies need static encode(unsigned char).
-  decode is optional for custom policies; sparse numeric-only input needs neither
-  size nor an encoder, while dense numeric-only input still needs size.
-- String overloads encode through unsigned char before passing labels to the
-  algorithm. Default lowercase does not fold uppercase or digits. Unsupported
-  characters are outside the alphabet/bounds contract; callers provide valid inputs.
-  Intentional case folding can be supplied as an explicit custom policy.
-- Do not add assert calls to alphabet policies, Trie or dense AC. Alphabet and label
-  validity are caller preconditions, without replacement runtime checks or guards.
-- Existing span<const int> trie/dense-AC input and span<const T> sparse-AC input
-  remain direct, unencoded symbol sequences. go() likewise takes an encoded label.
-  Numeric-only use must not instantiate or call an encoder, even if it is deleted.
-- Trie rank returns the number of stored words strictly smaller in encoded-label
-  lexicographic order, including multiplicities. kth is 1-based and still returns
-  vector<int> labels; use Alphabet::decode to reconstruct characters. Empty words
-  precede their nonempty extensions. Numeric-span order remains integer-label order.
-- `>>alphabet` contains the shared policies. `>>trie`, `>>ac`, and `>>sparse_ac`
-  require it; preserve their existing triggers. XOR trie does not depend on it.
+## 검증
+- 동작 변경은 관련 회귀 테스트로 검증하고, 인덱스·공통 코드 변경은 GNU C++20으로 `tests/run_tests.py`를 실행한다.
+- 양쪽 base·빈 범위·재실행·수정 후 재실행을 확인한다. 서식 변경만이면 코드 내용 불변과 스니펫 일치를 확인한다.

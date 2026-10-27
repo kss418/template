@@ -18,7 +18,6 @@ namespace alphabet {
         }
         static constexpr unsigned char decode(int i){
             return 'a' + i;
-
         }
     };
 
