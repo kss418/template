@@ -20,6 +20,17 @@ namespace offline {
 using namespace std;
 static int checks = 0;
 #define CHECK(c) do { ++checks; if (!(c)) throw runtime_error(string("line ") + to_string(__LINE__) + ": " + #c); } while (0)
+class uf_leaf_policy{
+public:
+    class node{
+    public:
+        long long v;
+        node(long long v):v(v){}
+    };
+    static node leaf(){ return {7}; }
+    static void merge(node& a, node& b){ a.v += b.v; }
+};
+static_assert(!is_default_constructible_v<uf_leaf_policy::node>);
 struct sum_mo {
     struct node { long long v; node(long long v=0):v(v){} };
     using ret=node;
@@ -76,6 +87,18 @@ void check_sets(bool base){
     int n=4, first=base, count=n-first+1;
     sets::_uf<> uf(n,base);CHECK(uf.count()==count);CHECK(uf.merge(first,n));CHECK(uf.count()==count-1);CHECK(uf.same(first,n));
     uf.clear(n,!base);CHECK(uf.count()==n-int(!base)+1);
+    sets::_uf<uf_leaf_policy> meta(n,base);
+    for(int i=first;i<=n;++i)CHECK(meta.get(i).v==7);
+    CHECK(meta.merge(first,first+1));CHECK(meta.get(first+1).v==14);
+    CHECK(meta.merge(n,first+1));CHECK(meta.get(n).v==21);CHECK(meta.size(n)==3);
+    CHECK(!meta.merge(first,n));CHECK(meta.get(first).v==21);
+    meta.set(n,{25});CHECK(meta.get(first+1).v==25);
+    CHECK(meta.merge(first+2,n));CHECK(meta.get(first+2).v==32);
+    meta.clear(n,base);CHECK(meta.count()==count);
+    for(int i=first;i<=n;++i){CHECK(meta.get(i).v==7);CHECK(meta.size(i)==1);}
+    meta.clear(0,1);CHECK(meta.count()==0);
+    meta.clear(0,0);CHECK(meta.count()==1);CHECK(meta.get(0).v==7);
+    CHECK(!meta.merge(0,0));CHECK(meta.get(0).v==7);
     sets::_wuf w(n,base);w.merge(first,n,9);CHECK(w.diff(first,n)==make_pair(1LL,9LL));
     w.clear(n,!base);CHECK(!w.same(!base,n));
     sets::_ufset intervals(n,base);CHECK(intervals.count()==count);CHECK(intervals.prv(first)==first-1);CHECK(intervals.nxt(n)==n+1);

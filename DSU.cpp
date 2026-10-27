@@ -9,10 +9,10 @@ using pll = pair<ll, ll>; using tll = tuple<ll, ll, ll>;
 constexpr ll INF = 0x3f3f3f3f3f3f3f3f;
 constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 
-struct uf_policy{
-    struct node{
-        node(){} // identity
-    };
+class uf_policy{
+public:
+    class node{};
+    static node leaf(){ return {}; }
     static void merge(node& a, node& b){}
 };
 
@@ -23,13 +23,13 @@ private:
     using node = typename policy::node;
     vector<node> arr;
     vector<int> p, sz; int n, cc;
-    node id() const{ return node(); }
+    node leaf() const{ return policy::leaf(); }
 public:
     _uf(int n = 0, bool base = 1){ clear(n, base); } // O(n)
     void clear(int n, bool base = 1){ // O(n)
         this->n = n; this->base = base; cc = n - base + 1;
         p.assign(n + 1, -1); sz.assign(n + 1, 1);
-        arr.assign(n + 1, id());
+        arr.assign(n + 1, leaf());
     }
 
     int find(int x){ // O(1)
@@ -43,7 +43,7 @@ public:
         if(a == b) return false;
         if(sz[a] < sz[b]) swap(a, b);
         p[b] = a; sz[a] += sz[b]; cc--;
-        policy::merge(arr[a], arr[b]); arr[b] = id();
+        policy::merge(arr[a], arr[b]);
         return true;
     }
 
