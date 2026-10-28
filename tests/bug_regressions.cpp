@@ -71,10 +71,19 @@ void check_cht(){
     batch(true,{{2,LLONG_MIN+10},{1,LLONG_MAX-10},{0,LLONG_MIN+20}},{0,1,10});
     batch(true,{{LLONG_MAX,0},{0,1},{LLONG_MIN+1,2}},{-1,0,1});
     CHECK(line(LLONG_MAX,-LLONG_MAX).f(2)==LLONG_MAX);
+    offline::_cht changed(0);changed.add({0,5});changed.add({1,0});
+    CHECK(changed.query_monotone(10).f(10)==10);
+    changed.clear();changed.add({1,0});changed.add({0,5});
+    CHECK(changed.query_monotone(1).f(1)==1);CHECK(changed.query_monotone(10).f(10)==5);
+    changed.clear(0);changed.add({0,5});changed.add({1,0});
+    CHECK(changed.query_monotone(1).f(1)==5);CHECK(changed.query_monotone(10).f(10)==10);
+    changed.clear(1);changed.add({1,0});changed.add({0,5});
+    CHECK(changed.query_monotone(1).f(1)==1);CHECK(as_const(changed).query(10).f(10)==5);
+
     for(bool is_min:{false,true})for(unsigned seed=1;seed<=16;++seed){
         mt19937 rng(633+seed);offline::_cht tree(is_min);vector<line> lines;
         for(int round=0;round<2;++round){
-            tree.clear();lines.clear();
+            tree.clear(is_min);lines.clear();
             CHECK(tree.query(7).f(7)==(is_min?offline::INF:offline::MINF));
             CHECK(tree.query_monotone(-1000).f(-1000)==(is_min?offline::INF:offline::MINF));
             long long slope=is_min?100:-100,x=-60;

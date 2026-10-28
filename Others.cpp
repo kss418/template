@@ -257,7 +257,7 @@ public:
     vector<line> v;
     bool is_min = 1; ll idx = 0;
     _cht(bool is_min = 1) : is_min(is_min){}
-    void clear(){ v.clear(); idx = 0; }
+    void clear(bool is_min = 1){ this->is_min = is_min; v.clear(); idx = 0; }
 
     bool chk(const line& a, const line& b, const line& c) const{
         i128 x1 = ((i128)a.b - b.b) * ((i128)c.a - b.a);
