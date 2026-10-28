@@ -81,6 +81,9 @@ public:
     public:
         state status;
         ll value;
+        bool disconnected() const{ return status == state::disconnected; } // O(1)
+        bool inconsistent() const{ return status == state::inconsistent; } // O(1)
+        ll get_value() const{ return value; } // O(1)
     };
 
     vector<ll> p, d, dis; ll n;

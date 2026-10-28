@@ -162,7 +162,7 @@ void check_sets(bool base){
     meta.clear(0,1);CHECK(meta.count()==0);
     meta.clear(0,0);CHECK(meta.count()==1);CHECK(meta.get(0).v==7);
     CHECK(!meta.merge(0,0));CHECK(meta.get(0).v==7);
-    sets::_wuf w(n,base);w.merge(first,n,9);CHECK(w.diff(first,n).status==sets::_wuf::state::known);CHECK(w.diff(first,n).value==9);
+    sets::_wuf w(n,base);w.merge(first,n,9);CHECK(w.diff(first,n).status==sets::_wuf::state::known);CHECK(w.diff(first,n).get_value()==9);
     w.clear(n,!base);CHECK(!w.same(!base,n));
     sets::_ufset intervals(n,base);CHECK(intervals.count()==count);CHECK(intervals.prv(first)==first-1);CHECK(intervals.nxt(n)==n+1);
     intervals.merge(first,first+1);CHECK(intervals.same(first,first+1));CHECK(intervals.prv(first+1)==first-1);CHECK(intervals.nxt(first)==first+2);
@@ -221,11 +221,11 @@ void check_weighted_uf(bool base){
             }
         }
         for(int a=first;a<=n;++a)for(int b=first;b<=n;++b){
-            auto result=w.diff(a,b);bool same=component[a]==component[b];
+            const auto result=w.diff(a,b);bool same=component[a]==component[b];
             CHECK(w.same(a,b)==same);
-            if(!same)CHECK(result.status==state::disconnected);
-            else if(bad[component[a]])CHECK(result.status==state::inconsistent);
-            else{CHECK(result.status==state::known);CHECK(result.value==potential[b]-potential[a]);}
+            if(!same){CHECK(result.disconnected());CHECK(!result.inconsistent());}
+            else if(bad[component[a]]){CHECK(!result.disconnected());CHECK(result.inconsistent());}
+            else{CHECK(!result.disconnected());CHECK(!result.inconsistent());CHECK(result.get_value()==potential[b]-potential[a]);}
         }
     };
     verify();
@@ -245,13 +245,13 @@ void check_weighted_uf(bool base){
             add(a,b,c);verify();
         }
     }
-    w.clear(0,1);w.clear(0,0);CHECK(w.diff(0,0).status==state::known);CHECK(w.diff(0,0).value==0);
+    w.clear(0,1);w.clear(0,0);CHECK(w.diff(0,0).status==state::known);CHECK(w.diff(0,0).get_value()==0);
     w.merge(0,0,-1);CHECK(w.diff(0,0).status==state::inconsistent);
     w.clear(0,0);CHECK(w.diff(0,0).status==state::known);
     const int last=100000;sets::_wuf chain(last,base);
     for(int i=first;i<last;++i)chain.merge(i,i+1,1);
-    CHECK(chain.diff(first,last).status==state::known);CHECK(chain.diff(first,last).value==last-first);
-    CHECK(chain.diff(last,first).value==first-last);
+    CHECK(chain.diff(first,last).status==state::known);CHECK(chain.diff(first,last).get_value()==last-first);
+    CHECK(chain.diff(last,first).get_value()==first-last);
 }
 void check_graphs(bool base){
     int n=4, first=base, count=n-first+1;
