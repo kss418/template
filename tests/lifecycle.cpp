@@ -14,8 +14,11 @@ namespace geometry_life {
 using numbers_life::_mint;
 #include "../Geometry.cpp"
 }
-struct external_mo {
+class external_mo {
+public:
     using node=sum_mo::node;using ret=node;
+    static node leaf(){return sum_mo::leaf();}
+    static ret id(){return sum_mo::id();}
     static inline long long state=0;
     static void reset(){state=0;}
     static void push_front(int,const node&v,ret&cur){state+=v.v;cur.v=state;}

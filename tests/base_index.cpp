@@ -31,9 +31,16 @@ public:
     static void merge(node& a, node& b){ a.v += b.v; }
 };
 static_assert(!is_default_constructible_v<uf_leaf_policy::node>);
-struct sum_mo {
-    struct node { long long v; node(long long v=0):v(v){} };
+class sum_mo {
+public:
+    class node {
+    public:
+        long long v;
+        node(long long v):v(v){}
+    };
     using ret=node;
+    static node leaf(){return {0};}
+    static ret id(){return {0};}
     static void push_front(int,const node& v,ret& cur){cur.v+=v.v;}
     static void push_back(int i,const node& v,ret& cur){push_front(i,v,cur);}
     static void pop_front(int,const node& v,ret& cur){cur.v-=v.v;}
@@ -51,6 +58,60 @@ public:
     static node lift(cost v){return {v};}
     static node merge(const node&a,const node&b){return {a.v+b.v};}
 };
+class product_mo{
+public:
+    class node{
+    public:
+        long long v;
+        node(long long v):v(v){}
+    };
+    class ret{
+    public:
+        long long v;int size;
+        ret(long long v,int size):v(v),size(size){}
+    };
+    static node leaf(){return {2};}
+    static ret id(){return {1,0};}
+    static void push_front(int,const node& v,ret& cur){cur.v=cur.v*v.v%101;++cur.size;}
+    static void push_back(int i,const node& v,ret& cur){push_front(i,v,cur);}
+    static void pop_front(int,const node& v,ret& cur){
+        long long inverse=1;
+        for(int i=0;i<99;++i)inverse=inverse*v.v%101;
+        cur.v=cur.v*inverse%101;--cur.size;
+    }
+    static void pop_back(int i,const node& v,ret& cur){pop_front(i,v,cur);}
+};
+static_assert(!is_default_constructible_v<offline::mos_policy::node>);
+static_assert(!is_default_constructible_v<offline::mos_policy::ret>);
+static_assert(!is_default_constructible_v<product_mo::node>);
+static_assert(!is_default_constructible_v<product_mo::ret>);
+void check_mos_factories(bool base){
+    int n=base+8;offline::_mos<product_mo> mo(n,2,base);
+    vector<long long> values(n+1,2);vector<pair<int,int>> queries;
+    for(int i=base;i<=n;++i)CHECK(mo.arr[i].v==2);
+    mo.build();CHECK(mo.get_result().empty());
+    mt19937 rng(714+base);
+    for(int i=0;i<100;++i){int l=base+rng()%9,r=base+rng()%9;if(l>r)swap(l,r);mo.add(l,r);queries.push_back({l,r});}
+    auto verify=[&](){
+        mo.build();CHECK(mo.get_result().size()==queries.size());
+        for(size_t i=0;i<queries.size();++i){
+            auto[l,r]=queries[i];long long value=1;
+            for(int j=l;j<=r;++j)value=value*values[j]%101;
+            CHECK(mo.get_result()[i].v==value);CHECK(mo.get_result()[i].size==r-l+1);
+        }
+    };
+    verify();verify();
+    for(int i=base;i<=n;i+=2){values[i]=3+i;mo.set(i,{values[i]});}
+    mo.add(base,n);queries.push_back({base,n});verify();verify();
+    mo.clear(n,0,!base);CHECK(mo.get_result().empty());CHECK(mo.vq.empty());
+    for(int i=!base;i<=n;++i)CHECK(mo.arr[i].v==2);
+    mo.add(!base,n);mo.build();long long expected=1;
+    for(int i=!base;i<=n;++i)expected=expected*2%101;
+    CHECK(mo.get_result()[0].v==expected);CHECK(mo.get_result()[0].size==n-int(!base)+1);
+    mo.clear(0,0,1);mo.build();mo.build();CHECK(mo.get_result().empty());
+    mo.clear(0,0,0);mo.add(0,0);mo.build();CHECK(mo.get_result()[0].v==2);CHECK(mo.get_result()[0].size==1);
+    offline::_mos<> defaults;defaults.build();CHECK(defaults.get_result().empty());
+}
 void check_ranges(bool base){
     const int n=4, first=base, count=n-first+1;
     long long total=0;
@@ -257,6 +318,6 @@ void check_oracles(bool base){
     }
 }
 int main(){
-    try {for(bool base:{false,true}){check_ranges(base);check_sets(base);check_uf_split(base);check_graphs(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();cout<<"PASS "<<checks<<" base-index checks\n";return 0;}
+    try {for(bool base:{false,true}){check_ranges(base);check_mos_factories(base);check_sets(base);check_uf_split(base);check_graphs(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();cout<<"PASS "<<checks<<" base-index checks\n";return 0;}
     catch(const exception& e){cerr<<"FAIL "<<e.what()<<'\n';return 1;}
 }

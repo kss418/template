@@ -159,24 +159,25 @@ public:
 };
 
 //MO's
-struct mos_policy{
-    struct node{
+class mos_policy{
+public:
+    class node{
+    public:
         ll v;
-        node(ll v = 0) : v(v){}
+        node(ll v) : v(v){}
     };
-    struct ret{
+    class ret{
+    public:
         ll v;
-        ret(ll v = 0) : v(v){}
+        ret(ll v) : v(v){}
     };
-    static void push_front(int idx, const node& v, ret& cur){
-
-    }
+    static node leaf(){ return {0}; }
+    static ret id(){ return {0}; }
+    static void push_front(int idx, const node& v, ret& cur){}
     static void push_back(int idx, const node& v, ret& cur){
         push_front(idx, v, cur);
     }
-    static void pop_front(int idx, const node& v, ret& cur){
-
-    }
+    static void pop_front(int idx, const node& v, ret& cur){}
     static void pop_back(int idx, const node& v, ret& cur){
         pop_front(idx, v, cur);
     }
@@ -189,15 +190,20 @@ public:
     using node = typename policy::node;
     using ret  = typename policy::ret;
 private:
-    int n, b, cl = 0, cr = -1; ret cur = ret_id();
+    int n, b, cl = 0, cr = -1; ret cur = id();
     static void push_front(int idx, const node& v, ret& cur){ policy::push_front(idx, v, cur); }
     static void push_back(int idx, const node& v, ret& cur){ policy::push_back(idx, v, cur); }
     static void pop_front(int idx, const node& v, ret& cur){ policy::pop_front(idx, v, cur); }
     static void pop_back(int idx, const node& v, ret& cur){ policy::pop_back(idx, v, cur); }
-    static node node_id(){ return node(); }
-    static ret ret_id(){ return ret();  }
-    struct query{ int l, r, idx; };
-    struct cmp {
+    static node leaf(){ return policy::leaf(); }
+    static ret id(){ return policy::id(); }
+    class query{
+    public:
+        int l, r, idx;
+    };
+
+    class cmp{
+    public:
         int b;
         bool operator()(const query& a, const query& c) const {
             int ab = a.l / b, cb = c.l / b;
@@ -218,8 +224,8 @@ public:
     void clear(int n, int b = 0, bool base = 1){ // O(n)
         this->n = n; this->base = base; this->b = b;
         if(!b) this->b = sqrt(n + 1); vq.clear();
-        arr.assign(n + 1, node_id()); result.clear();
-        cl = base; cr = base - 1; cur = ret_id();
+        arr.assign(n + 1, leaf()); result.clear();
+        cl = base; cr = base - 1; cur = id();
     }
 
     const vector<ret>& get_result() const{ return result; } // O(1)
@@ -227,9 +233,9 @@ public:
     void set(int idx, const node& v){ if(idx >= base && idx <= n) arr[idx] = v; } // O(1)
     void build(){ // O(q log q + (n^2 / b + qb) * update)
         if constexpr (requires{ policy::reset(); }) policy::reset();
-        cl = base; cr = base - 1; cur = ret_id();
+        cl = base; cr = base - 1; cur = id();
         if (vq.empty()) { result.clear(); return; } 
-        sort(all(vq), cmp{b}); result.assign(vq.size(), ret_id());
+        sort(all(vq), cmp{b}); result.assign(vq.size(), id());
         for(const auto& cq : vq){
             apply(cq.l, cq.r);
             result[cq.idx] = cur;
