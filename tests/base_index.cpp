@@ -162,7 +162,7 @@ void check_sets(bool base){
     meta.clear(0,1);CHECK(meta.count()==0);
     meta.clear(0,0);CHECK(meta.count()==1);CHECK(meta.get(0).v==7);
     CHECK(!meta.merge(0,0));CHECK(meta.get(0).v==7);
-    sets::_wuf w(n,base);w.merge(first,n,9);CHECK(w.diff(first,n)==make_pair(1LL,9LL));
+    sets::_wuf w(n,base);w.merge(first,n,9);CHECK(w.diff(first,n).status==sets::_wuf::state::known);CHECK(w.diff(first,n).value==9);
     w.clear(n,!base);CHECK(!w.same(!base,n));
     sets::_ufset intervals(n,base);CHECK(intervals.count()==count);CHECK(intervals.prv(first)==first-1);CHECK(intervals.nxt(n)==n+1);
     intervals.merge(first,first+1);CHECK(intervals.same(first,first+1));CHECK(intervals.prv(first+1)==first-1);CHECK(intervals.nxt(first)==first+2);
@@ -201,6 +201,57 @@ void check_uf_split(bool base){
     }
     plain.clear(0,1);values.clear(0,1);CHECK(plain.count()==0);CHECK(values.count()==0);
     plain.clear(0,0);values.clear(0,0);CHECK(plain.size(0)==1);CHECK(values.get(0).v==7);
+}
+void check_weighted_uf(bool base){
+    using state=sets::_wuf::state;
+    const int first=base,n=base+7;
+    sets::_wuf w(n,base);
+    vector<vector<pair<int,long long>>> edges(n+1);
+    auto add=[&](int a,int b,long long c){w.merge(a,b,c);edges[a].push_back({b,c});edges[b].push_back({a,-c});};
+    auto verify=[&](){
+        vector<int> component(n+1,-1);vector<long long> potential(n+1);vector<bool> bad(n+1);
+        for(int root=first;root<=n;++root)if(component[root]==-1){
+            queue<int> q;q.push(root);component[root]=root;
+            while(!q.empty()){
+                int cur=q.front();q.pop();
+                for(auto[next,c]:edges[cur]){
+                    if(component[next]==-1){component[next]=root;potential[next]=potential[cur]+c;q.push(next);}
+                    else if(potential[next]!=potential[cur]+c)bad[root]=true;
+                }
+            }
+        }
+        for(int a=first;a<=n;++a)for(int b=first;b<=n;++b){
+            auto result=w.diff(a,b);bool same=component[a]==component[b];
+            CHECK(w.same(a,b)==same);
+            if(!same)CHECK(result.status==state::disconnected);
+            else if(bad[component[a]])CHECK(result.status==state::inconsistent);
+            else{CHECK(result.status==state::known);CHECK(result.value==potential[b]-potential[a]);}
+        }
+    };
+    verify();
+    add(first,first+1,7);add(first+1,first+2,-3);add(first+3,first+1,9);verify();
+    add(first,first+2,4);verify();add(first,first+2,99);verify();
+    add(first+4,first+5,2);add(first+4,first+1,6);verify();
+    w.clear(n,base);for(auto& e:edges)e.clear();
+    add(first,first+1,0);add(first,first+1,1);
+    add(first+2,first+3,-2);add(first+3,first+4,0);add(first+2,first,5);verify();
+    mt19937 rng(942+base);
+    for(int trial=0;trial<30;++trial){
+        w.clear(n,base);for(auto& e:edges)e.clear();
+        vector<long long> hidden(n+1);for(auto& v:hidden)v=(int)(rng()%31)-15;
+        for(int step=0;step<20;++step){
+            int a=first+rng()%8,b=first+rng()%8;
+            long long c=hidden[b]-hidden[a];if(step%7==6)++c;
+            add(a,b,c);verify();
+        }
+    }
+    w.clear(0,1);w.clear(0,0);CHECK(w.diff(0,0).status==state::known);CHECK(w.diff(0,0).value==0);
+    w.merge(0,0,-1);CHECK(w.diff(0,0).status==state::inconsistent);
+    w.clear(0,0);CHECK(w.diff(0,0).status==state::known);
+    const int last=100000;sets::_wuf chain(last,base);
+    for(int i=first;i<last;++i)chain.merge(i,i+1,1);
+    CHECK(chain.diff(first,last).status==state::known);CHECK(chain.diff(first,last).value==last-first);
+    CHECK(chain.diff(last,first).value==first-last);
 }
 void check_graphs(bool base){
     int n=4, first=base, count=n-first+1;
@@ -320,6 +371,6 @@ void check_oracles(bool base){
     }
 }
 int main(){
-    try {for(bool base:{false,true}){check_ranges(base);check_mos_factories(base);check_sets(base);check_uf_split(base);check_graphs(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();cout<<"PASS "<<checks<<" base-index checks\n";return 0;}
+    try {for(bool base:{false,true}){check_ranges(base);check_mos_factories(base);check_sets(base);check_uf_split(base);check_weighted_uf(base);check_graphs(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();cout<<"PASS "<<checks<<" base-index checks\n";return 0;}
     catch(const exception& e){cerr<<"FAIL "<<e.what()<<'\n';return 1;}
 }
