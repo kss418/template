@@ -201,7 +201,7 @@ private:
         return ret;
     }
 public:
-    _xor_trie(int max_bit = 0){ clear(max_bit); } // O(1)
+    _xor_trie(int max_bit = 63){ clear(max_bit); } // O(1)
     void clear(int max_bit){ // O(1)
         this->m = max_bit;
         adj.clear(); cnt.clear(); pass.clear(); new_node();
@@ -239,9 +239,9 @@ public:
     u64 min(u64 x) const{ return x ^ argmin(x); } // O(max_bit)
     u64 argmin(u64 x) const{ return arg(x, 0); } // O(max_bit)
 
-    int greater(u64 x, u64 k){ return k == numeric_limits<u64>::max() ? 0 : size() - less(x, k + 1); } // O(max_bit)
-    int eqaul(u64 x, u64 k){ return k == numeric_limits<u64>::max() ? size() - less(x, k) : less(x, k + 1) - less(x, k); } // O(max_bit)
-    int less(u64 x, u64 k){ // O(max_bit)
+    int greater(u64 x, u64 k) const{ return k == numeric_limits<u64>::max() ? 0 : size() - less(x, k + 1); } // O(max_bit)
+    int equal(u64 x, u64 k) const{ return k == numeric_limits<u64>::max() ? size() - less(x, k) : less(x, k + 1) - less(x, k); } // O(max_bit)
+    int less(u64 x, u64 k) const{ // O(max_bit)
         if(m < 63){
             u64 high_x = x >> (m + 1), high_k = k >> (m + 1);
             if(high_x != high_k) return high_x < high_k ? size() : 0;

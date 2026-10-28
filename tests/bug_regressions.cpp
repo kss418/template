@@ -67,14 +67,30 @@ void check_line_same(){
 }
 
 void check_xor_thresholds(){
+    automata::_xor_trie defaults;
+    defaults.insert(2);CHECK(defaults.count(0)==0);CHECK(defaults.count(2)==1);
+    const uint64_t full=numeric_limits<uint64_t>::max(),high=1ull<<63;
+    vector<uint64_t> default_values={2,0,1,high,high|5,full,full};
+    for(size_t i=1;i<default_values.size();++i)defaults.insert(default_values[i]);
+    CHECK(defaults.count(full)==2);CHECK(defaults.count(high)==1);CHECK(defaults.count(0)==1);
+    const auto& default_view=defaults;
+    for(uint64_t input:{0ull,1ull,2ull,1ull<<63,~0ull}){
+        uint64_t best_min=full,best_max=0;
+        for(auto value:default_values){best_min=min(best_min,input^value);best_max=max(best_max,input^value);}
+        CHECK(default_view.min(input)==best_min);CHECK(default_view.max(input)==best_max);
+        CHECK((input^default_view.argmin(input))==best_min);CHECK((input^default_view.argmax(input))==best_max);
+    }
+    for(auto value:default_values)CHECK(defaults.erase(value));
+    CHECK(defaults.size()==0);
     automata::_xor_trie small(2); small.insert(7);
-    CHECK(small.less(0,8) == 1); CHECK(small.greater(0,7) == 0); CHECK(small.eqaul(0,7) == 1);
+    CHECK(small.less(0,8) == 1); CHECK(small.greater(0,7) == 0); CHECK(small.equal(0,7) == 1);
     const uint64_t top = numeric_limits<uint64_t>::max();
     for(int bit : {0,1,2,5,63}){
         uint64_t mask = bit == 63 ? top : ((1ull << (bit + 1)) - 1);
         automata::_xor_trie trie(bit);
         vector<uint64_t> values = {0,1,mask,mask,mask/2};
         for(auto value : values) trie.insert(value);
+        const auto& view=trie;
         vector<uint64_t> limits = {0,1,2,7,8,mask,top-1,top};
         if(bit < 63) limits.push_back(mask+1);
         for(uint64_t input : {0ull,1ull,7ull,8ull,1ull<<32,1ull<<63,~0ull}){
@@ -84,13 +100,13 @@ void check_xor_thresholds(){
                     auto actual = input ^ value;
                     less += actual < limit; equal += actual == limit; greater += actual > limit;
                 }
-                CHECK(trie.less(input,limit) == less);
-                CHECK(trie.eqaul(input,limit) == equal);
-                CHECK(trie.greater(input,limit) == greater);
+                CHECK(view.less(input,limit) == less);
+                CHECK(view.equal(input,limit) == equal);
+                CHECK(view.greater(input,limit) == greater);
             }
         }
         for(auto value : values) CHECK(trie.erase(value));
-        CHECK(trie.less(top,top) == 0); CHECK(trie.eqaul(top,top) == 0); CHECK(trie.greater(top,0) == 0);
+        CHECK(view.less(top,top) == 0); CHECK(view.equal(top,top) == 0); CHECK(view.greater(top,0) == 0);
     }
 }
 
