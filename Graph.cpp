@@ -330,61 +330,49 @@ public:
 // MST
 class mst_policy{
 public:
-    using cost = ll;
-    static cost zero(){ return 0; }
-    static cost add(const cost& a, const cost& b){ return a + b; }
+    class node{
+    public:
+        ll v;
+        node(ll v) : v(v){}
+        node operator+(const node& other) const{ return {v + other.v}; }
+    };
+    static node leaf(){ return {0}; }
+    static bool less(const node& a, const node& b){ return a.v < b.v; }
 };
 
 template <class policy = mst_policy>
 class _mst{
     bool base;
+public:
+    using node = typename policy::node;
 private:
-    using cost = typename policy::cost;
-    cost zero() const{ return policy::zero(); }
-    cost add(const cost& a, const cost& b) const{ return policy::add(a, b); }
-    cost result = zero(); int n;
+    node leaf() const{ return policy::leaf(); }
+    bool less(const node& a, const node& b) const{ return policy::less(a, b); }
+    node result = leaf(); int n;
     class edge{
     public:
-        int s, e; cost c;
+        int s, e; node c;
     };
 
-    class _uf{
-    private:
-        vector<int> p, sz;
-    public:
-        _uf(int n = 0){ clear(n); } // O(n)
-        void clear(int n){ p.assign(n + 1, -1); sz.assign(n + 1, 1); } // O(n)
-        int find(int x){ // O(1)
-            if(p[x] == -1) return x;
-            return p[x] = find(p[x]);
-        }
-
-        bool merge(int a, int b){ // O(1)
-            a = find(a); b = find(b);
-            if(a == b) return false;
-            if(sz[a] < sz[b]) swap(a, b);
-            p[b] = a; sz[a] += sz[b];
-            return true;
-        }
-    }; _uf uf; vector<edge> adj; vector<int> selected;
+    _uf uf; vector<edge> adj; vector<int> selected;
 public:
     _mst(int n = 0, bool base = 1){ clear(n, base); } // O(n)
     void clear(int n, bool base = 1){ // O(n)
-        this->n = n; this->base = base; result = zero();
-        uf.clear(n); adj.clear(); selected.clear();
+        this->n = n; this->base = base; result = leaf();
+        uf.clear(n, base); adj.clear(); selected.clear();
     }
 
-    int add(int st, int en, cost c){ // O(1)
+    int add(int st, int en, node c){ // O(1)
         int id = adj.size(); adj.push_back({st, en, c});
         return id;
     }
 
     bool build(int components = 1){ // O(n + m log m)
-        uf.clear(n); result = zero(); selected.clear();
+        uf.clear(n, base); result = leaf(); selected.clear();
         vector<int> order(adj.size()); iota(all(order), 0);
         sort(all(order), [&](int a, int b){
-            if(adj[a].c < adj[b].c) return true;
-            if(adj[b].c < adj[a].c) return false;
+            if(less(adj[a].c, adj[b].c)) return true;
+            if(less(adj[b].c, adj[a].c)) return false;
             return a < b;
         });
         int need = n - base + 1 - components;
@@ -392,12 +380,12 @@ public:
             if((int)selected.size() >= need) break;
             const auto& [st, en, c] = adj[id];
             if(!uf.merge(st, en)) continue;
-            result = add(result, c); selected.push_back(id);
+            result = result + c; selected.push_back(id);
         }
         return (int)selected.size() >= need;
     }
 
-    cost ret() const{ return result; } // O(1)
+    node ret() const{ return result; } // O(1)
     template<class F>
     void it_edge(const F& f) const{ // O(k)
         for(int id : selected){

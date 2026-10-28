@@ -12,7 +12,11 @@ namespace automata {
 namespace strings {
 #include "../String.cpp"
 }
+namespace graph_sets {
+#include "../DSU.cpp"
+}
 namespace graphs {
+using graph_sets::_uf;
 #include "../Graph.cpp"
 }
 using namespace std;

@@ -1,5 +1,9 @@
 #include <bits/stdc++.h>
+namespace graph_sets {
+#include "../DSU.cpp"
+}
 namespace graphs {
+using graph_sets::_uf;
 #include "../Graph.cpp"
 }
 using namespace std;
@@ -41,47 +45,56 @@ void check_lca_numeric(bool base){
 
 class mst_box_policy{
 public:
-    class cost{
+    class node{
     public:
-        long long v;
-        cost(long long v):v(v){}
-        bool operator<(const cost& other) const{return v<other.v;}
+        long long v;int count;
+        node(long long v,int count=1):v(v),count(count){}
+        node operator+(const node& other) const{return {v+other.v,count+other.count};}
     };
-    static cost zero(){return {0};}
-    static cost add(const cost& a,const cost& b){return {a.v+b.v};}
+    static node leaf(){return {0,0};}
+    static bool less(const node& a,const node& b){return a.v<b.v;}
 };
-static_assert(!is_default_constructible_v<mst_box_policy::cost>);
+class mst_max_policy : public graphs::mst_policy{
+public:
+    static bool less(const node& a,const node& b){return a.v>b.v;}
+};
+static_assert(!is_default_constructible_v<mst_box_policy::node>);
+static_assert(!is_default_constructible_v<graphs::mst_policy::node>);
+static_assert(is_same_v<graphs::_mst<>::node,graphs::mst_policy::node>);
 
 void check_mst_api(bool base){
     graphs::_mst<> tree(base+3,base);
     CHECK(tree.add(base,base+1,5)==0);CHECK(tree.add(base+1,base+2,1)==1);
     CHECK(tree.add(base+2,base+3,2)==2);CHECK(tree.add(base,base+3,9)==3);
     auto chosen=[&](){vector<int> ids;as_const(tree).it_edge([&](int id,int,int,const auto&){ids.push_back(id);});return ids;};
-    CHECK(tree.build(2));CHECK(as_const(tree).ret()==3);CHECK(chosen()==vector<int>({1,2}));
-    CHECK(tree.build());CHECK(as_const(tree).ret()==8);CHECK(chosen()==vector<int>({1,2,0}));
+    CHECK(tree.build(2));CHECK(as_const(tree).ret().v==3);CHECK(chosen()==vector<int>({1,2}));
+    CHECK(tree.build());CHECK(as_const(tree).ret().v==8);CHECK(chosen()==vector<int>({1,2,0}));
     CHECK(tree.build());CHECK(chosen()==vector<int>({1,2,0}));
     graphs::_lca paths(base+3,base);
     as_const(tree).it_edge([&](int,int a,int b,const auto&){paths.add(a,b);});paths.build();
     CHECK(paths.dist(base,base+3)==3);
-    CHECK(tree.add(base,base+3,0)==4);CHECK(tree.build());CHECK(tree.ret()==3);CHECK(chosen()==vector<int>({4,1,2}));
-    CHECK(tree.build(4));CHECK(tree.ret()==0);CHECK(chosen().empty());
+    CHECK(tree.add(base,base+3,0)==4);CHECK(tree.build());CHECK(tree.ret().v==3);CHECK(chosen()==vector<int>({4,1,2}));
+    CHECK(tree.build(4));CHECK(tree.ret().v==0);CHECK(chosen().empty());
     tree.clear(base+1,base);CHECK(tree.add(base,base+1,1)==0);CHECK(tree.add(base,base+1,1)==1);
-    CHECK(tree.add(base,base,-100)==2);CHECK(tree.build());CHECK(tree.ret()==1);CHECK(chosen()==vector<int>({0}));
+    CHECK(tree.add(base,base,-100)==2);CHECK(tree.build());CHECK(tree.ret().v==1);CHECK(chosen()==vector<int>({0}));
     tree.clear(base+2,base);CHECK(tree.add(base,base+1,-4)==0);CHECK(!tree.build());
-    CHECK(tree.ret()==-4);CHECK(chosen()==vector<int>({0}));CHECK(tree.build(2));CHECK(tree.ret()==-4);
-    tree.clear(0,1);CHECK(tree.build());CHECK(tree.ret()==0);CHECK(chosen().empty());
-    tree.clear(0,0);CHECK(tree.build());CHECK(tree.ret()==0);CHECK(chosen().empty());
+    CHECK(tree.ret().v==-4);CHECK(chosen()==vector<int>({0}));CHECK(tree.build(2));CHECK(tree.ret().v==-4);
+    tree.clear(0,1);CHECK(tree.build());CHECK(tree.ret().v==0);CHECK(chosen().empty());
+    tree.clear(0,0);CHECK(tree.build());CHECK(tree.ret().v==0);CHECK(chosen().empty());
     graphs::_mst<mst_box_policy> boxed(base+2,base);
     CHECK(boxed.add(base,base+1,{3})==0);CHECK(boxed.add(base+1,base+2,{-2})==1);
     CHECK(boxed.build());CHECK(as_const(boxed).ret().v==1);
-    int calls=0;as_const(boxed).it_edge([&](int,int,int,const mst_box_policy::cost&){++calls;});CHECK(calls==2);
+    int calls=0;as_const(boxed).it_edge([&](int,int,int,const mst_box_policy::node&){++calls;});CHECK(calls==2);
+    CHECK(as_const(boxed).ret().count==2);CHECK(boxed.build(3));
+    CHECK(as_const(boxed).ret().count==0);CHECK(as_const(boxed).ret().v==0);
 }
 
-void check_mst_oracle(bool base){
+template<class Policy=graphs::mst_policy>
+void check_mst_oracle(bool base,bool is_max=false){
     mt19937 rng(625+base);
     for(int trial=0;trial<45;++trial){
         int count=1+rng()%5,n=base+count-1,m=rng()%9;
-        graphs::_mst<> tree(n,base);vector<tuple<int,int,long long>> edges;
+        graphs::_mst<Policy> tree(n,base);vector<tuple<int,int,long long>> edges;
         auto add=[&](int a,int b,long long c){CHECK(tree.add(base+a,base+b,c)==(int)edges.size());edges.push_back({a,b,c});};
         for(int i=0;i<m;++i)add(rng()%count,rng()%count,(int)(rng()%11)-5);
         CHECK(tree.build(count));add(rng()%count,rng()%count,(int)(rng()%11)-5);
@@ -89,7 +102,7 @@ void check_mst_oracle(bool base){
         vector<int> complete(count);iota(all(complete),0);int minimum=count;
         for(auto[a,b,c]:edges){a=root(complete,a);b=root(complete,b);if(a!=b){complete[a]=b;--minimum;}}
         for(int target=1;target<=count;++target){
-            int needed=count-max(target,minimum);long long best=LLONG_MAX;
+            int needed=count-max(target,minimum);long long best=is_max?LLONG_MIN:LLONG_MAX;
             for(unsigned mask=0;mask<(1u<<edges.size());++mask){
                 if(popcount(mask)!=needed)continue;
                 vector<int> p(count);iota(all(p),0);long long sum=0;bool valid=true;
@@ -97,14 +110,14 @@ void check_mst_oracle(bool base){
                     auto[a,b,c]=edges[id];a=root(p,a);b=root(p,b);
                     if(a==b){valid=false;break;}p[a]=b;sum+=c;
                 }
-                if(valid)best=min(best,sum);
+                if(valid)best=is_max?max(best,sum):min(best,sum);
             }
-            CHECK(tree.build(target)==(minimum<=target));CHECK(as_const(tree).ret()==best);
+            CHECK(tree.build(target)==(minimum<=target));CHECK(as_const(tree).ret().v==best);
             vector<int> ids,p(count);iota(all(p),0);long long sum=0;
             as_const(tree).it_edge([&](int id,int a,int b,const auto& c){
                 CHECK(id>=0&&id<(int)edges.size());auto[oa,ob,oc]=edges[id];
-                CHECK(a==base+oa);CHECK(b==base+ob);CHECK(c==oc);
-                int ra=root(p,a-base),rb=root(p,b-base);CHECK(ra!=rb);p[ra]=rb;sum+=c;ids.push_back(id);
+                CHECK(a==base+oa);CHECK(b==base+ob);CHECK(c.v==oc);
+                int ra=root(p,a-base),rb=root(p,b-base);CHECK(ra!=rb);p[ra]=rb;sum+=c.v;ids.push_back(id);
             });
             CHECK((int)ids.size()==needed);CHECK(sum==best);
             CHECK(tree.build(target)==(minimum<=target));vector<int> repeated;
@@ -397,7 +410,7 @@ void check_scc_dag(bool base,unsigned seed){
 
 int main(){
     try {
-        for(bool base : {false,true}){ check_mst_api(base); check_mst_oracle(base); check_bcc(base); check_cycles(base); check_lca_order(base); check_lca_numeric(base); }
+        for(bool base : {false,true}){ check_mst_api(base); check_mst_oracle(base); check_mst_oracle<mst_max_policy>(base,true); check_bcc(base); check_cycles(base); check_lca_order(base); check_lca_numeric(base); }
         for(bool base : {false,true}) for(int mode=0;mode<4;mode++) for(unsigned seed=1;seed<=8;seed++){
             check_lca_paths<lca_text>(base,mode,seed);
             check_lca_paths<lca_matrix>(base,mode,seed);
