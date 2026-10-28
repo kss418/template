@@ -1,0 +1,37 @@
+{
+  "uf_value": {
+    "prefix": ">>uf_value",
+    "body": [
+      "class uf_policy{",
+      "public:",
+      "    class node{};",
+      "    static node leaf(){ return {}; }",
+      "    static void merge(node& a, node& b){}",
+      "};",
+      "",
+      "template <class policy = uf_policy>",
+      "class _uf_value : public _uf{",
+      "private:",
+      "    using node = typename policy::node;",
+      "    vector<node> arr;",
+      "    node leaf() const{ return policy::leaf(); }",
+      "public:",
+      "    _uf_value(int n = 0, bool base = 1) : _uf(n, base), arr(n + 1, leaf()){} // O(n)",
+      "    void clear(int n, bool base = 1){ // O(n)",
+      "        _uf::clear(n, base);",
+      "        arr.assign(n + 1, leaf());",
+      "    }",
+      "",
+      "    bool merge(int a, int b){ // O(1) + policy::merge",
+      "        if(!merge_internal(a, b)) return false;",
+      "        policy::merge(arr[a], arr[b]);",
+      "        return true;",
+      "    }",
+      "",
+      "    node& get(int x){ return arr[find(x)]; } // O(1)",
+      "    void set(int x, const node& v){ arr[find(x)] = v; } // O(1)",
+      "};"
+    ],
+    "description": "Component values for Union-Find; requires >>uf."
+  }
+}

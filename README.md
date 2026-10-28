@@ -10,7 +10,7 @@
   - Lucas's Theorem (`_lucas`)
   - CRT-based Combination (`_comb_crt`)
 - `DSU.cpp`
-  - Union-Find (`_uf`)
+  - Union-Find / Component Values (`_uf`, `_uf_value`)
   - Weighted Union-Find (`_wuf`)
   - Union-Find Set (`_ufset`)
 - `FFT.cpp`
@@ -86,3 +86,5 @@
 
 `snippets/`에는 VS Code용 code snippets이 들어있습니다. 각 알고리즘명에 대응하는
 `.code-snippets` 파일이 존재하며 위 템플릿 파일들과 1:1로 매칭됩니다.
+
+`>>uf_value`는 컴포넌트 값 관리 확장이며, 먼저 `>>uf`가 필요합니다.

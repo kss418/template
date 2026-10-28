@@ -9,27 +9,23 @@ using pll = pair<ll, ll>; using tll = tuple<ll, ll, ll>;
 constexpr ll INF = 0x3f3f3f3f3f3f3f3f;
 constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 
-class uf_policy{
-public:
-    class node{};
-    static node leaf(){ return {}; }
-    static void merge(node& a, node& b){}
-};
-
-template <class policy = uf_policy>
 class _uf{
     bool base;
 private:
-    using node = typename policy::node;
-    vector<node> arr;
     vector<int> p, sz; int n, cc;
-    node leaf() const{ return policy::leaf(); }
+protected:
+    bool merge_internal(int& a, int& b){ // O(1)
+        a = find(a); b = find(b);
+        if(a == b) return false;
+        if(sz[a] < sz[b]) swap(a, b);
+        p[b] = a; sz[a] += sz[b]; cc--;
+        return true;
+    }
 public:
     _uf(int n = 0, bool base = 1){ clear(n, base); } // O(n)
     void clear(int n, bool base = 1){ // O(n)
         this->n = n; this->base = base; cc = n - base + 1;
         p.assign(n + 1, -1); sz.assign(n + 1, 1);
-        arr.assign(n + 1, leaf());
     }
 
     int find(int x){ // O(1)
@@ -38,21 +34,41 @@ public:
         return p[x] = find(p[x]);
     }
 
+    bool merge(int a, int b){ return merge_internal(a, b); } // O(1)
+    int count() const{ return cc; } // O(1)
+    int size(int x){ return sz[find(x)]; } // O(1)
+    bool root(int x){ return find(x) == x; } // O(1)
+    bool same(int a, int b){ return find(a) == find(b); } // O(1)
+};
+
+class uf_policy{
+public:
+    class node{};
+    static node leaf(){ return {}; }
+    static void merge(node& a, node& b){}
+};
+
+template <class policy = uf_policy>
+class _uf_value : public _uf{
+private:
+    using node = typename policy::node;
+    vector<node> arr;
+    node leaf() const{ return policy::leaf(); }
+public:
+    _uf_value(int n = 0, bool base = 1) : _uf(n, base), arr(n + 1, leaf()){} // O(n)
+    void clear(int n, bool base = 1){ // O(n)
+        _uf::clear(n, base);
+        arr.assign(n + 1, leaf());
+    }
+
     bool merge(int a, int b){ // O(1) + policy::merge
-        a = find(a); b = find(b);
-        if(a == b) return false;
-        if(sz[a] < sz[b]) swap(a, b);
-        p[b] = a; sz[a] += sz[b]; cc--;
+        if(!merge_internal(a, b)) return false;
         policy::merge(arr[a], arr[b]);
         return true;
     }
 
-    int count() const{ return cc; } // O(1)
     node& get(int x){ return arr[find(x)]; } // O(1)
     void set(int x, const node& v){ arr[find(x)] = v; } // O(1)
-    int size(int x){ return sz[find(x)]; } // O(1)
-    bool root(int x){ return find(x) == x; } // O(1)
-    bool same(int a, int b){ return find(a) == find(b); } // O(1)
 };
 
 // WEIGHTED UNION FIND

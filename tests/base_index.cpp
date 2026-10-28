@@ -85,9 +85,9 @@ void check_ranges(bool base){
 }
 void check_sets(bool base){
     int n=4, first=base, count=n-first+1;
-    sets::_uf<> uf(n,base);CHECK(uf.count()==count);CHECK(uf.merge(first,n));CHECK(uf.count()==count-1);CHECK(uf.same(first,n));
+    sets::_uf uf(n,base);CHECK(uf.count()==count);CHECK(uf.merge(first,n));CHECK(uf.count()==count-1);CHECK(uf.same(first,n));
     uf.clear(n,!base);CHECK(uf.count()==n-int(!base)+1);
-    sets::_uf<uf_leaf_policy> meta(n,base);
+    sets::_uf_value<uf_leaf_policy> meta(n,base);
     for(int i=first;i<=n;++i)CHECK(meta.get(i).v==7);
     CHECK(meta.merge(first,first+1));CHECK(meta.get(first+1).v==14);
     CHECK(meta.merge(n,first+1));CHECK(meta.get(n).v==21);CHECK(meta.size(n)==3);
@@ -103,6 +103,41 @@ void check_sets(bool base){
     w.clear(n,!base);CHECK(!w.same(!base,n));
     sets::_ufset intervals(n,base);CHECK(intervals.count()==count);CHECK(intervals.prv(first)==first-1);CHECK(intervals.nxt(n)==n+1);
     intervals.merge(first,first+1);CHECK(intervals.same(first,first+1));CHECK(intervals.prv(first+1)==first-1);CHECK(intervals.nxt(first)==first+2);
+}
+void check_uf_split(bool base){
+    sets::_uf basic;sets::_uf_value<> empty;
+    CHECK(basic.count()==0);CHECK(empty.count()==0);
+    empty.clear(0,0);CHECK(empty.count()==1);CHECK(!empty.merge(0,0));
+    const int n=base+8;
+    sets::_uf plain(n,base);sets::_uf_value<uf_leaf_policy> values(n,base);
+    vector<int> component(n+1);iota(component.begin(),component.end(),0);
+    vector<long long> weight(n+1,7);mt19937 rng(813+base);
+    for(int step=0;step<200;++step){
+        int a=base+rng()%9,b=base+rng()%9;
+        if(step%4==0){
+            long long v=(int)(rng()%101)-50;values.set(a,{v});
+            int group=component[a];bool first=true;
+            for(int i=base;i<=n;++i)if(component[i]==group){weight[i]=first?v:0;first=false;}
+        }else{
+            int from=component[b],to=component[a];bool joined=from!=to;
+            CHECK(plain.merge(a,b)==joined);CHECK(values.merge(a,b)==joined);
+            if(joined)for(int i=base;i<=n;++i)if(component[i]==from)component[i]=to;
+        }
+        set<int> groups;
+        for(int i=base;i<=n;++i){
+            groups.insert(component[i]);int size=0;long long sum=0;
+            for(int j=base;j<=n;++j)if(component[i]==component[j]){++size;sum+=weight[j];}
+            CHECK(plain.find(i)==values.find(i));CHECK(plain.size(i)==size);CHECK(values.size(i)==size);
+            CHECK(values.get(i).v==sum);CHECK(plain.root(i)==values.root(i));
+            CHECK(plain.same(i,a)==(component[i]==component[a]));
+        }
+        CHECK(plain.count()==(int)groups.size());CHECK(values.count()==plain.count());
+        if(step==99){
+            plain.clear(n,base);values.clear(n,base);iota(component.begin(),component.end(),0);fill(weight.begin(),weight.end(),7);
+        }
+    }
+    plain.clear(0,1);values.clear(0,1);CHECK(plain.count()==0);CHECK(values.count()==0);
+    plain.clear(0,0);values.clear(0,0);CHECK(plain.size(0)==1);CHECK(values.get(0).v==7);
 }
 void check_graphs(bool base){
     int n=4, first=base, count=n-first+1;
@@ -150,7 +185,7 @@ void check_paths_and_flow(bool base){
     flows::_flow<> self(n,base);auto handle=self.addsol(first,first,5);self.set_flow(handle,2);CHECK(self.get_flow(handle)==2);
 }
 void check_defaults(){
-    CHECK(sets::_uf<>(0).count()==0);CHECK(sets::_ufset(0).count()==0);CHECK(graphs::_clist<int>(0).size()==0);
+    CHECK(sets::_uf(0).count()==0);CHECK(sets::_ufset(0).count()==0);CHECK(graphs::_clist<int>(0).size()==0);
     graphs::_scc scc;scc.build();CHECK(scc.comp_cnt()==0);
     graphs::_2sat sat;CHECK(sat.build());graphs::_bm bm;CHECK(bm.build()==0);
     graphs::_hungarian<> assignment;CHECK(assignment.build()==0);
@@ -160,7 +195,7 @@ void check_defaults(){
     vector<range_templates::monoid::node> empty;
     range_templates::_seg<> seg(span<const range_templates::monoid::node>(empty),0);CHECK(seg.query(0,0).v==0);
     range_templates::_seg<> default_seg(4);default_seg.set(0,{99});default_seg.set(1,{3});CHECK(default_seg.query(0,4).v==3);
-    CHECK(sets::_uf<>(4).count()==4);CHECK(graphs::_clist<int>(4).size()==4);
+    CHECK(sets::_uf(4).count()==4);CHECK(graphs::_clist<int>(4).size()==4);
 }
 void check_oracles(bool base){
     mt19937 rng(418+base);
@@ -222,6 +257,6 @@ void check_oracles(bool base){
     }
 }
 int main(){
-    try {for(bool base:{false,true}){check_ranges(base);check_sets(base);check_graphs(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();cout<<"PASS "<<checks<<" base-index checks\n";return 0;}
+    try {for(bool base:{false,true}){check_ranges(base);check_sets(base);check_uf_split(base);check_graphs(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();cout<<"PASS "<<checks<<" base-index checks\n";return 0;}
     catch(const exception& e){cerr<<"FAIL "<<e.what()<<'\n';return 1;}
 }
