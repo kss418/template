@@ -13,13 +13,57 @@ void check_sum(bool base){
     tree.clear(0,!base);tree.make(a);CHECK(tree.query(0,2).v==(!base?30:37));
     Tree constructed(span<const value>(a),base);CHECK(constructed.query(0,2).v==(base?30:37));
 }
+class mt_no_default{
+public:
+    class node{
+    public:
+        long long v;
+        node(long long v):v(v){}
+        bool operator<(const node& other) const{return v<other.v;}
+    };
+};
+static_assert(!is_default_constructible_v<mt_no_default::node>);
+template<class Policy=mt_policy>
 void check_sorted(bool base){
-    using value=_mt<>::node;vector<value> a{{7},{10},{20}};
-    _mt<> tree(2,base);tree.make(a);CHECK(tree.geq(0,2,{0})==(base?2:3));CHECK(tree.eq(0,2,{7})==(!base));
+    using value=typename _mt<Policy>::node;vector<value> a{{7},{10},{20}};
+    _mt<Policy> tree(2,base);tree.make(a);CHECK(tree.geq(0,2,{0})==(base?2:3));CHECK(tree.eq(0,2,{7})==(!base));
     tree.make(vector<value>{});CHECK(tree.geq(0,2,{0})==0);
     tree.make(vector<value>{{9}});CHECK(tree.eq(0,0,{9})==(!base));
     tree.clear(0,!base);tree.make(a);CHECK(tree.geq(0,2,{0})==(!base?2:3));
-    _mt<> constructed(span<const value>(a),base);CHECK(constructed.geq(0,2,{0})==(base?2:3));
+    _mt<Policy> constructed(span<const value>(a),base);CHECK(constructed.geq(0,2,{0})==(base?2:3));
+}
+void check_sorted_nodes(bool base){
+    using value=mt_no_default::node;
+    int n=base+5;_mt<mt_no_default> tree(n,base);
+    vector<optional<long long>> values(n+1);
+    mt19937 rng(519+base);
+    auto verify=[&](){
+        const auto& read=tree;
+        for(int l=base-1;l<=n+1;++l)for(int r=l;r<=n+1;++r)for(long long threshold:{-4,0,4}){
+            int less=0,equal=0,greater=0;
+            for(int i=max(l,int(base));i<=min(r,n);++i)if(values[i]){
+                less+=*values[i]<threshold;equal+=*values[i]==threshold;greater+=*values[i]>threshold;
+            }
+            CHECK(read.less(l,r,{threshold})==less);CHECK(read.eq(l,r,{threshold})==equal);
+            CHECK(read.greater(l,r,{threshold})==greater);CHECK(read.leq(l,r,{threshold})==less+equal);
+            CHECK(read.geq(l,r,{threshold})==greater+equal);
+        }
+    };
+    verify();
+    for(int step=0;step<60;++step){
+        if(step%17==0){tree.clear(n,base);fill(all(values),nullopt);}
+        else if(step%11==0){
+            vector<value> input;input.reserve(n+1);
+            for(int i=0;i<=n;++i){long long v=(int)(rng()%9)-4;input.emplace_back(v);values[i]=v;}
+            tree.make(input);
+        }else{
+            int i=base+rng()%6;long long v=(int)(rng()%9)-4;
+            tree.update(i,{v});values[i]=v;
+        }
+        verify();
+    }
+    tree.clear(0,0);CHECK(tree.eq(0,0,{0})==0);tree.update(0,{0});CHECK(tree.eq(0,0,{0})==1);
+    tree.clear(0,1);CHECK(tree.geq(0,0,{0})==0);
 }
 class pst_text {
 public:
@@ -138,6 +182,6 @@ void check_pst_xor(bool base){
 }
 
 int main(){
-    try{for(bool base:{false,true}){check_sum<_seg<>,monoid::node>(base);check_sum<_prop<>,action::node>(base);check_sum<_fw<>,group::node>(base);check_sorted(base);check_pst_text(base);check_pst_diff(base);check_pst_xor(base);}cout<<"PASS "<<checks<<" make-base/PST checks\n";return 0;}
+    try{for(bool base:{false,true}){check_sum<_seg<>,monoid::node>(base);check_sum<_prop<>,action::node>(base);check_sum<_fw<>,group::node>(base);check_sorted(base);check_sorted<mt_no_default>(base);check_sorted_nodes(base);check_pst_text(base);check_pst_diff(base);check_pst_xor(base);}cout<<"PASS "<<checks<<" make-base/PST checks\n";return 0;}
     catch(const exception&e){cerr<<"FAIL "<<e.what()<<'\n';return 1;}
 }

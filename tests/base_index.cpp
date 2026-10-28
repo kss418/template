@@ -120,7 +120,7 @@ void check_ranges(bool base){
     vector<range_templates::monoid::node> a(n+1,range_templates::monoid::leaf());
     vector<range_templates::action::node> lazy_a(n+1,range_templates::action::leaf());
     vector<range_templates::group::node> group_a(n+1,range_templates::group::leaf());
-    vector<range_templates::mt_policy::node> sorted_a(n+1);
+    vector<range_templates::mt_policy::node> sorted_a(n+1,{0});
     for(int i=0;i<=n;++i){a[i]={i+1};lazy_a[i]={i+1,1};group_a[i]={i+1};sorted_a[i]={i+1};if(i>=first)total+=i+1;}
     range_templates::_seg<> seg(span<const range_templates::monoid::node>(a),base);
     range_templates::_prop<> prop(span<const range_templates::action::node>(lazy_a),base);
