@@ -115,6 +115,108 @@ void check_mos_factories(bool base){
     mo.clear(0,0,0);mo.add(0,0);mo.build();CHECK(mo.get_result()[0].v==2);CHECK(mo.get_result()[0].size==1);
     offline::_mos<> defaults;defaults.build();CHECK(defaults.get_result().empty());
 }
+class pbs_sum_policy{
+public:
+    class query{
+    public:
+        long long limit;bool prefix;
+        query(long long limit,bool prefix):limit(limit),prefix(prefix){}
+    };
+    static inline vector<long long> values;
+    static inline long long lower=0,sum=0;
+    static inline int position=0,resets=0;
+    static void reset(){sum=0;position=0;++resets;}
+    static void apply(long long t){
+        CHECK(position<(int)values.size());CHECK(t==lower+position);
+        sum+=values[position++];
+    }
+    static bool check(const query& q){return q.prefix?sum<=q.limit:sum>=q.limit;}
+};
+static_assert(!is_default_constructible_v<pbs_sum_policy::query>);
+
+void check_pbs_range(bool first,long long lo,int width,unsigned seed){
+    mt19937 rng(seed);long long hi=lo+(width-1);
+    pbs_sum_policy::lower=lo;pbs_sum_policy::values.assign(width,0);
+    for(auto& value:pbs_sum_policy::values)value=rng()%4;
+    long long total=accumulate(all(pbs_sum_policy::values),0LL);
+    offline::_pbs<pbs_sum_policy> tree(lo,hi);
+    vector<long long> limits={-1,0,1,3,total,total+1};
+    for(int i=0;i<8;++i)limits.push_back((int)(rng()%(total+4))-1);
+    for(auto limit:limits){int id=tree.q.size();CHECK(tree.add({limit,!first})==id);}
+    auto verify=[&](){
+        pbs_sum_policy::sum=99999;pbs_sum_policy::position=999;
+        int resets=pbs_sum_policy::resets;tree.build(first);CHECK(pbs_sum_policy::resets>resets);
+        const auto& result=as_const(tree).get_result();CHECK(result.size()==tree.q.size());
+        for(size_t i=0;i<tree.q.size();++i){
+            long long expected=first?hi+1:lo-1,sum=0;
+            for(int offset=0;offset<width;++offset){
+                sum+=pbs_sum_policy::values[offset];
+                bool ok=tree.q[i].prefix?sum<=tree.q[i].limit:sum>=tree.q[i].limit;
+                if(ok){expected=lo+offset;if(first)break;}
+            }
+            CHECK(result[i]==expected);
+        }
+    };
+    verify();verify();
+    pbs_sum_policy::values[0]+=2;tree.q[0].limit=first?0:total+5;
+    CHECK(tree.add({total+2,!first})==(int)limits.size());verify();
+    tree.clear(lo,hi);CHECK(tree.add({0,!first})==0);verify();
+    tree.clear();tree.build(first);CHECK(tree.get_result().empty());
+    CHECK(tree.add({0,!first})==0);tree.build(first);CHECK(tree.get_result()==vector<long long>{first?0:-1});
+}
+
+class pbs_connect_policy{
+public:
+    class query{
+    public:
+        int a,b;
+        query(int a,int b):a(a),b(b){}
+    };
+    static inline int n=0;static inline bool base=1;
+    static inline sets::_uf uf;
+    static inline vector<pair<int,int>> edges;
+    static void reset(){uf.clear(n,base);}
+    static void apply(long long t){if(t){auto[a,b]=edges[t-1];uf.merge(a,b);}}
+    static bool check(const query& q){return uf.same(q.a,q.b);}
+};
+
+void check_pbs_connect(bool base,unsigned seed){
+    mt19937 rng(seed);int n=base+5,m=8;
+    pbs_connect_policy::base=base;pbs_connect_policy::n=n;pbs_connect_policy::edges.clear();
+    for(int i=0;i<m;++i)pbs_connect_policy::edges.push_back({base+(int)(rng()%6),base+(int)(rng()%6)});
+    offline::_pbs<pbs_connect_policy> tree(0,m);
+    for(int a=base;a<=n;++a)for(int b=base;b<=n;++b){int id=tree.q.size();CHECK(tree.add({a,b})==id);}
+    auto verify=[&](){
+        tree.build();const auto& result=as_const(tree).get_result();CHECK(result.size()==tree.q.size());
+        for(size_t id=0;id<tree.q.size();++id){
+            auto q=tree.q[id];long long expected=m+1;
+            for(int t=0;t<=m;++t){
+                vector<vector<int>> adj(n+1);
+                for(int i=0;i<t;++i){auto[a,b]=pbs_connect_policy::edges[i];adj[a].push_back(b);adj[b].push_back(a);}
+                vector<bool> seen(n+1);queue<int> bfs;bfs.push(q.a);seen[q.a]=true;
+                while(!bfs.empty()){int cur=bfs.front();bfs.pop();for(int next:adj[cur])if(!seen[next]){seen[next]=true;bfs.push(next);}}
+                if(seen[q.b]){expected=t;break;}
+            }
+            CHECK(result[id]==expected);
+        }
+    };
+    verify();verify();tree.q[0]={base,base};CHECK(tree.add({base,n})==36);
+    swap(pbs_connect_policy::edges.front(),pbs_connect_policy::edges.back());verify();
+    tree.clear(0,0);CHECK(tree.add({base,n})==0);tree.build();CHECK(tree.get_result()==vector<long long>{1});
+}
+
+void check_pbs(){
+    for(bool first:{false,true})for(long long lo:{-11LL,0LL,1LL,1000000000000LL,-1000000000000LL}){
+        for(int width:{1,2,9})check_pbs_range(first,lo,width,721+width);
+    }
+    check_pbs_range(true,LLONG_MIN,5,31);check_pbs_range(false,LLONG_MAX-4,5,41);
+    for(bool base:{false,true})for(unsigned seed=1;seed<=8;++seed)check_pbs_connect(base,seed);
+    offline::_pbs<> empty;empty.build();CHECK(empty.get_result().empty());
+    CHECK(empty.add({0})==0);empty.build();CHECK(empty.get_result()==vector<long long>{0});
+    empty.clear(2,2);CHECK(empty.add({0})==0);empty.build();CHECK(empty.get_result()==vector<long long>{3});
+    empty.build(0);CHECK(empty.get_result()==vector<long long>{1});
+}
+
 void check_ranges(bool base){
     const int n=4, first=base, count=n-first+1;
     long long total=0;
@@ -372,6 +474,6 @@ void check_oracles(bool base){
     }
 }
 int main(){
-    try {for(bool base:{false,true}){check_ranges(base);check_mos_factories(base);check_sets(base);check_uf_split(base);check_weighted_uf(base);check_graphs(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();cout<<"PASS "<<checks<<" base-index checks\n";return 0;}
+    try {for(bool base:{false,true}){check_ranges(base);check_mos_factories(base);check_sets(base);check_uf_split(base);check_weighted_uf(base);check_graphs(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();check_pbs();cout<<"PASS "<<checks<<" base-index checks\n";return 0;}
     catch(const exception& e){cerr<<"FAIL "<<e.what()<<'\n';return 1;}
 }
