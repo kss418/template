@@ -29,7 +29,6 @@ public:
     }
 
     int find(int x){ // O(1)
-        assert(base <= x && x <= n);
         if(p[x] == -1) return x;
         return p[x] = find(p[x]);
     }

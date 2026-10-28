@@ -40,6 +40,7 @@ public:
     };
     using ret=node;
     static node leaf(){return {0};}
+    static void reset(){}
     static ret id(){return {0};}
     static void push_front(int,const node& v,ret& cur){cur.v+=v.v;}
     static void push_back(int i,const node& v,ret& cur){push_front(i,v,cur);}
@@ -71,6 +72,7 @@ public:
         ret(long long v,int size):v(v),size(size){}
     };
     static node leaf(){return {2};}
+    static void reset(){}
     static ret id(){return {1,0};}
     static void push_front(int,const node& v,ret& cur){cur.v=cur.v*v.v%101;++cur.size;}
     static void push_back(int i,const node& v,ret& cur){push_front(i,v,cur);}

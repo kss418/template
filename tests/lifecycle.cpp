@@ -55,6 +55,10 @@ void check_rebuild(bool base){
     graphs::_vtree vt(n,base);for(int i=first;i<n;++i)vt.add(i,i+1);vt.build();CHECK(vt.make({first,n}).size()==2);vt.build(n);CHECK(vt.dist_tree(first,n)==3);CHECK(vt.make({first,n}).size()==2);
     graphs::_3cycle triangle(n,base);triangle.add(first,first+1);triangle.add(first+1,first+2);triangle.add(first+2,first);triangle.build();CHECK(triangle.ret()==1);triangle.build();CHECK(triangle.ret()==1);triangle.add(first,n);triangle.add(first+1,n);triangle.build();CHECK(triangle.ret()==2);
     graphs::_4cycle square(n,base);for(int i=first;i<=n;++i)square.add(i,i==n?first:i+1);square.build();CHECK(square.ret()==1);square.build();CHECK(square.ret()==1);
+    external_mo::state=123;
+    offline::_mos<external_mo> empty_mo(n,0,base);empty_mo.build();
+    CHECK(external_mo::state==0);CHECK(empty_mo.get_result().empty());
+    external_mo::state=456;empty_mo.build();CHECK(external_mo::state==0);
     offline::_mos<external_mo> mo(n,0,base);for(int i=first;i<=n;++i)mo.set(i,{i-first+1});mo.add(first,n);mo.build();CHECK(mo.get_result()[0].v==10);mo.build();CHECK(mo.get_result()[0].v==10);mo.set(n,{100});mo.build();CHECK(mo.get_result()[0].v==106);
 }
 void check_bulk_and_numeric(){
