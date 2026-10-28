@@ -12,6 +12,9 @@ namespace automata {
 namespace strings {
 #include "../String.cpp"
 }
+namespace offline {
+#include "../Others.cpp"
+}
 namespace graph_sets {
 #include "../DSU.cpp"
 }
@@ -34,6 +37,64 @@ void check_manacher(){
             string part = text.substr(l, r - l + 1), reverse_part = part;
             reverse(reverse_part.begin(), reverse_part.end());
             CHECK(m.is_pal(l, r) == (part == reverse_part));
+        }
+    }
+}
+
+void check_cht(){
+    using line=offline::_cht::line;
+    auto best=[](const vector<line>& lines,long long x,bool is_min){
+        line answer=lines.front();
+        __int128_t value=(__int128_t)answer.a*x+answer.b;
+        for(const auto& cur:lines){
+            __int128_t next=(__int128_t)cur.a*x+cur.b;
+            if(is_min?next<=value:next>=value){answer=cur;value=next;}
+        }
+        return answer;
+    };
+    auto compare=[&](const line& actual,const line& expected,long long x){
+        CHECK(actual.a==expected.a);CHECK(actual.b==expected.b);
+        CHECK(actual.f(x)==(long long)((__int128_t)expected.a*x+expected.b));
+    };
+    auto batch=[&](bool is_min,const vector<line>& lines,const vector<long long>& queries){
+        offline::_cht tree(is_min);for(const auto& cur:lines)tree.add(cur);
+        for(long long x:queries){
+            auto expected=best(lines,x,is_min);
+            compare(tree.query_monotone(x),expected,x);compare(as_const(tree).query(x),expected,x);
+        }
+    };
+    batch(true,{{1,0},{0,5}},{1,5,10});
+    batch(true,{{2,0},{1,-3},{0,-4}},{-4,-3,-2,-1,0});
+    batch(false,{{0,0},{1,3},{2,4}},{-4,-3,-2,-1,0});
+    batch(true,{{3,5},{3,7},{3,-2},{3,-2}},{-10,0,10});
+    batch(false,{{3,5},{3,7},{3,-2},{3,7}},{-10,0,10});
+    batch(true,{{2,LLONG_MIN+10},{1,LLONG_MAX-10},{0,LLONG_MIN+20}},{0,1,10});
+    batch(true,{{LLONG_MAX,0},{0,1},{LLONG_MIN+1,2}},{-1,0,1});
+    CHECK(line(LLONG_MAX,-LLONG_MAX).f(2)==LLONG_MAX);
+    for(bool is_min:{false,true})for(unsigned seed=1;seed<=16;++seed){
+        mt19937 rng(633+seed);offline::_cht tree(is_min);vector<line> lines;
+        for(int round=0;round<2;++round){
+            tree.clear();lines.clear();
+            CHECK(tree.query(7).f(7)==(is_min?offline::INF:offline::MINF));
+            CHECK(tree.query_monotone(-1000).f(-1000)==(is_min?offline::INF:offline::MINF));
+            long long slope=is_min?100:-100,x=-60;
+            for(int step=0;step<65;++step){
+                slope+=(is_min?-1:1)*(long long)(rng()%4);
+                line cur{slope,(int)(rng()%4001)-2000};tree.add(cur);lines.push_back(cur);
+                long long arbitrary=(int)(rng()%301)-150;
+                compare(as_const(tree).query(arbitrary),best(lines,arbitrary,is_min),arbitrary);
+                x+=rng()%4;compare(tree.query_monotone(x),best(lines,x,is_min),x);
+            }
+            for(int step=0;step<40;++step){
+                x+=rng()%4;compare(tree.query_monotone(x),best(lines,x,is_min),x);
+                long long arbitrary=(int)(rng()%301)-150;
+                compare(as_const(tree).query(arbitrary),best(lines,arbitrary,is_min),arbitrary);
+            }
+            offline::_cht built(is_min);for(const auto& cur:lines)built.add(cur);
+            for(long long q=-150;q<=150;q+=3){
+                compare(built.query_monotone(q),best(lines,q,is_min),q);
+                compare(as_const(built).query(-q),best(lines,-q,is_min),-q);
+            }
         }
     }
 }
@@ -318,7 +379,7 @@ void check_alphabets(){
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
-        {"manacher",check_manacher},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
+        {"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
         {"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets}}){
         try { test(); cout << "PASS " << name << '\n'; }
         catch(const exception& e){ ++failures; cerr << "FAIL " << name << ": " << e.what() << '\n'; }
