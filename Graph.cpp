@@ -328,7 +328,8 @@ public:
 };
 
 // MST
-struct mst_policy{
+class mst_policy{
+public:
     using cost = ll;
     static cost zero(){ return 0; }
     static cost add(const cost& a, const cost& b){ return a + b; }
@@ -341,59 +342,68 @@ private:
     using cost = typename policy::cost;
     cost zero() const{ return policy::zero(); }
     cost add(const cost& a, const cost& b) const{ return policy::add(a, b); }
-    cost result = zero(); int n; bool built = 0;
+    cost result = zero(); int n;
     class edge{
     public:
         int s, e; cost c;
-        bool operator<(const edge& ot) const{ return c < ot.c; }
     };
+
     class _uf{
     private:
-        vector <int> p, sz; int n;
+        vector<int> p, sz;
     public:
         _uf(int n = 0){ clear(n); } // O(n)
-        void clear(int n){ this->n = n; p.assign(n + 1, -1); sz.assign(n + 1, 1); }  // O(n)
+        void clear(int n){ p.assign(n + 1, -1); sz.assign(n + 1, 1); } // O(n)
         int find(int x){ // O(1)
             if(p[x] == -1) return x;
             return p[x] = find(p[x]);
         }
 
-        bool merge(int a, int b){ // O(1) 
+        bool merge(int a, int b){ // O(1)
             a = find(a); b = find(b);
             if(a == b) return false;
             if(sz[a] < sz[b]) swap(a, b);
             p[b] = a; sz[a] += sz[b];
             return true;
         }
-    }; _uf uf; vector<edge> adj;
-
-    bool cal(int num = 0){ 
-        uf.clear(n); result = zero(); built = 1;
-        sort(all(adj)); int cnt = 0;
-        for(auto& i : adj){
-            auto& [st, en, c] = i;
-            if(cnt >= n - base - num) return 1;
-            if(!uf.merge(st, en)) continue;
-            result = add(result, c); cnt++;
-        }
-        return cnt >= n - base - num;
-    }
+    }; _uf uf; vector<edge> adj; vector<int> selected;
 public:
     _mst(int n = 0, bool base = 1){ clear(n, base); } // O(n)
     void clear(int n, bool base = 1){ // O(n)
         this->n = n; this->base = base; result = zero();
-        uf.clear(n); built = 0; adj.clear();
+        uf.clear(n); adj.clear(); selected.clear();
     }
 
-    void add(int st, int en, cost c){ // O(1)
-        assert(base <= st && st <= n && base <= en && en <= n);
-        adj.push_back({st, en, c}); 
+    int add(int st, int en, cost c){ // O(1)
+        int id = adj.size(); adj.push_back({st, en, c});
+        return id;
     }
 
-    bool build(int num = 0){ return cal(num);} // O(m log m)
-    cost ret(){ // O(1)
+    bool build(int components = 1){ // O(n + m log m)
+        uf.clear(n); result = zero(); selected.clear();
+        vector<int> order(adj.size()); iota(all(order), 0);
+        sort(all(order), [&](int a, int b){
+            if(adj[a].c < adj[b].c) return true;
+            if(adj[b].c < adj[a].c) return false;
+            return a < b;
+        });
+        int need = n - base + 1 - components;
+        for(int id : order){
+            if((int)selected.size() >= need) break;
+            const auto& [st, en, c] = adj[id];
+            if(!uf.merge(st, en)) continue;
+            result = add(result, c); selected.push_back(id);
+        }
+        return (int)selected.size() >= need;
+    }
 
-        return result; 
+    cost ret() const{ return result; } // O(1)
+    template<class F>
+    void it_edge(const F& f) const{ // O(k)
+        for(int id : selected){
+            const auto& [st, en, c] = adj[id];
+            f(id, st, en, c);
+        }
     }
 };
 
