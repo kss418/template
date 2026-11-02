@@ -30,17 +30,31 @@ static int checks = 0;
 #define CHECK(c) do { ++checks; if (!(c)) throw runtime_error(string("line ") + to_string(__LINE__) + ": " + #c); } while (0)
 
 template<class T>
-concept fft_make_input = requires(const fft_templates::_fft& f,const vector<T>& values){f.make(values);};
+concept fft_make_input = requires(const fft_templates::_fft<8>& f,const vector<T>& values){f.make(values);};
 template<class T>
-concept fft_inverse_output = requires(const fft_templates::_fft& f,const fft_templates::_fft::node& value){f.template inverse<T>(value);};
+concept fft_inverse_output = requires(const fft_templates::_fft<8>& f,const fft_templates::_fft<8>::node& value){f.template inverse<T>(value);};
 static_assert(fft_make_input<int> && fft_make_input<long long> && fft_make_input<unsigned>);
 static_assert(fft_make_input<bool> && fft_make_input<__int128_t>);
 static_assert(!fft_make_input<float> && !fft_make_input<double> && !fft_make_input<complex<double>>);
 static_assert(fft_inverse_output<int> && fft_inverse_output<long long>);
 static_assert(!fft_inverse_output<double>);
+template<class A, class B>
+concept fft_addable = requires(A a,const B& b){a+b;a+=b;};
+template<class A, class B>
+concept fft_multipliable = requires(A a,const B& b){a*b;a*=b;};
+template<class F, class N>
+concept fft_invertible = requires(const F& f,const N& n){f.inverse(n);};
+using fft_node8=fft_templates::_fft<8>::node;
+using fft_node16=fft_templates::_fft<16>::node;
+static_assert(fft_addable<fft_node8,fft_node8> && fft_multipliable<fft_node8,fft_node8>);
+static_assert(!fft_addable<fft_node8,fft_node16> && !fft_multipliable<fft_node8,fft_node16>);
+static_assert(fft_invertible<fft_templates::_fft<8>,fft_node8>);
+static_assert(!fft_invertible<fft_templates::_fft<8>,fft_node16>);
+static_assert(is_default_constructible_v<fft_templates::_fft<8>>);
+static_assert(!is_constructible_v<fft_templates::_fft<8>,size_t>);
 
 void check_fft_arrays(){
-    using value=long long;using fft=fft_templates::_fft;
+    using value=long long;
     auto add=[](vector<value> a,const vector<value>& b){
         a.resize(max(a.size(),b.size()),0);for(size_t i=0;i<b.size();++i)a[i]+=b[i];return a;
     };
@@ -50,15 +64,15 @@ void check_fft_arrays(){
         for(size_t i=0;i<a.size();++i)for(size_t j=0;j<b.size();++j)result[i+j]+=a[i]*b[j];
         return result;
     };
-    fft empty;auto zero=empty.make(vector<int>{});CHECK(empty.inverse(zero).empty());
+    fft_templates::_fft<0> empty;auto zero=empty.make(vector<int>{});CHECK(empty.inverse(zero).empty());
     CHECK(empty.inverse(zero+zero).empty());CHECK(empty.inverse(zero*zero).empty());
-    empty.clear(1);auto constant=empty.make(vector<int>{7});CHECK(empty.inverse(constant*constant)==vector<value>{49});
-    empty.clear(3);const vector<int> input{1,2};auto original=empty.make(input);
-    CHECK(empty.inverse(original*original)==vector<value>({1,4,4}));CHECK(input==vector<int>({1,2}));
-    auto square=original;square*=square;CHECK(empty.inverse(square)==vector<value>({1,4,4}));
-    fft same_size(4);auto other=same_size.make(vector<value>{3,4});
-    CHECK(empty.inverse(original*other+original)==vector<value>({4,12,8}));
-    fft unsigned_plan(4);auto ua=unsigned_plan.make(vector<unsigned>{1,2});auto ub=unsigned_plan.make(vector<bool>{1,0,1});
+    fft_templates::_fft<1> single;auto constant=single.make(vector<int>{7});CHECK(single.inverse(constant*constant)==vector<value>{49});
+    fft_templates::_fft<3> small;const vector<int> input{1,2};auto original=small.make(input);
+    CHECK(small.inverse(original*original)==vector<value>({1,4,4}));CHECK(input==vector<int>({1,2}));
+    auto square=original;square*=square;CHECK(small.inverse(square)==vector<value>({1,4,4}));
+    fft_templates::_fft<3> same_size;auto other=same_size.make(vector<value>{3,4});
+    CHECK(small.inverse(original*other+original)==vector<value>({4,12,8}));
+    fft_templates::_fft<4> unsigned_plan;auto ua=unsigned_plan.make(vector<unsigned>{1,2});auto ub=unsigned_plan.make(vector<bool>{1,0,1});
     CHECK(unsigned_plan.inverse<unsigned>(ua*ub)==vector<unsigned>({1,2,1,2}));
     auto wide=unsigned_plan.make(vector<__int128_t>{-2,3});CHECK(unsigned_plan.inverse(wide)==vector<value>({-2,3}));
     mt19937 rng(921);
@@ -68,8 +82,7 @@ void check_fft_arrays(){
         for(auto& v:b)v=(int)(rng()%21)-10;
         const auto saved_a=a;const auto saved_b=b;vector<value> bv(all(b));
         auto product=mul(a,bv),squared=mul(a,a),triple=mul(product,a);
-        size_t capacity=max({a.size(),b.size(),product.size(),squared.size(),triple.size(),size_t(1)});
-        fft plan(capacity);const auto& read=plan;auto fa=read.make(a),fb=read.make(b);
+        fft_templates::_fft<32> plan;const auto& read=plan;auto fa=read.make(a),fb=read.make(b);
         CHECK(read.inverse(fa)==a);CHECK(read.inverse(fb)==bv);
         CHECK(read.inverse(fa+fb)==add(a,bv));CHECK(read.inverse(fa*fb)==product);
         CHECK(read.inverse(fa*fb+fa)==add(product,a));CHECK(read.inverse((fa*fb)*fa)==triple);
@@ -82,10 +95,11 @@ void check_fft_arrays(){
         vector<value> a(length),b(length-1);
         for(auto& v:a)v=(int)(rng()%2001)-1000;
         for(auto& v:b)v=(int)(rng()%2001)-1000;
-        fft plan(a.size()+b.size()-1);auto fa=plan.make(a),fb=plan.make(b);
+        fft_templates::_fft<129> plan;auto fa=plan.make(a),fb=plan.make(b);
         CHECK(plan.inverse(fa*fb)==mul(a,b));CHECK(plan.inverse(fa+fb)==add(a,b));
     }
-    empty.clear();CHECK(empty.inverse(empty.make(vector<int>{})).empty());
+    auto detached=[](){fft_templates::_fft<8> plan;return plan.make(vector<int>{2,3});}();
+    fft_templates::_fft<8> reader;CHECK(reader.inverse(detached*detached)==vector<value>({4,12,9}));
 }
 
 void check_manacher(){
