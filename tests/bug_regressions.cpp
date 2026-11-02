@@ -211,6 +211,42 @@ void check_dynamic_mint(){
     equal(mint(3,8).inv(),3,8);equal(mint(5,12).inv(),5,12);
 }
 
+void check_dynamic_mint_unsigned(){
+    using mint=numeric_templates::_dynamic_mint;using u64=uint64_t;using signed_wide=__int128_t;using wide=__uint128_t;
+    static_assert(same_as<decltype(mint::mod),u64> && same_as<decltype(mint::v),u64>);
+    static_assert(same_as<decltype(&mint::pow),mint(mint::*)(u64) const>);
+    static_assert(same_as<decltype(mint::norm(signed_wide(0),u64(7))),u64>);
+    static_assert(same_as<tuple_element_t<0,decltype(mint::gcd(u64(2),u64(7)))>,u64>);
+    static_assert(same_as<tuple_element_t<1,decltype(mint::gcd(u64(2),u64(7)))>,signed_wide>);
+    const u64 mx=numeric_limits<u64>::max(),high=u64(1)<<63;
+    auto equal=[](const mint& a,u64 v,u64 mod){CHECK(a.v==v && a.mod==mod);};
+    mint a(-1,mx);equal(a,mx-1,mx);equal(a+a,mx-2,mx);equal(a*a,1,mx);equal(mint(0,mx)-a,1,mx);
+    ostringstream out;out<<a;CHECK(out.str()=="18446744073709551614");
+    istringstream in("-1");in>>a;equal(a,mx-1,mx);
+    equal(a.inv(),mx-1,mx);equal(mint(2,mx).inv(),high,mx);
+    equal(mint(numeric_limits<long long>::min(),mx),high-1,mx);
+    a=mint(3,7);equal(a+mx,4,7);equal(mx-a,5,7);equal(mx/a,5,7);a=mx;equal(a,1,7);CHECK(a==mx && mx==a);
+    auto [g,cx,cy]=mint::gcd(2,mx);CHECK(g==1 && cx<0);CHECK(signed_wide(2)*cx+signed_wide(mx)*cy==1);
+    equal(mint(3,17).pow(mx),6,17);equal(mint(3,17).pow(high),1,17);equal(mint(3,17).pow(high+3),10,17);
+    equal(mint(0,1).pow(mx),0,1);equal(mint(0,7).pow(mx),0,7);
+    mt19937_64 rng(583);
+    auto verify=[&](u64 av,u64 bv,u64 mod){
+        av%=mod;bv%=mod;mint x(av,mod),y(bv,mod);
+        equal(x,av,mod);equal(y,bv,mod);
+        equal(x+y,(u64)((wide(av)+bv)%mod),mod);
+        equal(x-y,(u64)((wide(av)+mod-bv)%mod),mod);
+        equal(x*y,(u64)(wide(av)*bv%mod),mod);
+        equal(x+bv,(u64)((wide(av)+bv)%mod),mod);equal(av-y,(u64)((wide(av)+mod-bv)%mod),mod);
+        equal(av*y,(u64)(wide(av)*bv%mod),mod);
+        auto t=x;t+=t;equal(t,(u64)(wide(av)*2%mod),mod);t=x;t-=t;equal(t,0,mod);t=x;t*=t;equal(t,(u64)(wide(av)*av%mod),mod);
+        if(mod>1 && gcd(bv,mod)==1){auto inv=y.inv();equal(y*inv,1,mod);equal((x/y)*y,av,mod);t=y;t/=t;equal(t,1,mod);}
+        signed_wide raw=-(signed_wide)rng();signed_wide rem=raw%mod;if(rem<0)rem+=mod;
+        equal(mint(raw,mod),(u64)rem,mod);t=raw;equal(t,(u64)rem,mod);
+    };
+    for(u64 mod:{u64(1),u64(2),high,high+1,mx-58,mx})for(u64 av:{u64(0),u64(1),high,mx-1,mx})for(u64 bv:{u64(0),u64(1),high,mx-1,mx})verify(av,bv,mod);
+    for(int trial=0;trial<500;++trial){verify(rng(),rng(),rng()|high);u64 e=rng(),want=1;for(u64 i=0;i<e%16;++i)want=want*3%17;equal(mint(3,17).pow(e),want,17);}
+}
+
 void check_crt(){
     using crt=numeric_templates::_crt;using mint=numeric_templates::_dynamic_mint;
     static_assert(same_as<decltype(declval<const crt&>().ret()),const crt::result&>);
@@ -636,7 +672,7 @@ void check_alphabets(){
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
-        {"dynamic_mint",check_dynamic_mint},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
+        {"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
         {"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets}}){
         try { test(); cout << "PASS " << name << '\n'; }
         catch(const exception& e){ ++failures; cerr << "FAIL " << name << ": " << e.what() << '\n'; }

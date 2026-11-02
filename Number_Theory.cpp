@@ -12,21 +12,22 @@ constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 class _dynamic_mint{
 private:
     using mint = _dynamic_mint;
+    using u128 = __uint128_t;
     template <class T> static constexpr bool arg = integral<T> || same_as<T, mint>;
     template <class A, class B> static constexpr bool args = arg<A> && arg<B> && (same_as<A, mint> || same_as<B, mint>);
-    static ll val(ll a, ll mod){ return norm(a, mod); }
-    static ll val(const mint& a, ll mod){ assert(a.mod == mod); return a.v; }
+    static u64 val(i128 a, u64 mod){ return norm(a, mod); }
+    static u64 val(const mint& a, u64 mod){ assert(a.mod == mod); return a.v; }
     template <class A, class B>
     static mint cast(const A& a, const B& b){
         if constexpr(same_as<A, mint>) return a;
-        else return mint((ll)a, b.mod);
+        else return mint((i128)a, b.mod);
     }
 public:
-    ll mod = 1, v = 0;
+    u64 mod = 1, v = 0;
     _dynamic_mint() = default;
-    _dynamic_mint(ll v, ll mod) : mod(mod), v(norm(v, mod)){}
-    static ll norm(ll x, ll m){ x %= m; return x < 0 ? x + m : x; }
-    static tll gcd(ll a, ll b){
+    _dynamic_mint(i128 v, u64 mod) : mod(mod), v(norm(v, mod)){}
+    static u64 norm(i128 x, u64 m){ x %= m; return (u64)(x < 0 ? x + m : x); }
+    static tuple <u64, i128, i128> gcd(u64 a, u64 b){
         if(!b) return {a, 1, 0};
         auto [g, x, y] = gcd(b, a % b);
         return {g, y, x - (a / b) * y};
@@ -35,24 +36,22 @@ public:
     mint inv() const{
         assert(v);
         auto [g, x, y] = gcd(v, mod);
-        assert(g == 1 || g == -1);
-        if(g == -1) x *= -1;
+        assert(g == 1);
         return mint(x, mod);
     }
 
-    mint pow(ll e) const{
-        assert(e >= 0);
+    mint pow(u64 e) const{
         mint a = *this, ret(1, mod);
         while(e){
             if(e & 1) ret *= a;
-            a *= a; e >>= 1ll;
+            a *= a; e >>= 1;
         }
         return ret;
     }
 
     template <class T> requires arg<T>
     mint& operator+=(const T& a){
-        ll b = val(a, mod);
+        u64 b = val(a, mod);
         if(v >= mod - b) v -= mod - b;
         else v += b;
         return *this;
@@ -60,13 +59,14 @@ public:
 
     template <class T> requires arg<T>
     mint& operator-=(const T& a){
-        v -= val(a, mod);
-        if(v < 0) v += mod;
+        u64 b = val(a, mod);
+        if(v < b) v += mod - b;
+        else v -= b;
         return *this;
     }
 
     template <class T> requires arg<T>
-    mint& operator*=(const T& a){ v = (ll)((i128)v * val(a, mod) % mod); return *this; }
+    mint& operator*=(const T& a){ v = (u64)((u128)v * val(a, mod) % mod); return *this; }
     template <class T> requires arg<T>
     mint& operator/=(const T& a){ return *this *= mint(val(a, mod), mod).inv(); }
 
@@ -84,7 +84,7 @@ public:
         return l.mod == r.mod && l.v == r.v;
     }
 
-    mint& operator=(ll a){ v = norm(a, mod); return *this; }
+    mint& operator=(i128 a){ v = norm(a, mod); return *this; }
     mint operator+() const{ return *this; }
     mint operator-() const{ auto ret = *this; ret.v = v ? mod - v : 0; return ret; }
     friend ostream& operator<<(ostream& out, const mint& a){ return out << a.v; }
@@ -163,8 +163,8 @@ private:
     }
 
     static result merge(const result& a, const _dynamic_mint& b){
-        auto [g, cx, cy] = gcd(a.mod, b.mod);
-        ll diff = b.v - a.value;
+        auto [g, cx, cy] = gcd(a.mod, (ll)b.mod);
+        ll diff = (ll)b.v - a.value;
         if(diff % g) return {state::inconsistent, 0, 0};
         i128 mod = (i128)a.mod / g * b.mod;
         ll m = b.mod / g, k = (ll)((i128)(diff / g) * cx % m);
@@ -174,7 +174,7 @@ private:
     }
 public:
     void add(ll a, ll m){ arr.emplace_back(a, m); } // O(1) amortized
-    void add(pll a){ arr.push_back({a.x, a.y}); } // O(1) amortized
+    void add(pll a){ arr.emplace_back(a.x, a.y); } // O(1) amortized
     void add(const _dynamic_mint& a){ arr.push_back(a); } // O(1) amortized
     void clear(){ arr.clear(); ans = {state::known, 0, 1}; } // O(n)
 
