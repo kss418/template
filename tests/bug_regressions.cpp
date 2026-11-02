@@ -159,6 +159,58 @@ void check_fft_carry(){
     CHECK(decode(digits,2)==decode(coefficients,2));for(auto digit:digits)CHECK(digit==0 || digit==1);
 }
 
+template<class A,class B>
+concept dynamic_arithmetic = requires(A a,B b){a+b;a-b;a*b;a/b;};
+template<class A,class B>
+concept dynamic_compound = requires(A a,B b){a+=b;a-=b;a*=b;a/=b;};
+
+void check_dynamic_mint(){
+    using mint=numeric_templates::_dynamic_mint;using value=long long;using wide=__int128_t;
+    static_assert(is_default_constructible_v<mint> && is_constructible_v<mint,value,value>);
+    static_assert(!is_constructible_v<mint,value> && !is_convertible_v<value,mint>);
+    static_assert(dynamic_arithmetic<mint,mint> && dynamic_arithmetic<mint,int> && dynamic_arithmetic<int,mint>);
+    static_assert(dynamic_compound<mint,mint> && dynamic_compound<mint,value>);
+    static_assert(!dynamic_arithmetic<mint,double> && !dynamic_arithmetic<string,mint>);
+    static_assert(!dynamic_compound<mint,double> && !dynamic_compound<mint,string>);
+    auto norm=[](wide a,value m){a%=m;if(a<0)a+=m;return (value)a;};
+    auto equal=[](const mint& a,value v,value m){CHECK(a.v==v && a.mod==m);};
+    mint a(3,7);a=5;equal(a,5,7);a=-9;equal(a,5,7);
+    mint b(6,11);a=b;equal(a,6,11);a=a;equal(a,6,11);
+    vector<mint> dp(4,mint(3,7));fill(all(dp),0);for(const auto& v:dp)equal(v,0,7);
+    a=mint(3,7);equal(2+a,5,7);equal(2-a,6,7);equal(2*a,6,7);equal(2/a,3,7);
+    CHECK(a==mint(3,7));CHECK(a!=mint(3,11));CHECK(a!=mint(4,7));
+    CHECK(a==3 && 3==a && a==10 && 10==a);CHECK(a!=2 && 2!=a);
+    equal(+a,3,7);equal(-a,4,7);equal(-mint(0,7),0,7);equal(-mint(0,1),0,1);
+    istringstream in("10 -9 invalid");in>>a;equal(a,3,7);in>>a;equal(a,5,7);in>>a;CHECK(in.fail());equal(a,5,7);
+    ostringstream out;out<<a<<' '<<-a;CHECK(out.str()=="5 2");
+    const value mx=numeric_limits<value>::max();
+    vector<value> mods{1,2,7,12,1000000007,mx};
+    vector<value> raws{numeric_limits<value>::min(),-1,0,1,mx};
+    auto verify=[&](value ra,value rb,value m){
+        value av=norm(ra,m),bv=norm(rb,m);mint x(ra,m),y(rb,m);
+        equal(x,av,m);equal(y,bv,m);
+        equal(x+y,norm((wide)av+bv,m),m);equal(x-y,norm((wide)av-bv,m),m);equal(x*y,norm((wide)av*bv,m),m);
+        equal(x+rb,norm((wide)av+rb,m),m);equal(x-rb,norm((wide)av-rb,m),m);equal(x*rb,norm((wide)av*rb,m),m);
+        equal(ra+y,norm((wide)ra+bv,m),m);equal(ra-y,norm((wide)ra-bv,m),m);equal(ra*y,norm((wide)ra*bv,m),m);
+        auto t=x;t+=y;equal(t,norm((wide)av+bv,m),m);t=x;t-=y;equal(t,norm((wide)av-bv,m),m);t=x;t*=y;equal(t,norm((wide)av*bv,m),m);
+        t=x;t+=rb;equal(t,norm((wide)av+rb,m),m);t=x;t-=rb;equal(t,norm((wide)av-rb,m),m);t=x;t*=rb;equal(t,norm((wide)av*rb,m),m);
+        t=x;t+=t;equal(t,norm((wide)av*2,m),m);t=x;t-=t;equal(t,0,m);t=x;t*=t;equal(t,norm((wide)av*av,m),m);
+        equal(-x,av?m-av:0,m);CHECK((x==rb)==(av==bv));CHECK((ra==y)==(av==bv));CHECK((x!=y)==(av!=bv));
+        t=x;t=rb;equal(t,bv,m);equal(x,av,m);equal(y,bv,m);
+        if(m>1 && gcd(bv,m)==1){
+            auto inv=y.inv();equal(y*inv,1,m);value want=norm((wide)av*inv.v,m);
+            equal(x/y,want,m);equal(x/rb,want,m);equal(ra/y,want,m);
+            t=x;t/=y;equal(t,want,m);t=x;t/=rb;equal(t,want,m);t=y;t/=t;equal(t,1,m);
+        }
+        value want=1%m;for(int e=0;e<=8;++e){equal(x.pow(e),want,m);want=norm((wide)want*av,m);}
+    };
+    for(value m:mods)for(value ra:raws)for(value rb:raws)verify(ra,rb,m);
+    mt19937_64 rng(918);
+    for(int trial=0;trial<700;++trial){value m=trial%3?2+rng()%1000000008:mx-(value)(rng()%1000);verify((value)rng(),(value)rng(),m);}
+    a=mint(mx-1,mx);a+=a;equal(a,mx-2,mx);
+    equal(mint(3,8).inv(),3,8);equal(mint(5,12).inv(),5,12);
+}
+
 void check_crt(){
     using crt=numeric_templates::_crt;using mint=numeric_templates::_dynamic_mint;
     static_assert(same_as<decltype(declval<const crt&>().ret()),const crt::result&>);
@@ -584,7 +636,7 @@ void check_alphabets(){
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
-        {"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
+        {"dynamic_mint",check_dynamic_mint},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
         {"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets}}){
         try { test(); cout << "PASS " << name << '\n'; }
         catch(const exception& e){ ++failures; cerr << "FAIL " << name << ": " << e.what() << '\n'; }
