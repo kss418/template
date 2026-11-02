@@ -102,6 +102,58 @@ void check_fft_arrays(){
     fft_templates::_fft<8> reader;CHECK(reader.inverse(detached*detached)==vector<value>({4,12,9}));
 }
 
+void check_fft_output(){
+    fft_templates::_fft<8> plan;
+    const auto a=plan.make(vector<int>{3,2,1});
+    ostringstream out;out<<a<<':'<<a;CHECK(out.str()=="123:123");
+    CHECK(plan.inverse(a)==vector<long long>({3,2,1}));
+    ostringstream zeros;zeros<<plan.make(vector<int>{0,0,1});CHECK(zeros.str()=="100");
+    ostringstream coefficients;coefficients<<plan.make(vector<int>{12,34});CHECK(coefficients.str()=="3412");
+    ostringstream zero;zero<<plan.make(vector<int>{0});CHECK(zero.str()=="0");
+    fft_templates::_fft<0> empty;ostringstream blank;blank<<empty.make(vector<int>{});CHECK(blank.str()=="0");
+    const auto nine=plan.make(vector<int>{9,9});
+    ostringstream product;product<<(nine*nine);CHECK(product.str()=="8116281");
+    CHECK(plan.inverse(nine)==vector<long long>({9,9}));
+}
+
+void check_fft_carry(){
+    using value=long long;fft_templates::_fft<8> plan;
+    const auto a=plan.make(vector<int>{9,9});const auto square=a*a;
+    auto decimal=plan.carry(square);
+    static_assert(same_as<decltype(decimal),fft_templates::_fft<8>::node>);
+    CHECK(plan.inverse(decimal)==vector<value>({1,0,8,9}));
+    ostringstream out;out<<decimal;CHECK(out.str()=="9801");
+    CHECK(plan.inverse(plan.carry(decimal))==vector<value>({1,0,8,9}));
+    CHECK(plan.inverse(square)==vector<value>({81,162,81}));
+    CHECK(plan.inverse(plan.carry(decimal*plan.make(vector<int>{2})))==vector<value>({2,0,6,9,1}));
+    CHECK(plan.inverse(plan.carry(plan.make(vector<int>{3,2,1}),2))==vector<value>({1,1,0,1}));
+    CHECK(plan.inverse(plan.carry(plan.make(vector<int>{31,31}),16))==vector<value>({15,0,2}));
+    CHECK(plan.inverse(plan.carry(plan.make(vector<int>{0,0,0})))==vector<value>{0});
+    CHECK(plan.inverse(plan.carry(plan.make(vector<int>{9,0,0})))==vector<value>{9});
+    CHECK(plan.inverse(plan.carry(plan.make(vector<int>{81})))==vector<value>({1,8}));
+    auto empty=plan.carry(plan.make(vector<int>{}));CHECK(plan.inverse(empty).empty());
+    ostringstream empty_out;empty_out<<empty;CHECK(empty_out.str()=="0");
+    fft_templates::_fft<0> no_capacity;CHECK(no_capacity.inverse(no_capacity.carry(no_capacity.make(vector<int>{}))).empty());
+    auto decode=[](const vector<value>& digits,value radix){
+        __int128_t result=0;for(size_t i=digits.size();i--;)result=result*radix+digits[i];return result;
+    };
+    mt19937 rng(461);fft_templates::_fft<64> random_plan;
+    for(value radix:{2,3,10,16,1000})for(int length=0;length<=8;++length)for(int trial=0;trial<5;++trial){
+        vector<value> input(length);for(auto& coefficient:input)coefficient=rng()%1000;
+        auto source=random_plan.make(input);auto normalized=random_plan.carry(source,radix);
+        auto digits=random_plan.inverse(normalized);
+        CHECK(decode(digits,radix)==decode(input,radix));
+        for(auto digit:digits)CHECK(0<=digit && digit<radix);
+        CHECK(digits.empty() || digits.size()==1 || digits.back()!=0);
+        CHECK(random_plan.inverse(source)==input);
+        CHECK(random_plan.inverse(random_plan.carry(normalized,radix))==digits);
+    }
+    fft_templates::_fft<128> wide;value big=(1LL<<62)+(1LL<<61);
+    auto source=wide.make(vector<value>{big,big});auto coefficients=wide.inverse(source);
+    auto digits=wide.inverse(wide.carry(source,2));
+    CHECK(decode(digits,2)==decode(coefficients,2));for(auto digit:digits)CHECK(digit==0 || digit==1);
+}
+
 void check_manacher(){
     strings::_mnc<> ab(string("ab")), aba(string("aba"));
     CHECK(!ab.is_pal(0, 1)); CHECK(aba.is_pal(0, 2));
@@ -464,7 +516,7 @@ void check_alphabets(){
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
-        {"fft_arrays",check_fft_arrays},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
+        {"fft_arrays",check_fft_arrays},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
         {"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets}}){
         try { test(); cout << "PASS " << name << '\n'; }
         catch(const exception& e){ ++failures; cerr << "FAIL " << name << ": " << e.what() << '\n'; }

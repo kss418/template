@@ -67,6 +67,13 @@ public:
             a *= b;
             return a;
         }
+
+        friend ostream& operator<<(ostream& out, const node& value){ // O(n log n)
+            auto arr = _fft{}.inverse(value);
+            if(arr.empty()) return out << 0;
+            for(size_t i = arr.size(); i--;) out << arr[i];
+            return out;
+        }
     };
 
     template<integral T>
@@ -84,5 +91,22 @@ public:
         vector<T> ret(value.len);
         for(size_t i = 0; i < value.len; i++) ret[i] = (T)round(v[i].real());
         return ret;
+    }
+
+    node carry(const node& value, ll radix = 10) const{ // O(n log n)
+        auto ret = inverse(value);
+        if(ret.empty()) return value;
+        i128 c = 0;
+        for(auto& digit : ret){
+            c += digit;
+            digit = (ll)(c % radix);
+            c /= radix;
+        }
+        while(c){
+            ret.push_back((ll)(c % radix));
+            c /= radix;
+        }
+        while(ret.size() > 1 && !ret.back()) ret.pop_back();
+        return make(ret);
     }
 };
