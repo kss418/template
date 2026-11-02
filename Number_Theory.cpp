@@ -124,40 +124,54 @@ public:
     }
 };
 
-class _crt{ // Require _mint
+class _crt{
 public:
-    _crt(){} vector <_mint> arr;
-    tll gcd(ll a, ll b){
+    enum class state{ known, inconsistent, overflow };
+    class result{
+    public:
+        state status;
+        ll value, mod;
+        bool inconsistent() const{ return status == state::inconsistent; } // O(1)
+        bool overflow() const{ return status == state::overflow; } // O(1)
+        ll get_value() const{ return value; } // O(1)
+        ll get_mod() const{ return mod; } // O(1)
+    };
+
+    vector <_mint> arr;
+private:
+    result ans = {state::known, 0, 1};
+    static tll gcd(ll a, ll b){
         if(!b) return {a, 1, 0};
         auto [g, x, y] = gcd(b, a % b);
-        return {g, y, x - (a / b) * y}; 
+        return {g, y, x - (a / b) * y};
     }
 
-    bool crt(const _mint& a, const _mint& b, _mint& ret){
-        auto[g, cx, cy] = gcd(a.mod, b.mod);
-        ll lcm = (ll)((i128)a.mod / g * b.mod), diff = b.v - a.v;
-        if(diff % g) return 0;
-
-        _mint k = _mint(diff / g, b.mod / g) * cx;
-        ret = _mint(a.v, lcm);
-        ret += _mint(a.mod, lcm) * _mint(k.v, lcm);
-        return 1;
+    static result merge(const result& a, const _mint& b){
+        auto [g, cx, cy] = gcd(a.mod, b.mod);
+        ll diff = b.v - a.value;
+        if(diff % g) return {state::inconsistent, 0, 0};
+        i128 mod = (i128)a.mod / g * b.mod;
+        if(mod > numeric_limits<ll>::max()) return {state::overflow, 0, 0};
+        ll m = b.mod / g, k = (ll)((i128)(diff / g) * cx % m);
+        if(k < 0) k += m;
+        ll v = (ll)((i128)a.value + (i128)a.mod * k);
+        return {state::known, v, (ll)mod};
     }
+public:
+    void add(ll a, ll m){ arr.emplace_back(a, m); } // O(1) amortized
+    void add(pll a){ arr.push_back({a.x, a.y}); } // O(1) amortized
+    void add(const _mint& a){ arr.push_back(a); } // O(1) amortized
+    void clear(){ arr.clear(); ans = {state::known, 0, 1}; } // O(k)
 
-    pll ret(){ // O(log mod)
-        if(arr.empty()) return {0, 1}; _mint cur = arr[0];
-        for(int i = 1;i < arr.size();i++){
-            _mint nxt;
-            if(!crt(cur, arr[i], nxt)) return {-1, -1};
-            cur = nxt;
+    void build(){ // O(k log M)
+        ans = {state::known, 0, 1};
+        for(const auto& a : arr){
+            ans = merge(ans, a);
+            if(ans.status != state::known) break;
         }
-        return {cur.v, cur.mod};
     }
 
-    void add(ll a, ll m){ arr.emplace_back(a, m); }
-    void add(pll a){ arr.push_back({a.x, a.y}); }
-    void add(const _mint& a){ arr.push_back(a); }
-    void clear(){ arr.clear(); }
+    const result& ret() const{ return ans; } // O(1)
 };
 
 //이산 로그
@@ -455,19 +469,20 @@ public:
 // Prime Tower
 class _pt{
 public:
-    vector <ll> arr; _crt crt;
+    using result = _crt::result;
+    vector <ll> arr, mods; _crt crt;
     void add(ll v){ // O(1) 
         if(!arr.empty() && arr.back() <= 1) return;
         arr.push_back(v); 
     }
 
-    void add_mod(ll p, ll e){ // O(sqrt(n) * log n)
+    void add_mod(ll p, ll e){ // O(e)
         ll mod = 1;
         for(int i = 1;i <= e;i++) mod *= p;
-        crt.add(cal(0, mod), mod); 
+        mods.push_back(mod);
     }
 
-    void add_mod(ll m){ // O(sqrt(n) * log n)
+    void add_mod(ll m){ // O(sqrt(m))
         for(ll i = 2;i * i <= m;i++){
             if(m % i) continue; ll c = 0;
             while(m % i == 0) m /= i, c++;
@@ -534,5 +549,12 @@ public:
         return pow_mod(arr[cur], e, mod);
     }
 
-    ll ret(){ return crt.ret().x; } 
+    void clear(){ arr.clear(); mods.clear(); crt.clear(); } // O(n + k)
+    void build(){
+        crt.clear();
+        for(ll mod : mods) crt.add(cal(0, mod), mod);
+        crt.build();
+    }
+
+    const result& ret() const{ return crt.ret(); } // O(1)
 };

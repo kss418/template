@@ -51,6 +51,7 @@ public:
 // comb mod (p1^e1 + p2^e2...)
 class _comb_crt{ // Require mint, crt
 public:
+    using result = _crt::result;
     class _comb{ // O(p1^e1 + p2^e2 ...)
     public:
         vector <_mint> pre; ll p, e, mod = 1; 
@@ -95,12 +96,13 @@ public:
         else c.emplace_back(p, e);
     }
 
-    ll ret(ll n, ll r){ // O(log n + log p)
+    result ret(ll n, ll r){ // O(log n + log p)
         crt.clear();
         for(auto& i : c) crt.add(i.ret(n, r), i.mod);
         for(auto& i : l) crt.add(i.ret(n, r), i.mod);
-        return crt.ret().x;
+        crt.build();
+        return crt.ret();
     }
 
-    void clear(){ l.clear(); c.clear(); }
+    void clear(){ l.clear(); c.clear(); crt.clear(); }
 };

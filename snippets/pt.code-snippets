@@ -4,19 +4,20 @@
   "body": [
     "class _pt{",
     "public:",
-    "    vector <ll> arr; _crt crt;",
+    "    using result = _crt::result;",
+    "    vector <ll> arr, mods; _crt crt;",
     "    void add(ll v){ // O(1) ",
     "        if(!arr.empty() && arr.back() <= 1) return;",
     "        arr.push_back(v); ",
     "    }",
     "",
-    "    void add_mod(ll p, ll e){ // O(sqrt(n) * log n)",
+    "    void add_mod(ll p, ll e){ // O(e)",
     "        ll mod = 1;",
     "        for(int i = 1;i <= e;i++) mod *= p;",
-    "        crt.add(cal(0, mod), mod); ",
+    "        mods.push_back(mod);",
     "    }",
     "",
-    "    void add_mod(ll m){ // O(sqrt(n) * log n)",
+    "    void add_mod(ll m){ // O(sqrt(m))",
     "        for(ll i = 2;i * i <= m;i++){",
     "            if(m % i) continue; ll c = 0;",
     "            while(m % i == 0) m /= i, c++;",
@@ -83,9 +84,16 @@
     "        return pow_mod(arr[cur], e, mod);",
     "    }",
     "",
-    "    ll ret(){ return crt.ret().x; } ",
+    "    void clear(){ arr.clear(); mods.clear(); crt.clear(); } // O(n + k)",
+    "    void build(){",
+    "        crt.clear();",
+    "        for(ll mod : mods) crt.add(cal(0, mod), mod);",
+    "        crt.build();",
+    "    }",
+    "",
+    "    const result& ret() const{ return crt.ret(); } // O(1)",
     "};"
   ],
-  "description": "pt"
+  "description": "Prime tower: add/add_mod store input; build recomputes current tower residues and CRT; const ret returns CRT result. Requires mint and crt."
 }
 }
