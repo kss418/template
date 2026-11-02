@@ -9,6 +9,66 @@ using pll = pair<ll, ll>; using tll = tuple<ll, ll, ll>;
 constexpr ll INF = 0x3f3f3f3f3f3f3f3f;
 constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 
+template <u64 mod> requires (mod > 0)
+class _mint{
+private:
+    using mint = _mint;
+    using u128 = __uint128_t;
+public:
+    u64 v;
+    template <integral T = int>
+    _mint(T v = 0) : v(norm((i128)v)){}
+    static constexpr u64 get_mod(){ return mod; }
+    static u64 norm(i128 x){ x %= mod; return (u64)(x < 0 ? x + mod : x); }
+    static tuple <u64, i128, i128> gcd(u64 a, u64 b){
+        if(!b) return {a, 1, 0};
+        auto [g, x, y] = gcd(b, a % b);
+        return {g, y, x - (a / b) * y};
+    }
+
+    mint inv() const{
+        assert(v);
+        auto [g, x, y] = gcd(v, mod);
+        assert(g == 1);
+        return mint(x);
+    }
+
+    mint pow(u64 e) const{
+        mint a = *this, ret(1);
+        while(e){
+            if(e & 1) ret *= a;
+            a *= a; e >>= 1;
+        }
+        return ret;
+    }
+
+    mint& operator+=(const mint& a){
+        u64 b = a.v;
+        if(v >= mod - b) v -= mod - b;
+        else v += b;
+        return *this;
+    }
+
+    mint& operator-=(const mint& a){
+        u64 b = a.v;
+        if(v < b) v += mod - b;
+        else v -= b;
+        return *this;
+    }
+
+    mint& operator*=(const mint& a){ v = (u64)((u128)v * a.v % mod); return *this; }
+    mint& operator/=(const mint& a){ return *this *= a.inv(); }
+    friend mint operator+(mint a, const mint& b){ return a += b; }
+    friend mint operator-(mint a, const mint& b){ return a -= b; }
+    friend mint operator*(mint a, const mint& b){ return a *= b; }
+    friend mint operator/(mint a, const mint& b){ return a /= b; }
+    friend bool operator==(const mint& a, const mint& b){ return a.v == b.v; }
+    mint operator+() const{ return *this; }
+    mint operator-() const{ auto ret = *this; ret.v = v ? mod - v : 0; return ret; }
+    friend ostream& operator<<(ostream& out, const mint& a){ return out << a.v; }
+    friend istream& operator>>(istream& in, mint& a){ ll v; if(in >> v) a = v; return in; }
+};
+
 class _dynamic_mint{
 private:
     using mint = _dynamic_mint;

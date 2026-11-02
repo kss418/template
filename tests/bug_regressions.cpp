@@ -164,6 +164,62 @@ concept dynamic_arithmetic = requires(A a,B b){a+b;a-b;a*b;a/b;};
 template<class A,class B>
 concept dynamic_compound = requires(A a,B b){a+=b;a-=b;a*=b;a/=b;};
 
+template<uint64_t mod>
+concept fixed_modulus = requires{typename numeric_templates::_mint<mod>;};
+template<class A,class B>
+concept fixed_arithmetic = requires(A a,B b){a+b;a-b;a*b;a/b;a==b;a!=b;};
+
+template<uint64_t mod>
+void check_fixed_mint_mod(){
+    using mint=numeric_templates::_mint<mod>;using dynamic=numeric_templates::_dynamic_mint;
+    using u64=uint64_t;using signed_wide=__int128_t;using wide=__uint128_t;
+    static_assert(mint::get_mod()==mod);static_assert(same_as<decltype(mint::v),u64>);
+    static_assert(same_as<decltype(&mint::pow),mint(mint::*)(u64) const>);
+    auto norm=[](signed_wide a){a%=mod;if(a<0)a+=mod;return (u64)a;};
+    auto equal=[](const mint& a,u64 value){CHECK(a.v==value);};
+    mint zero;equal(zero,0);vector<mint> dp(4);for(const auto& v:dp)equal(v,0);
+    array<mint,3> arr{};for(const auto& v:arr)equal(v,0);
+    fill(all(dp),2);for(const auto& v:dp)equal(v,2%mod);
+    equal(accumulate(all(dp),mint(0)),(u64)(wide(8)%mod));
+    auto verify=[&](signed_wide ra,signed_wide rb){
+        u64 av=norm(ra),bv=norm(rb);mint a=ra,b=rb;dynamic da(ra,mod),db(rb,mod);
+        equal(a,av);equal(b,bv);
+        equal(a+b,(u64)((wide(av)+bv)%mod));equal(a-b,(u64)((wide(av)+mod-bv)%mod));equal(a*b,(u64)(wide(av)*bv%mod));
+        equal(a+rb,(u64)((wide(av)+bv)%mod));equal(a-rb,(u64)((wide(av)+mod-bv)%mod));equal(a*rb,(u64)(wide(av)*bv%mod));
+        equal(ra+b,(u64)((wide(av)+bv)%mod));equal(ra-b,(u64)((wide(av)+mod-bv)%mod));equal(ra*b,(u64)(wide(av)*bv%mod));
+        CHECK((a+b).v==(da+db).v && (a-b).v==(da-db).v && (a*b).v==(da*db).v);
+        auto t=a;t+=b;equal(t,(u64)((wide(av)+bv)%mod));t=a;t-=b;equal(t,(u64)((wide(av)+mod-bv)%mod));t=a;t*=b;equal(t,(u64)(wide(av)*bv%mod));
+        t=a;t+=rb;equal(t,(u64)((wide(av)+bv)%mod));t=a;t-=rb;equal(t,(u64)((wide(av)+mod-bv)%mod));t=a;t*=rb;equal(t,(u64)(wide(av)*bv%mod));
+        t=a;t+=t;equal(t,(u64)(wide(av)*2%mod));t=a;t-=t;equal(t,0);t=a;t*=t;equal(t,(u64)(wide(av)*av%mod));
+        t=rb;equal(t,bv);equal(+a,av);equal(-a,av?mod-av:0);
+        CHECK((a==b)==(av==bv));CHECK((a!=b)==(av!=bv));CHECK((a==rb)==(av==bv));CHECK((ra==b)==(av==bv));
+        if(mod>1 && gcd(bv,mod)==1){auto inv=b.inv();equal(b*inv,1);u64 want=(u64)(wide(av)*inv.v%mod);equal(a/b,want);equal(a/rb,want);equal(ra/b,want);t=a;t/=rb;equal(t,want);t=b;t/=t;equal(t,1);}
+        u64 want=1%mod;for(int e=0;e<=7;++e){equal(a.pow(e),want);want=(u64)(wide(want)*av%mod);}
+    };
+    vector<signed_wide> input{numeric_limits<long long>::min(),-1,0,1,numeric_limits<long long>::max(),(signed_wide)numeric_limits<u64>::max()};
+    for(auto a:input)for(auto b:input)verify(a,b);
+    mt19937_64 rng(mod^919);for(int trial=0;trial<100;++trial)verify((signed_wide)rng(),-(signed_wide)rng());
+}
+
+void check_fixed_mint(){
+    using m7=numeric_templates::_mint<7>;using m11=numeric_templates::_mint<11>;
+    using u64=uint64_t;constexpr u64 mx=numeric_limits<u64>::max(),high=u64(1)<<63;
+    static_assert(fixed_modulus<1> && !fixed_modulus<0>);
+    static_assert(is_default_constructible_v<m7> && is_convertible_v<int,m7> && is_convertible_v<u64,m7>);
+    static_assert(!is_constructible_v<m7,double> && !is_convertible_v<m11,m7>);
+    static_assert(fixed_arithmetic<m7,int> && fixed_arithmetic<int,m7> && fixed_arithmetic<m7,m7>);
+    static_assert(!fixed_arithmetic<m7,m11> && !fixed_arithmetic<m7,double> && !fixed_arithmetic<numeric_templates::_dynamic_mint,m7>);
+    m7 a=3;a=5;CHECK(a==5 && 5==a && a!=4 && 4!=a);CHECK(2-a==4 && 2/a==6 && -a==2);
+    istringstream in("-9 invalid");in>>a;CHECK(a==5);in>>a;CHECK(in.fail() && a==5);
+    ostringstream out;out<<a<<' '<<-a;CHECK(out.str()=="5 2");
+    using large=numeric_templates::_mint<mx>;large b=-1;CHECK((b+b).v==mx-2 && (b*b)==1);CHECK(large(2).inv().v==high);
+    ostringstream full;full<<b;CHECK(full.str()=="18446744073709551614");
+    CHECK(numeric_templates::_mint<8>(3).inv()==3 && numeric_templates::_mint<12>(5).inv()==5);
+    CHECK(numeric_templates::_mint<17>(3).pow(mx)==6 && numeric_templates::_mint<17>(3).pow(high)==1);
+    check_fixed_mint_mod<1>();check_fixed_mint_mod<7>();check_fixed_mint_mod<12>();check_fixed_mint_mod<998244353>();
+    check_fixed_mint_mod<high>();check_fixed_mint_mod<mx-58>();check_fixed_mint_mod<mx>();
+}
+
 void check_dynamic_mint(){
     using mint=numeric_templates::_dynamic_mint;using value=long long;using wide=__int128_t;
     static_assert(is_default_constructible_v<mint> && is_constructible_v<mint,value,value>);
@@ -672,7 +728,7 @@ void check_alphabets(){
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
-        {"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
+        {"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
         {"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets}}){
         try { test(); cout << "PASS " << name << '\n'; }
         catch(const exception& e){ ++failures; cerr << "FAIL " << name << ": " << e.what() << '\n'; }
