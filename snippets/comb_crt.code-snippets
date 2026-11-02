@@ -60,6 +60,6 @@
     "    void clear(){ l.clear(); c.clear(); crt.clear(); }",
     "};"
   ],
-  "description": "Binomial coefficients modulo prime powers: ret(n,r) returns CRT result by value, preserving inconsistency/overflow. Requires mint, crt and lucas."
+  "description": "Binomial coefficients modulo prime powers: ret(n,r) returns CRT result by value, preserving inconsistency. Requires mint, crt and lucas."
 }
 }

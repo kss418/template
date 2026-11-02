@@ -84,7 +84,7 @@
     "        return pow_mod(arr[cur], e, mod);",
     "    }",
     "",
-    "    void clear(){ arr.clear(); mods.clear(); crt.clear(); } // O(n + k)",
+    "    void clear(){ arr.clear(); mods.clear(); crt.clear(); } // O(n)",
     "    void build(){",
     "        crt.clear();",
     "        for(ll mod : mods) crt.add(cal(0, mod), mod);",

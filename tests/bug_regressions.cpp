@@ -167,14 +167,14 @@ void check_crt(){
     CHECK(read.ret().get_value()==8 && read.ret().get_mod()==15);
     const auto* stored=&read.ret();for(int i=0;i<5;++i)CHECK(&read.ret()==stored);
     CHECK(g.arr.size()==3);g.build();CHECK(read.ret().get_value()==8 && read.ret().get_mod()==15);
-    g.add(0,3);g.build();CHECK(read.ret().inconsistent() && !read.ret().overflow());
+    g.add(0,3);g.build();CHECK(read.ret().inconsistent());
     g.arr.back()=mint(2,3);g.build();CHECK(read.ret().status==crt::state::known && read.ret().get_value()==8);
     g.clear();g.build();CHECK(read.ret().get_value()==0 && read.ret().get_mod()==1);
     for(long long m=1;m<=9;++m)for(long long n=1;n<=9;++n)for(long long a=0;a<m;++a)for(long long b=0;b<n;++b){
         long long mod=lcm(m,n),want=-1;
         for(long long x=0;x<mod;++x)if(x%m==a && x%n==b){want=x;break;}
         g.clear();g.add(a-m,m);g.add(b+n,n);g.build();const auto& r=read.ret();
-        CHECK(!r.overflow());CHECK(r.inconsistent()==(want==-1));
+        CHECK(r.inconsistent()==(want==-1));
         if(want!=-1){CHECK(r.status==crt::state::known);CHECK(r.get_value()==want);CHECK(r.get_mod()==mod);}
         CHECK(g.arr.size()==2 && g.arr[0].v==a && g.arr[1].v==b);
         g.build();CHECK(read.ret().inconsistent()==(want==-1));
@@ -185,7 +185,7 @@ void check_crt(){
         g.clear();vector<pair<long long,long long>> input;long long mod=1;
         for(int j=0,sz=rng()%7;j<sz;++j){long long m=1+rng()%12,a=(int)(rng()%61)-30;input.push_back({a,m});g.add(a,m);mod=lcm(mod,m);}
         long long want=-1;for(long long x=0;x<mod;++x){bool ok=1;for(auto[a,m]:input)ok&=x%m==(a%m+m)%m;if(ok){want=x;break;}}
-        g.build();CHECK(read.ret().inconsistent()==(want==-1));CHECK(!read.ret().overflow());
+        g.build();CHECK(read.ret().inconsistent()==(want==-1));
         if(want!=-1)CHECK(read.ret().get_value()==want && read.ret().get_mod()==mod);
     }
     long long mx=numeric_limits<long long>::max();
@@ -195,10 +195,7 @@ void check_crt(){
     g.clear();g.add(want%m,m);g.add(want%n,n);g.build();CHECK(read.ret().get_value()==want && read.ret().get_mod()==mod);
     reverse(all(g.arr));g.build();CHECK(read.ret().get_value()==want && read.ret().get_mod()==mod);
     g.clear();g.add(1,1LL<<62);g.add(1,2);g.build();CHECK(read.ret().get_value()==1 && read.ret().get_mod()==(1LL<<62));
-    g.clear();g.add(0,1LL<<62);g.add(0,3);g.build();CHECK(read.ret().overflow() && !read.ret().inconsistent());
-    g.build();CHECK(read.ret().overflow());g.arr.pop_back();g.build();CHECK(read.ret().status==crt::state::known && read.ret().get_mod()==(1LL<<62));
-    g.clear();g.add(0,1LL<<62);g.add(1,6);g.build();CHECK(read.ret().inconsistent() && !read.ret().overflow());
-    g.clear();g.add(0,mx);g.add(0,mx-2);g.build();CHECK(read.ret().overflow());
+    g.clear();g.add(0,1LL<<62);g.add(1,6);g.build();CHECK(read.ret().inconsistent());
 }
 
 void check_crt_dependents(){
@@ -215,15 +212,13 @@ void check_crt_dependents(){
     CHECK(saved.get_mod()==72 && changed.get_mod()==360 && changed.get_value()==210);
     comb.clear();comb.add(2,1);comb.add(2,2);auto repeated=comb.ret(10,4);
     CHECK(repeated.status==crt::state::known && repeated.get_mod()==4 && repeated.get_value()==2);
-    comb.clear();for(int p:{2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53})comb.add(p,1);
-    CHECK(comb.ret(4,2).overflow());comb.clear();comb.add(7,1);CHECK(comb.ret(4,2).get_value()==6);
+    comb.clear();comb.add(7,1);CHECK(comb.ret(4,2).get_value()==6);
     numeric_templates::_pt tower;tower.add(2);tower.add(3);tower.add(2);tower.add_mod(72);tower.build();
     const auto& read=tower;static_assert(same_as<decltype(read.ret()),const crt::result&>);
     CHECK(read.ret().status==crt::state::known && read.ret().get_value()==8 && read.ret().get_mod()==72);
     tower.arr[0]=3;tower.build();CHECK(read.ret().get_value()==27);tower.build();CHECK(read.ret().get_value()==27);
     tower.add_mod(5);tower.build();CHECK(read.ret().get_value()==243 && read.ret().get_mod()==360);
     tower.clear();tower.add(2);tower.add_mod(8);tower.add(3);tower.build();CHECK(read.ret().get_value()==0 && read.ret().get_mod()==8);
-    tower.clear();tower.add(5);tower.add_mod(2,62);tower.add_mod(3,1);tower.build();CHECK(read.ret().overflow());
     tower.clear();tower.add(3);tower.add_mod(3,3);tower.build();CHECK(read.ret().get_value()==3 && read.ret().get_mod()==27);
 }
 

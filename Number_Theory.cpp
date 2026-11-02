@@ -126,13 +126,12 @@ public:
 
 class _crt{
 public:
-    enum class state{ known, inconsistent, overflow };
+    enum class state{ known, inconsistent };
     class result{
     public:
         state status;
         ll value, mod;
         bool inconsistent() const{ return status == state::inconsistent; } // O(1)
-        bool overflow() const{ return status == state::overflow; } // O(1)
         ll get_value() const{ return value; } // O(1)
         ll get_mod() const{ return mod; } // O(1)
     };
@@ -151,7 +150,6 @@ private:
         ll diff = b.v - a.value;
         if(diff % g) return {state::inconsistent, 0, 0};
         i128 mod = (i128)a.mod / g * b.mod;
-        if(mod > numeric_limits<ll>::max()) return {state::overflow, 0, 0};
         ll m = b.mod / g, k = (ll)((i128)(diff / g) * cx % m);
         if(k < 0) k += m;
         ll v = (ll)((i128)a.value + (i128)a.mod * k);
@@ -161,12 +159,12 @@ public:
     void add(ll a, ll m){ arr.emplace_back(a, m); } // O(1) amortized
     void add(pll a){ arr.push_back({a.x, a.y}); } // O(1) amortized
     void add(const _mint& a){ arr.push_back(a); } // O(1) amortized
-    void clear(){ arr.clear(); ans = {state::known, 0, 1}; } // O(k)
+    void clear(){ arr.clear(); ans = {state::known, 0, 1}; } // O(n)
 
-    void build(){ // O(k log M)
+    void build(){ // O(n log M)
         ans = {state::known, 0, 1};
-        for(const auto& a : arr){
-            ans = merge(ans, a);
+        for(const auto& i : arr){
+            ans = merge(ans, i);
             if(ans.status != state::known) break;
         }
     }
@@ -549,7 +547,7 @@ public:
         return pow_mod(arr[cur], e, mod);
     }
 
-    void clear(){ arr.clear(); mods.clear(); crt.clear(); } // O(n + k)
+    void clear(){ arr.clear(); mods.clear(); crt.clear(); } // O(n)
     void build(){
         crt.clear();
         for(ll mod : mods) crt.add(cal(0, mod), mod);
