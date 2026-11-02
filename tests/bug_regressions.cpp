@@ -6,12 +6,12 @@ namespace numeric_templates {
 #include "../Number_Theory.cpp"
 }
 namespace combinatorics {
-using numeric_templates::_mint;
+using numeric_templates::_dynamic_mint;
 using numeric_templates::_crt;
 #include "../Combinatorics.cpp"
 }
 namespace geometry {
-using numeric_templates::_mint;
+using numeric_templates::_dynamic_mint;
 #include "../Geometry.cpp"
 }
 namespace automata {
@@ -160,7 +160,7 @@ void check_fft_carry(){
 }
 
 void check_crt(){
-    using crt=numeric_templates::_crt;using mint=numeric_templates::_mint;
+    using crt=numeric_templates::_crt;using mint=numeric_templates::_dynamic_mint;
     static_assert(same_as<decltype(declval<const crt&>().ret()),const crt::result&>);
     crt g;g.add(2,3);g.add(pair<long long,long long>{3,5});g.add(mint(8,15));g.build();
     const auto& read=g;CHECK(read.ret().status==crt::state::known);

@@ -2,15 +2,15 @@
 "comb_crt": {
   "prefix": ">>comb_crt",
   "body": [
-    "class _comb_crt{ // Require mint, crt",
+    "class _comb_crt{ // Require dynamic_mint, crt",
     "public:",
     "    using result = _crt::result;",
     "    class _comb{ // O(p1^e1 + p2^e2 ...)",
     "    public:",
-    "        vector <_mint> pre; ll p, e, mod = 1; ",
+    "        vector <_dynamic_mint> pre; ll p, e, mod = 1;",
     "        _comb(ll prime, ll exp) : p(prime), e(exp){",
     "            for(int i = 1;i <= e;i++) mod *= p;",
-    "            pre.assign(mod + 1, _mint(1, mod));",
+    "            pre.assign(mod + 1, _dynamic_mint(1, mod));",
     "            for(ll i = 1;i <= mod;i++){",
     "                pre[i] = pre[i - 1];",
     "                if(i % p) pre[i] *= i;",
@@ -23,10 +23,10 @@
     "            return ret;",
     "        }",
     "",
-    "        _mint f(ll n) const{ // p^e = p^k * f(n)",
-    "            if(!n) return _mint(1, mod);",
-    "            ll div = n / mod, rem = n % mod; _mint ret(1, mod);",
-    "            if(p % 2) ret = div & 1 ? ret *= _mint(mod - 1, mod) : _mint(1, mod);",
+    "        _dynamic_mint f(ll n) const{ // p^e = p^k * f(n)",
+    "            if(!n) return _dynamic_mint(1, mod);",
+    "            ll div = n / mod, rem = n % mod; _dynamic_mint ret(1, mod);",
+    "            if(p % 2) ret = div & 1 ? ret *= _dynamic_mint(mod - 1, mod) : _dynamic_mint(1, mod);",
     "            else ret *= pre[mod].pow(div);",
     "            ret *= pre[rem]; ret *= f(n / p);",
     "            return ret;",
@@ -37,8 +37,8 @@
     "            ll now = vp(n) - vp(r) - vp(n - r);",
     "            if(now >= e) return 0;",
     "",
-    "            _mint div = f(r) * f(n - r), inv = div.inv();",
-    "            return (f(n) * inv * _mint(p, mod).pow(now)).v;",
+    "            _dynamic_mint div = f(r) * f(n - r), inv = div.inv();",
+    "            return (f(n) * inv * _dynamic_mint(p, mod).pow(now)).v;",
     "        }",
     "    }; ",
     "",
@@ -60,6 +60,6 @@
     "    void clear(){ l.clear(); c.clear(); crt.clear(); }",
     "};"
   ],
-  "description": "Binomial coefficients modulo prime powers: ret(n,r) returns CRT result by value, preserving inconsistency. Requires mint, crt and lucas."
+  "description": "Binomial coefficients modulo prime powers: ret(n,r) returns CRT result by value, preserving inconsistency. Requires dynamic_mint, crt and lucas."
 }
 }

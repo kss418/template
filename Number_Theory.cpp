@@ -9,10 +9,10 @@ using pll = pair<ll, ll>; using tll = tuple<ll, ll, ll>;
 constexpr ll INF = 0x3f3f3f3f3f3f3f3f;
 constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 
-class _mint{
+class _dynamic_mint{
 public:
     ll mod, v;
-    _mint(ll v = 0, ll mod = 1) : mod(mod), v(norm(v, mod)) {}
+    _dynamic_mint(ll v = 0, ll mod = 1) : mod(mod), v(norm(v, mod)) {}
     static ll norm(ll x, ll m){ x %= m; return x < 0 ? x + m : x; }
     static tll gcd(ll a, ll b){
         if (b == 0) return {a, 1, 0};
@@ -20,17 +20,17 @@ public:
         return {g, y, x - (a / b) * y};
     }
 
-    _mint inv() const{
+    _dynamic_mint inv() const{
         assert(v);
         auto [g, x, y] = gcd(v, mod);
         assert(g == 1 || g == -1);
         if(g == -1) x *= -1;
-        return _mint(x, mod);
+        return _dynamic_mint(x, mod);
     }
 
-    _mint pow(ll e) const{
+    _dynamic_mint pow(ll e) const{
         assert(e >= 0);
-        _mint base = *this, ret(1, mod);
+        _dynamic_mint base = *this, ret(1, mod);
         while(e){
             if(e & 1) ret *= base;
             base *= base; e >>= 1ll;
@@ -38,40 +38,40 @@ public:
         return ret;
     }
 
-    _mint& operator+=(const _mint& ot){
+    _dynamic_mint& operator+=(const _dynamic_mint& ot){
         assert(mod == ot.mod);
         v += ot.v;
         if (v >= mod) v -= mod;
         return *this;
     }
 
-    _mint& operator-=(const _mint& ot){
+    _dynamic_mint& operator-=(const _dynamic_mint& ot){
         assert(mod == ot.mod);
         v -= ot.v;
         if (v < 0) v += mod;
         return *this;
     }
 
-    _mint& operator*=(const _mint& ot){
+    _dynamic_mint& operator*=(const _dynamic_mint& ot){
         assert(mod == ot.mod);
         v = (ll)((i128)v * ot.v % mod);
         return *this;
     }
-    _mint& operator/=(const _mint& ot){ return (*this) *= ot.inv(); }
+    _dynamic_mint& operator/=(const _dynamic_mint& ot){ return (*this) *= ot.inv(); }
 
-    friend _mint operator+(_mint a, const _mint& b){ return a += b; }
-    friend _mint operator-(_mint a, const _mint& b){ return a -= b; }
-    friend _mint operator*(_mint a, const _mint& b){ return a *= b; }
-    friend _mint operator/(_mint a, const _mint& b){ return a /= b; }
-    _mint& operator+=(ll b){ return (*this) += _mint(b, mod); }
-    _mint& operator-=(ll b){ return (*this) -= _mint(b, mod); }
-    _mint& operator*=(ll b){ return (*this) *= _mint(b, mod); }
-    _mint& operator/=(ll b){ return (*this) /= _mint(b, mod); }
-    friend _mint operator+(_mint a, ll b){ return a += b; }
-    friend _mint operator-(_mint a, ll b){ return a -= b; }
-    friend _mint operator*(_mint a, ll b){ return a *= b; }
-    friend _mint operator/(_mint a, ll b){ return a /= b; }
-    friend ostream& operator<<(ostream& os, const _mint& a){ return os << a.v; }
+    friend _dynamic_mint operator+(_dynamic_mint a, const _dynamic_mint& b){ return a += b; }
+    friend _dynamic_mint operator-(_dynamic_mint a, const _dynamic_mint& b){ return a -= b; }
+    friend _dynamic_mint operator*(_dynamic_mint a, const _dynamic_mint& b){ return a *= b; }
+    friend _dynamic_mint operator/(_dynamic_mint a, const _dynamic_mint& b){ return a /= b; }
+    _dynamic_mint& operator+=(ll b){ return (*this) += _dynamic_mint(b, mod); }
+    _dynamic_mint& operator-=(ll b){ return (*this) -= _dynamic_mint(b, mod); }
+    _dynamic_mint& operator*=(ll b){ return (*this) *= _dynamic_mint(b, mod); }
+    _dynamic_mint& operator/=(ll b){ return (*this) /= _dynamic_mint(b, mod); }
+    friend _dynamic_mint operator+(_dynamic_mint a, ll b){ return a += b; }
+    friend _dynamic_mint operator-(_dynamic_mint a, ll b){ return a -= b; }
+    friend _dynamic_mint operator*(_dynamic_mint a, ll b){ return a *= b; }
+    friend _dynamic_mint operator/(_dynamic_mint a, ll b){ return a /= b; }
+    friend ostream& operator<<(ostream& os, const _dynamic_mint& a){ return os << a.v; }
 };
 
 template <size_t n>
@@ -136,7 +136,7 @@ public:
         ll get_mod() const{ return mod; } // O(1)
     };
 
-    vector <_mint> arr;
+    vector <_dynamic_mint> arr;
 private:
     result ans = {state::known, 0, 1};
     static tll gcd(ll a, ll b){
@@ -145,7 +145,7 @@ private:
         return {g, y, x - (a / b) * y};
     }
 
-    static result merge(const result& a, const _mint& b){
+    static result merge(const result& a, const _dynamic_mint& b){
         auto [g, cx, cy] = gcd(a.mod, b.mod);
         ll diff = b.v - a.value;
         if(diff % g) return {state::inconsistent, 0, 0};
@@ -158,7 +158,7 @@ private:
 public:
     void add(ll a, ll m){ arr.emplace_back(a, m); } // O(1) amortized
     void add(pll a){ arr.push_back({a.x, a.y}); } // O(1) amortized
-    void add(const _mint& a){ arr.push_back(a); } // O(1) amortized
+    void add(const _dynamic_mint& a){ arr.push_back(a); } // O(1) amortized
     void clear(){ arr.clear(); ans = {state::known, 0, 1}; } // O(n)
 
     void build(){ // O(n log M)
@@ -511,7 +511,7 @@ public:
         return ret;
     }
 
-    ll pow_mod(ll a, ll b, ll p){ return _mint(a, p).pow(b).v; }
+    ll pow_mod(ll a, ll b, ll p){ return _dynamic_mint(a, p).pow(b).v; }
     ll cal_phi(ll x){
         ll ret = x;
         for(ll i = 2;i * i <= x;i++){
@@ -541,7 +541,7 @@ public:
     ll cal(int cur, ll mod){
         if(mod == 1) return 0;
         if(arr[cur] == 1) return 1;
-        if(cur + 1 == arr.size()) return _mint(arr[cur], mod).v;
+        if(cur + 1 == arr.size()) return _dynamic_mint(arr[cur], mod).v;
         if(tower_le(cur + 1, 100)) return pow_mod(arr[cur], cal_exact(cur + 1), mod);
         ll phi = cal_phi(mod), e = cal(cur + 1, phi) + 100 * phi;
         return pow_mod(arr[cur], e, mod);

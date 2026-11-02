@@ -48,7 +48,7 @@
     "        return ret;",
     "    }",
     "",
-    "    ll pow_mod(ll a, ll b, ll p){ return _mint(a, p).pow(b).v; }",
+    "    ll pow_mod(ll a, ll b, ll p){ return _dynamic_mint(a, p).pow(b).v; }",
     "    ll cal_phi(ll x){",
     "        ll ret = x;",
     "        for(ll i = 2;i * i <= x;i++){",
@@ -78,7 +78,7 @@
     "    ll cal(int cur, ll mod){",
     "        if(mod == 1) return 0;",
     "        if(arr[cur] == 1) return 1;",
-    "        if(cur + 1 == arr.size()) return _mint(arr[cur], mod).v;",
+    "        if(cur + 1 == arr.size()) return _dynamic_mint(arr[cur], mod).v;",
     "        if(tower_le(cur + 1, 100)) return pow_mod(arr[cur], cal_exact(cur + 1), mod);",
     "        ll phi = cal_phi(mod), e = cal(cur + 1, phi) + 100 * phi;",
     "        return pow_mod(arr[cur], e, mod);",
@@ -94,6 +94,6 @@
     "    const result& ret() const{ return crt.ret(); } // O(1)",
     "};"
   ],
-  "description": "Prime tower: add/add_mod store input; build recomputes current tower residues and CRT; const ret returns CRT result. Requires mint and crt."
+  "description": "Prime tower: add/add_mod store input; build recomputes current tower residues and CRT; const ret returns CRT result. Requires dynamic_mint and crt."
 }
 }

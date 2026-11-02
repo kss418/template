@@ -6,7 +6,7 @@ namespace numeric_templates {
 #include "../Number_Theory.cpp"
 }
 namespace hash_templates {
-using numeric_templates::_mint;
+using numeric_templates::_dynamic_mint;
 #include "../Hash.cpp"
 }
 using namespace std;

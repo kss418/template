@@ -4,10 +4,10 @@
   "body": [
     "class _comb{",
     "public:",
-    "    vector <_mint> fac, inv; int n; ll m; // m == prime",
+    "    vector <_dynamic_mint> fac, inv; int n; ll m; // m == prime",
     "    _comb(int n, ll m = 998244353) : n(n), m(m), fac(n + 1), inv(n + 1){ ",
     "        assert(n < m);",
-    "        fac[0] = _mint(1, m);",
+    "        fac[0] = _dynamic_mint(1, m);",
     "        for(int i = 1;i <= n;i++) fac[i] = fac[i - 1] * i;",
     "        inv[n] = fac[n].pow(m - 2);",
     "        for(int i = n - 1;i >= 0;i--) inv[i] = inv[i + 1] * (i + 1);",

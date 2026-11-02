@@ -48,7 +48,7 @@
   - Rolling Hash (Prefix) (`_hash`)
   - Deque Rolling Hash (`_deque_hash`)
 - `Number_Theory.cpp`
-  - Modint (`_mint`)
+  - Dynamic Modint (`_dynamic_mint`)
   - Sieve of Eratosthenes (`_es`)
   - Extended Euclidean (`_gcd`)
   - CRT (`_crt`)

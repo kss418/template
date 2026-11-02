@@ -14,7 +14,7 @@
     "        ll get_mod() const{ return mod; } // O(1)",
     "    };",
     "",
-    "    vector <_mint> arr;",
+    "    vector <_dynamic_mint> arr;",
     "private:",
     "    result ans = {state::known, 0, 1};",
     "    static tll gcd(ll a, ll b){",
@@ -23,7 +23,7 @@
     "        return {g, y, x - (a / b) * y};",
     "    }",
     "",
-    "    static result merge(const result& a, const _mint& b){",
+    "    static result merge(const result& a, const _dynamic_mint& b){",
     "        auto [g, cx, cy] = gcd(a.mod, b.mod);",
     "        ll diff = b.v - a.value;",
     "        if(diff % g) return {state::inconsistent, 0, 0};",
@@ -36,7 +36,7 @@
     "public:",
     "    void add(ll a, ll m){ arr.emplace_back(a, m); } // O(1) amortized",
     "    void add(pll a){ arr.push_back({a.x, a.y}); } // O(1) amortized",
-    "    void add(const _mint& a){ arr.push_back(a); } // O(1) amortized",
+    "    void add(const _dynamic_mint& a){ arr.push_back(a); } // O(1) amortized",
     "    void clear(){ arr.clear(); ans = {state::known, 0, 1}; } // O(n)",
     "",
     "    void build(){ // O(n log M)",
@@ -50,6 +50,6 @@
     "    const result& ret() const{ return ans; } // O(1)",
     "};"
   ],
-  "description": "CRT: add -> build -> const ret(); result.inconsistent()/get_value()/get_mod(). Stops at first failure; moduli must be positive ll. Requires mint."
+  "description": "CRT: add -> build -> const ret(); result.inconsistent()/get_value()/get_mod(). Stops at first failure; moduli must be positive ll. Requires dynamic_mint."
 }
 }

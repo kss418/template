@@ -11,10 +11,10 @@ constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 
 class _comb{
 public:
-    vector <_mint> fac, inv; int n; ll m; // m == prime
+    vector <_dynamic_mint> fac, inv; int n; ll m; // m == prime
     _comb(int n, ll m = 998244353) : n(n), m(m), fac(n + 1), inv(n + 1){ 
         assert(n < m);
-        fac[0] = _mint(1, m);
+        fac[0] = _dynamic_mint(1, m);
         for(int i = 1;i <= n;i++) fac[i] = fac[i - 1] * i;
         inv[n] = fac[n].pow(m - 2);
         for(int i = n - 1;i >= 0;i--) inv[i] = inv[i + 1] * (i + 1);
@@ -28,16 +28,16 @@ public:
 
 class _lucas{ // mod == prime
 public:
-    int mod; vector <_mint> fac, inv;
+    int mod; vector <_dynamic_mint> fac, inv;
     _lucas(int mod) : mod(mod), fac(mod), inv(mod){ // O(mod)
-        fac[0] = _mint(1, mod);
+        fac[0] = _dynamic_mint(1, mod);
         for(int i = 1;i < mod;i++) fac[i] = fac[i - 1] * i;
         inv[mod - 1] = fac[mod - 1].pow(mod - 2);
         for(int i = mod - 2;i >= 0;i--) inv[i] = inv[i + 1] * (i + 1);
     }
 
-    _mint cal(ll n, ll r){ // O(1)
-        if(n < r) return _mint(0, mod);
+    _dynamic_mint cal(ll n, ll r){ // O(1)
+        if(n < r) return _dynamic_mint(0, mod);
         return fac[n] * inv[r] * inv[n - r];
     }
 
@@ -49,15 +49,15 @@ public:
 };
 
 // comb mod (p1^e1 + p2^e2...)
-class _comb_crt{ // Require mint, crt
+class _comb_crt{ // Require dynamic_mint, crt
 public:
     using result = _crt::result;
     class _comb{ // O(p1^e1 + p2^e2 ...)
     public:
-        vector <_mint> pre; ll p, e, mod = 1; 
+        vector <_dynamic_mint> pre; ll p, e, mod = 1;
         _comb(ll prime, ll exp) : p(prime), e(exp){
             for(int i = 1;i <= e;i++) mod *= p;
-            pre.assign(mod + 1, _mint(1, mod));
+            pre.assign(mod + 1, _dynamic_mint(1, mod));
             for(ll i = 1;i <= mod;i++){
                 pre[i] = pre[i - 1];
                 if(i % p) pre[i] *= i;
@@ -70,10 +70,10 @@ public:
             return ret;
         }
 
-        _mint f(ll n) const{ // p^e = p^k * f(n)
-            if(!n) return _mint(1, mod);
-            ll div = n / mod, rem = n % mod; _mint ret(1, mod);
-            if(p % 2) ret = div & 1 ? ret *= _mint(mod - 1, mod) : _mint(1, mod);
+        _dynamic_mint f(ll n) const{ // p^e = p^k * f(n)
+            if(!n) return _dynamic_mint(1, mod);
+            ll div = n / mod, rem = n % mod; _dynamic_mint ret(1, mod);
+            if(p % 2) ret = div & 1 ? ret *= _dynamic_mint(mod - 1, mod) : _dynamic_mint(1, mod);
             else ret *= pre[mod].pow(div);
             ret *= pre[rem]; ret *= f(n / p);
             return ret;
@@ -84,8 +84,8 @@ public:
             ll now = vp(n) - vp(r) - vp(n - r);
             if(now >= e) return 0;
 
-            _mint div = f(r) * f(n - r), inv = div.inv();
-            return (f(n) * inv * _mint(p, mod).pow(now)).v;
+            _dynamic_mint div = f(r) * f(n - r), inv = div.inv();
+            return (f(n) * inv * _dynamic_mint(p, mod).pow(now)).v;
         }
     }; 
 

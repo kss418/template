@@ -15,7 +15,7 @@ private:
     class _core {
     public:
         vector <int> pw, pre, ipw; 
-        _mint key, inv; int mod; 
+        _dynamic_mint key, inv; int mod;
         _core(){};
         _core(int key, int mod) : mod(mod), key(key, mod){ // O(n)
             assert(mod > 1); assert(this->key.v > 0);
@@ -25,16 +25,16 @@ private:
 
         void ensure_pw(int k){ 
             while((int)pw.size() <= k){
-                pw.push_back((_mint(pw.back(), mod) * key).v); 
-                ipw.push_back((_mint(ipw.back(), mod) * inv).v); 
+                pw.push_back((_dynamic_mint(pw.back(), mod) * key).v);
+                ipw.push_back((_dynamic_mint(ipw.back(), mod) * inv).v);
             }
         }
 
         int size() const{ return (int)pre.size(); }
         void push_back(int v){ // O(1)
-            _mint now = _mint(v, mod); ensure_pw(size());
+            _dynamic_mint now = _dynamic_mint(v, mod); ensure_pw(size());
             if(pre.empty()) pre.push_back(now.v);
-            else pre.push_back((_mint(pre.back(), mod) + now * pw[size()]).v);
+            else pre.push_back((_dynamic_mint(pre.back(), mod) + now * pw[size()]).v);
         }
 
         void pop_back(){ // O(1)
@@ -43,8 +43,8 @@ private:
         }
 
         ll ret(int l, int r) const{ // O(1)
-            _mint ret = _mint(pre[r], mod);
-            if(l > 0) ret -= _mint(pre[l - 1], mod);
+            _dynamic_mint ret = _dynamic_mint(pre[r], mod);
+            if(l > 0) ret -= _dynamic_mint(pre[l - 1], mod);
             ret *= ipw[l];
             return ret.v;
         }
@@ -81,24 +81,24 @@ private:
         _core() : mod(1), key(0), inv(0), n(0), s(0), e(-1){}
         _core(int n, int key, int mod) : mod(mod), key(key) { // mod == prime
             assert(mod > 1); assert(key > 0);
-            inv = _mint(key, mod).inv().v;
+            inv = _dynamic_mint(key, mod).inv().v;
             n = 2 * n + 5, s = n / 2; e = s - 1; this->n = n;
             bit.assign(n, 0); arr.assign(n, 0);
             pw.assign(n, 1); ipw.assign(n, 1);
             for(int i = 1;i < n;i++){
-                pw[i] = (_mint(pw[i - 1], mod) * key).v;
-                ipw[i] = (_mint(ipw[i - 1], mod) * inv).v;
+                pw[i] = (_dynamic_mint(pw[i - 1], mod) * key).v;
+                ipw[i] = (_dynamic_mint(ipw[i - 1], mod) * inv).v;
             }
         }       
 
         void set(int idx, ll v){ // O(log n)
-            _mint now(v, mod), diff = now - _mint(arr[idx], mod);
-            arr[idx] = now.v; add(idx, (diff * _mint(pw[idx], mod)).v);
+            _dynamic_mint now(v, mod), diff = now - _dynamic_mint(arr[idx], mod);
+            arr[idx] = now.v; add(idx, (diff * _dynamic_mint(pw[idx], mod)).v);
         }
 
         void clear(int idx){ // O(log n)
-            _mint diff = _mint(0, mod) - _mint(arr[idx], mod); 
-            arr[idx] = 0; add(idx, (diff * _mint(pw[idx], mod)).v);
+            _dynamic_mint diff = _dynamic_mint(0, mod) - _dynamic_mint(arr[idx], mod);
+            arr[idx] = 0; add(idx, (diff * _dynamic_mint(pw[idx], mod)).v);
         }
 
         void add(int idx, int v){ // O(log n)
@@ -124,7 +124,7 @@ private:
             int ret = sum(r);
             if(l) ret -= sum(l - 1);
             if(ret < 0) ret += mod;
-            return (_mint(ipw[l], mod) * ret).v;
+            return (_dynamic_mint(ipw[l], mod) * ret).v;
         }
     }; array <_core, 2> arr; int n;
 public:
