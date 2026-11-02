@@ -1,4 +1,7 @@
 #include <bits/stdc++.h>
+namespace fft_templates {
+#include "../FFT.cpp"
+}
 namespace numeric_templates {
 #include "../Number_Theory.cpp"
 }
@@ -25,6 +28,65 @@ using graph_sets::_uf;
 using namespace std;
 static int checks = 0;
 #define CHECK(c) do { ++checks; if (!(c)) throw runtime_error(string("line ") + to_string(__LINE__) + ": " + #c); } while (0)
+
+template<class T>
+concept fft_make_input = requires(const fft_templates::_fft& f,const vector<T>& values){f.make(values);};
+template<class T>
+concept fft_inverse_output = requires(const fft_templates::_fft& f,const fft_templates::_fft::node& value){f.template inverse<T>(value);};
+static_assert(fft_make_input<int> && fft_make_input<long long> && fft_make_input<unsigned>);
+static_assert(fft_make_input<bool> && fft_make_input<__int128_t>);
+static_assert(!fft_make_input<float> && !fft_make_input<double> && !fft_make_input<complex<double>>);
+static_assert(fft_inverse_output<int> && fft_inverse_output<long long>);
+static_assert(!fft_inverse_output<double>);
+
+void check_fft_arrays(){
+    using value=long long;using fft=fft_templates::_fft;
+    auto add=[](vector<value> a,const vector<value>& b){
+        a.resize(max(a.size(),b.size()),0);for(size_t i=0;i<b.size();++i)a[i]+=b[i];return a;
+    };
+    auto mul=[](const vector<value>& a,const vector<value>& b){
+        if(a.empty()||b.empty())return vector<value>{};
+        vector<value> result(a.size()+b.size()-1,0);
+        for(size_t i=0;i<a.size();++i)for(size_t j=0;j<b.size();++j)result[i+j]+=a[i]*b[j];
+        return result;
+    };
+    fft empty;auto zero=empty.make(vector<int>{});CHECK(empty.inverse(zero).empty());
+    CHECK(empty.inverse(zero+zero).empty());CHECK(empty.inverse(zero*zero).empty());
+    empty.clear(1);auto constant=empty.make(vector<int>{7});CHECK(empty.inverse(constant*constant)==vector<value>{49});
+    empty.clear(3);const vector<int> input{1,2};auto original=empty.make(input);
+    CHECK(empty.inverse(original*original)==vector<value>({1,4,4}));CHECK(input==vector<int>({1,2}));
+    auto square=original;square*=square;CHECK(empty.inverse(square)==vector<value>({1,4,4}));
+    fft same_size(4);auto other=same_size.make(vector<value>{3,4});
+    CHECK(empty.inverse(original*other+original)==vector<value>({4,12,8}));
+    fft unsigned_plan(4);auto ua=unsigned_plan.make(vector<unsigned>{1,2});auto ub=unsigned_plan.make(vector<bool>{1,0,1});
+    CHECK(unsigned_plan.inverse<unsigned>(ua*ub)==vector<unsigned>({1,2,1,2}));
+    auto wide=unsigned_plan.make(vector<__int128_t>{-2,3});CHECK(unsigned_plan.inverse(wide)==vector<value>({-2,3}));
+    mt19937 rng(921);
+    for(int la=0;la<=9;++la)for(int lb=0;lb<=9;++lb)for(int trial=0;trial<3;++trial){
+        vector<value> a(la);vector<int> b(lb);
+        for(auto& v:a)v=(int)(rng()%21)-10;
+        for(auto& v:b)v=(int)(rng()%21)-10;
+        const auto saved_a=a;const auto saved_b=b;vector<value> bv(all(b));
+        auto product=mul(a,bv),squared=mul(a,a),triple=mul(product,a);
+        size_t capacity=max({a.size(),b.size(),product.size(),squared.size(),triple.size(),size_t(1)});
+        fft plan(capacity);const auto& read=plan;auto fa=read.make(a),fb=read.make(b);
+        CHECK(read.inverse(fa)==a);CHECK(read.inverse(fb)==bv);
+        CHECK(read.inverse(fa+fb)==add(a,bv));CHECK(read.inverse(fa*fb)==product);
+        CHECK(read.inverse(fa*fb+fa)==add(product,a));CHECK(read.inverse((fa*fb)*fa)==triple);
+        auto inplace=fa;inplace*=inplace;CHECK(read.inverse(inplace)==squared);
+        inplace=fa;inplace+=inplace;CHECK(read.inverse(inplace)==add(a,a));
+        auto ints=read.inverse<int>(fa*fb);CHECK(ints==vector<int>(all(product)));
+        CHECK(read.inverse(fa)==a);CHECK(read.inverse(fb)==bv);CHECK(a==saved_a);CHECK(b==saved_b);
+    }
+    for(int length:{16,17,31,32,33,64,65}){
+        vector<value> a(length),b(length-1);
+        for(auto& v:a)v=(int)(rng()%2001)-1000;
+        for(auto& v:b)v=(int)(rng()%2001)-1000;
+        fft plan(a.size()+b.size()-1);auto fa=plan.make(a),fb=plan.make(b);
+        CHECK(plan.inverse(fa*fb)==mul(a,b));CHECK(plan.inverse(fa+fb)==add(a,b));
+    }
+    empty.clear();CHECK(empty.inverse(empty.make(vector<int>{})).empty());
+}
 
 void check_manacher(){
     strings::_mnc<> ab(string("ab")), aba(string("aba"));
@@ -388,7 +450,7 @@ void check_alphabets(){
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
-        {"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
+        {"fft_arrays",check_fft_arrays},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
         {"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets}}){
         try { test(); cout << "PASS " << name << '\n'; }
         catch(const exception& e){ ++failures; cerr << "FAIL " << name << ": " << e.what() << '\n'; }
