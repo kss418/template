@@ -612,6 +612,157 @@ void check_crt_dependents(){
     tower.clear();tower.add(3);tower.add_mod(3,3);tower.build();CHECK(read.ret().get_value()==3 && read.ret().get_mod()==27);
 }
 
+class predecessor_kmp_policy{
+public:
+    static void build(span<const int>){}
+    static bool check(int expected,int distance,int state){return expected?expected==distance:distance==0 || distance>state;}
+    static bool build_chk(span<const int> pat,int cur,int state){return check(pat[state],pat[cur],state);}
+    static bool match_chk(span<const int> pat,const int& value,int state){return check(pat[state],value,state);}
+};
+
+class order_kmp_policy{
+private:
+    vector<int> lower,upper,equal;
+    bool check(span<const int> text,int idx,int state)const{
+        int first=idx-state;
+        if(equal[state]!=-1)return text[idx]==text[first+equal[state]];
+        return (lower[state]==-1 || text[first+lower[state]]<text[idx]) && (upper[state]==-1 || text[idx]<text[first+upper[state]]);
+    }
+public:
+    void build(span<const int> pat){
+        int n=pat.size();lower.assign(n,-1);upper.assign(n,-1);equal.assign(n,-1);
+        for(int i=0;i<n;++i)for(int j=0;j<i;++j){
+            if(pat[j]==pat[i])equal[i]=j;
+            else if(pat[j]<pat[i] && (lower[i]==-1 || pat[j]>pat[lower[i]]))lower[i]=j;
+            else if(pat[j]>pat[i] && (upper[i]==-1 || pat[j]<pat[upper[i]]))upper[i]=j;
+        }
+    }
+    bool build_chk(span<const int> pat,int cur,int state)const{return check(pat,cur,state);}
+    bool match_chk(span<const int>,span<const int> text,int idx,int state)const{return check(text,idx,state);}
+};
+
+class modular_kmp_policy{
+private:
+    int mod;
+    int norm(int x)const{return (x%mod+mod)%mod;}
+public:
+    explicit modular_kmp_policy(int mod):mod(mod){}
+    void build(span<const int>){}
+    bool build_chk(span<const int> pat,int cur,int state)const{return norm(pat[cur])==norm(pat[state]);}
+    bool match_chk(span<const int> pat,const int& value,int state)const{return norm(value)==norm(pat[state]);}
+};
+
+class view_kmp_policy{
+private:
+    span<const int> saved;
+public:
+    void build(span<const int> pat){saved=pat;}
+    bool build_chk(span<const int> pat,int cur,int state)const{return pat.data()==saved.data() && pat[cur]==saved[state];}
+    bool match_chk(span<const int> pat,const int& value,int state)const{return pat.data()==saved.data() && value==saved[state];}
+};
+
+class move_only_kmp_policy{
+private:
+    unique_ptr<int> mod=make_unique<int>(3);
+public:
+    void build(span<const int>){}
+    bool build_chk(span<const int> pat,int cur,int state)const{return pat[cur]%*mod==pat[state]%*mod;}
+    bool match_chk(span<const int> pat,const int& value,int state)const{return value%*mod==pat[state]%*mod;}
+};
+
+template<class K>
+concept scalar_kmp_go=requires(const K& k){k.go(0,1);};
+
+void check_kmp_policy(){
+    using order_type=strings::_kmp<int,order_kmp_policy>;
+    using prev_type=strings::_kmp<int,predecessor_kmp_policy>;
+    static_assert(scalar_kmp_go<strings::_kmp<int>> && scalar_kmp_go<prev_type>);
+    static_assert(!scalar_kmp_go<order_type>);
+    using move_type=strings::_kmp<int,move_only_kmp_policy>;
+    static_assert(!is_copy_constructible_v<move_type> && !is_copy_assignable_v<move_type>);
+    static_assert(is_move_constructible_v<move_type> && is_move_assignable_v<move_type>);
+    auto words=[](int n){
+        int count=1;for(int i=0;i<n;++i)count*=3;vector<vector<int>> result;
+        for(int mask=0;mask<count;++mask){vector<int> word(n);int code=mask;for(auto& v:word){v=code%3;code/=3;}result.push_back(word);}return result;
+    };
+    auto order_equal=[](span<const int> a,span<const int> b){
+        if(a.size()!=b.size())return false;
+        for(size_t i=0;i<a.size();++i)for(size_t j=0;j<a.size();++j)
+            if((a[i]<a[j])!=(b[i]<b[j]) || (a[i]==a[j])!=(b[i]==b[j]))return false;
+        return true;
+    };
+    auto renamed_equal=[](span<const int> a,span<const int> b){
+        if(a.size()!=b.size())return false;
+        for(size_t i=0;i<a.size();++i)for(size_t j=0;j<a.size();++j)
+            if((a[i]==a[j])!=(b[i]==b[j]))return false;
+        return true;
+    };
+    auto previous=[](const vector<int>& input){
+        vector<int> encoded;map<int,int> seen;
+        for(int i=0;i<(int)input.size();++i){auto it=seen.find(input[i]);encoded.push_back(it==seen.end()?0:i-it->second);seen[input[i]]=i;}return encoded;
+    };
+    auto expected_matches=[](const vector<int>& pat,const vector<int>& text,const auto& equal){
+        vector<int> result;if(pat.empty())return result;
+        for(size_t i=0;i+pat.size()<=text.size();++i)if(equal(span<const int>(pat),span<const int>(text).subspan(i,pat.size())))result.push_back(i);return result;
+    };
+    for(int m=0;m<=3;++m)for(const auto& pat:words(m)){
+        order_type order{span<const int>(pat)};auto encoded_pat=previous(pat);prev_type renamed{span<const int>(encoded_pat)};
+        vector<int> fail_order(m),fail_renamed(m);
+        for(int i=0;i<m;++i)for(int len=1;len<=i;++len){
+            if(order_equal(span<const int>(pat).first(len),span<const int>(pat).subspan(i-len+1,len)))fail_order[i]=len;
+            if(renamed_equal(span<const int>(pat).first(len),span<const int>(pat).subspan(i-len+1,len)))fail_renamed[i]=len;
+        }
+        CHECK(order.fail()==fail_order && renamed.fail()==fail_renamed);
+        vector<int> borders;order.it_border([&](int n){borders.push_back(n);});
+        vector<int> want_borders;for(int len=m-1;len>0;--len)if(order_equal(span<const int>(pat).first(len),span<const int>(pat).last(len)))want_borders.push_back(len);
+        CHECK(borders==want_borders);
+        for(int n=0;n<=4;++n)for(const auto& text:words(n)){
+            auto encoded_text=previous(text);vector<int> order_matches,renamed_matches;
+            const auto& read_order=order;const auto& read_renamed=renamed;
+            read_order.it_match(span<const int>(text),[&](int i){order_matches.push_back(i);});
+            read_renamed.it_match(span<const int>(encoded_text),[&](int i){renamed_matches.push_back(i);});
+            CHECK(order_matches==expected_matches(pat,text,order_equal));CHECK(renamed_matches==expected_matches(pat,text,renamed_equal));
+            int a=0,b=0;
+            for(int i=0;i<n;++i){
+                a=read_order.go(a,span<const int>(text),i);b=read_renamed.go(b,encoded_text[i]);
+                int want_a=0,want_b=0;
+                for(int len=1;len<=m && len<=i+1;++len){
+                    auto part=span<const int>(text).subspan(i-len+1,len);
+                    if(order_equal(span<const int>(pat).first(len),part))want_a=len;
+                    if(renamed_equal(span<const int>(pat).first(len),part))want_b=len;
+                }
+                CHECK(a==want_a && b==want_b);
+            }
+        }
+    }
+    vector<int> pat{2,5,3},other{1,1,2},text{10,30,20,20,30,10};order_type a{span<const int>(pat)},b{span<const int>(other)};
+    auto copy=a;a.make(span<const int>(other));vector<int> matches;copy.it_match(span<const int>(text),[&](int i){matches.push_back(i);});CHECK(matches==expected_matches(pat,text,order_equal));
+    a.clear();CHECK(a.go(0,span<const int>(text),0)==0);a.make(span<const int>(pat));matches.clear();a.it_match(span<const int>(text),[&](int i){matches.push_back(i);});CHECK(matches==expected_matches(pat,text,order_equal));
+    matches.clear();b.it_match(span<const int>(text),[&](int i){matches.push_back(i);});CHECK(matches==expected_matches(other,text,order_equal));
+    for(int split=0;split<=(int)text.size();++split){
+        int state=0;matches.clear();for(auto [l,r]:vector<pair<int,int>>{{0,split},{split,(int)text.size()}})for(int i=l;i<r;++i){state=a.go(state,span<const int>(text),i);if(state==3)matches.push_back(i-2);}
+        CHECK(matches==expected_matches(pat,text,order_equal));
+    }
+    strings::_kmp<int,modular_kmp_policy> mod{span<const int>(pat),modular_kmp_policy(3)};vector<int> values{5,8,6};int state=0;
+    for(int value:values)state=mod.go(state,value);CHECK(state==3);mod.clear();mod.make(span<const int>(pat));state=0;for(int value:values)state=mod.go(state,value);CHECK(state==3);
+    strings::_kmp<int> plain{span<const int>(pat)};state=0;for(int i=0;i<(int)pat.size();++i)state=plain.go(state,span<const int>(pat),i);CHECK(state==3);
+    order_type letters(string("bec"));matches.clear();letters.it_match(string("aymmyb"),[&](int i){matches.push_back(i);});CHECK(matches==vector<int>{0});
+    vector<int> original{1,2,1};strings::_kmp<int,view_kmp_policy> source{span<const int>(original)};
+    auto copied=source;matches.clear();copied.it_match(span<const int>(original),[&](int i){matches.push_back(i);});CHECK(matches==vector<int>{0});
+    strings::_kmp<int,view_kmp_policy> assigned;assigned=source;
+    vector<int> changed{3,4,3};source.make(span<const int>(changed));
+    for(const auto* candidate:{&copied,&assigned}){
+        matches.clear();candidate->it_match(span<const int>(original),[&](int i){matches.push_back(i);});CHECK(matches==vector<int>{0});
+    }
+    copied=copied;matches.clear();copied.it_match(span<const int>(original),[&](int i){matches.push_back(i);});CHECK(matches==vector<int>{0});
+    auto moved=move(copied);matches.clear();moved.it_match(span<const int>(original),[&](int i){matches.push_back(i);});CHECK(matches==vector<int>{0});
+    assigned=move(moved);matches.clear();assigned.it_match(span<const int>(original),[&](int i){matches.push_back(i);});CHECK(matches==vector<int>{0});
+    auto detached=[&](){strings::_kmp<int,view_kmp_policy> local{span<const int>(original)};return strings::_kmp<int,view_kmp_policy>(local);}();
+    matches.clear();detached.it_match(span<const int>(original),[&](int i){matches.push_back(i);});CHECK(matches==vector<int>{0});
+    move_type moving{span<const int>(pat)};auto moved_policy=move(moving);state=0;for(int value:values)state=moved_policy.go(state,value);CHECK(state==3);
+    move_type move_assigned;move_assigned=move(moved_policy);state=0;for(int value:values)state=move_assigned.go(state,value);CHECK(state==3);
+}
+
 void check_kmp_go(){
     auto naive_state=[](const vector<int>& pattern,const vector<int>& text){
         int answer=0;
@@ -1081,7 +1232,7 @@ void check_alphabets(){
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
-        {"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
+        {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
         {"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets}}){
         try { test(); cout << "PASS " << name << '\n'; }
         catch(const exception& e){ ++failures; cerr << "FAIL " << name << ": " << e.what() << '\n'; }
