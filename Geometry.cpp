@@ -152,7 +152,7 @@ public:
             this->x = x; this->y = y;
             this->idx = idx;
         }
-        operator pll(){ return { x, y }; }
+        operator pll() const{ return { x, y }; }
     };
     vector <node> arr, st;
 
@@ -162,40 +162,39 @@ public:
     }
 
     ll ccw(pll v1, pll v2, pll v3){
-        ll num = (v2.x - v1.x) * (v3.y - v1.y);
-        num -= (v3.x - v1.x) * (v2.y - v1.y);
-
-        if(num > 0) return 1;
-        else if(num < 0) return -1;
-        return 0;
+        i128 ret = ((i128)v2.x - v1.x) * ((i128)v3.y - v1.y);
+        ret -= ((i128)v3.x - v1.x) * ((i128)v2.y - v1.y);
+        return (ret > 0) - (ret < 0);
     }
-    
-    void add(ll a, ll b) { add({a, b}); }
+
+    void add(ll a, ll b){ add({a, b}); }
     void add(pll a){ arr.push_back({a, cnt++}); }
 
-    void build(){
+    void build(){ // O(n log n)
         st.clear(); p.clear();
-        if(arr.empty()) return;
-        swap(arr[0], *min_element(all(arr), [&](pll a, pll b){
-            if(a.x != b.x) return a.x < b.x;
-            return a.y < b.y;
-        }));
-
-        sort(arr.begin() + 1, arr.end(), [&](pll a, pll b){
-            ll dir = ccw(arr[0], {a.x, a.y}, {b.x, b.y});
-            if(dir) return dir > 0;
-            return dist(arr[0], {a.x, a.y}) < dist(arr[0], {b.x, b.y});
+        auto v = arr;
+        sort(all(v), [&](const node& a, const node& b){
+            return tie(a.x, a.y, a.idx) < tie(b.x, b.y, b.idx);
         });
-
-        for(auto& i : arr){
+        v.erase(unique(all(v), [&](const node& a, const node& b){
+            return a.x == b.x && a.y == b.y;
+        }), v.end());
+        if(v.empty()) return;
+        for(const auto& i : v){
             while(st.size() >= 2 && ccw(st[st.size() - 2], st.back(), i) <= 0) st.pop_back();
             st.push_back(i);
         }
-        for(auto& i : st) p.push_back(i);
+        ll sz = st.size();
+        for(ll i = (ll)v.size() - 2;i >= 0;i--){
+            while(st.size() > sz && ccw(st[st.size() - 2], st.back(), v[i]) <= 0) st.pop_back();
+            st.push_back(v[i]);
+        }
+        if(st.size() > 1) st.pop_back();
+        for(const auto& i : st) p.push_back(i);
     }
 
-    vector <pll> ret(){ return p; } // 좌표 반환
-    vector <node> idx(){ return st; } // 좌표 + 인덱스 반환
+    const vector <pll>& ret() const{ return p; } // O(1)
+    const vector <node>& idx() const{ return st; } // O(1)
 };
 
 template <u64 mod = 998244353>
@@ -352,101 +351,71 @@ public:
 //ROTATING CALIPUS
 class _rc{
 public:
-    _rc() {}
-    vector <ll> num; vector <pll> p; ll cnt = 0;
+    using node = _ch::node;
+private:
+    vector <node> p;
+    pair <pll, pll> result{}; pll ids = {-1, -1};
+    ll mx = 0; ld len = 0;
 
-    class node{
-    public:
-        ll x, y, idx;
-        node(pll a, ll idx) : node(a.x, a.y, idx) {};
-        node(ll x, ll y, ll idx){
-            this->x = x; this->y = y;
-            this->idx = idx;
+    i128 area(ll a, ll b, ll c) const{
+        i128 ret = ((i128)p[b].x - p[a].x) * ((i128)p[c].y - p[a].y);
+        ret -= ((i128)p[c].x - p[a].x) * ((i128)p[b].y - p[a].y);
+        return ret < 0 ? -ret : ret;
+    }
+
+    void update(ll l, ll r){
+        ll dx = p[l].x - p[r].x, dy = p[l].y - p[r].y;
+        ll now = dx * dx + dy * dy;
+        if(now <= mx) return;
+        mx = now; result = {pll(p[l]), pll(p[r])}; ids = {p[l].idx, p[r].idx};
+    }
+public:
+    void build(span<const node> arr){ p.assign(all(arr)); build(); } // O(n)
+    void build(span<const pll> arr){ // O(n)
+        p.clear(); p.reserve(arr.size());
+        for(ll i = 0;i < arr.size();i++) p.push_back({arr[i], i});
+        build();
+    }
+
+    void build(){ // O(n)
+        vector <node> v;
+        for(const auto& i : p){
+            if(v.empty() || v.back().x != i.x || v.back().y != i.y) v.push_back(i);
         }
-        operator pll(){ return { x, y }; }
-        operator pld(){ return { x, y }; }
-    };
-    vector <node> arr, st;
-
-    ll ccw(pll v1, pll v2, pll v3){
-        ll num = (v2.x - v1.x) * (v3.y - v1.y);
-        num -= (v3.x - v1.x) * (v2.y - v1.y);
-
-        if(num > 0) return 1;
-        else if(num < 0) return -1;
-        return 0;
-    }
-    
-    void add(ll a, ll b) { add({a, b}); }
-    void add(pll a){ arr.push_back({a, cnt++}); }
-
-    void build_ch(){
-        st.clear(); p.clear();
-        if(arr.empty()) return;
-        swap(arr[0], *min_element(all(arr), [&](pll a, pll b){
-            if(a.x != b.x) return a.x < b.x;
-            return a.y < b.y;
-        }));
-
-        sort(arr.begin() + 1, arr.end(), [&](pll a, pll b){
-            ll dir = ccw(arr[0], {a.x, a.y}, {b.x, b.y});
-            if(dir) return dir > 0;
-            return d(arr[0], {a.x, a.y}) < d(arr[0], {b.x, b.y});
-        });
-
-        for(auto& i : arr){
-            while(st.size() >= 2 && ccw(st[st.size() - 2], st.back(), i) <= 0) st.pop_back();
-            st.push_back(i);
+        if(v.size() > 1 && v.front().x == v.back().x && v.front().y == v.back().y) v.pop_back();
+        p.swap(v);
+        mx = 0; len = 0; result = {}; ids = {-1, -1};
+        ll sz = p.size(); if(!sz) return;
+        result = {pll(p[0]), pll(p[0])}; ids = {p[0].idx, p[0].idx};
+        if(sz == 1) return;
+        bool line = 1;
+        for(ll i = 2;i < sz;i++) if(area(0, 1, i)){ line = 0; break; }
+        if(line){
+            ll l = 0, r = 0;
+            for(ll i = 1;i < sz;i++){
+                if(tie(p[i].x, p[i].y) < tie(p[l].x, p[l].y)) l = i;
+                if(tie(p[i].x, p[i].y) > tie(p[r].x, p[r].y)) r = i;
+            }
+            update(l, r);
         }
-        for(auto& i : st) p.push_back(i);
-    }
-
-    ll area(ll a, ll b, ll c){ // div by 2
-        ll num = 0;
-        int sz = (int)p.size();
-        vector <pll> v = {p[a % sz], p[b % sz], p[c % sz]};
-        for(int i = 0;i < v.size();i++){
-            auto [x1, y1] = v[i];
-            auto [x2, y2] = v[(i + 1) % v.size()];
-            num += x1 * y2 - x2 * y1;
-        }
-        return abs(num);
-    }
-
-    ld d(pld a, pld b) { // chk overflow
-        ld dx = a.x - b.x, dy = a.y - b.y;
-        return dx * dx + dy * dy;
-    }
-
-    ll mx = 0; pair <pll, pll> result;
-    void get(ll l, ll r){
-        ll sz = p.size();
-        for(int i = 0;i <= 1;i++){
-            ll nxt = (r + i) % sz;
-            ll now = d(p[l], p[nxt]);
-            if(mx > now) continue;
-            mx = now; result = { p[l], p[nxt] };
-        }
-    }
-
-    void build_rc(){
-        ll sz = p.size(); mx = 0; result = {};
-        if(sz <= 1){ if(sz == 1) result = {p[0], p[0]}; return; }
-        if(sz == 2) get(0, 1);
         else{
-            ll l = 0, r = 1; ld now = 0;
-            while(area(sz - 1, l, r) < area(sz - 1, l, r + 1)) r++;
-            while(r < 2 * sz && l < sz){
-                get(l, r);
-                if(area(l, l + 1, r) < area(l, l + 1, r + 1)) r++;
-                else l++;
+            ll r = 1;
+            for(ll l = 0;l < sz;l++){
+                ll nxt = (l + 1) % sz;
+                r = max(r, l + 1);
+                while(r + 1 < l + sz && area(l, nxt, (r + 1) % sz) >= area(l, nxt, r % sz)){
+                    update(l, r % sz); update(nxt, r % sz); r++;
+                }
+                update(l, r % sz); update(nxt, r % sz);
             }
         }
+        len = sqrtl(mx);
     }
 
-    void build() { build_ch(); build_rc(); }
-    pair <pll, pll> ret(){ return result; }
-    ld dist(){ return sqrtl(mx); }
+    const pair <pll, pll>& ret() const{ return result; } // O(1)
+    const pll& idx() const{ return ids; } // O(1)
+    ll dist2() const{ return mx; } // O(1)
+    ld dist() const{ return len; } // O(1)
 };
 
 class _dot{

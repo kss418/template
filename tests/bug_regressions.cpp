@@ -161,6 +161,90 @@ void check_fft_carry(){
     CHECK(decode(digits,2)==decode(coefficients,2));for(auto digit:digits)CHECK(digit==0 || digit==1);
 }
 
+template<class T>
+concept rc_point_input = requires(T& value){value.add(1LL,2LL);};
+
+void check_rc_split(){
+    using hull_type=geometry::_ch;using diameter_type=geometry::_rc;
+    using point=pair<long long,long long>;
+    static_assert(same_as<decltype(declval<const hull_type&>().ret()),const vector<point>&>);
+    static_assert(same_as<decltype(declval<const hull_type&>().idx()),const vector<hull_type::node>&>);
+    static_assert(same_as<decltype(declval<const diameter_type&>().ret()),const pair<point,point>&>);
+    static_assert(same_as<decltype(declval<const diameter_type&>().idx()),const point&>);
+    static_assert(!rc_point_input<diameter_type>);
+    auto distance=[](point a,point b){long long dx=a.first-b.first,dy=a.second-b.second;return dx*dx+dy*dy;};
+    auto cross=[](point a,point b,point c){return (__int128_t)(b.first-a.first)*(c.second-a.second)-(__int128_t)(b.second-a.second)*(c.first-a.first);};
+    auto brute=[&](const vector<point>& input){long long mx=0;for(auto a:input)for(auto b:input)mx=max(mx,distance(a,b));return mx;};
+    auto verify=[&](const diameter_type& d,const vector<point>& input){
+        long long mx=brute(input);CHECK(d.dist2()==mx);CHECK(abs(d.dist()-sqrtl((long double)mx))<1e-9L);
+        const auto& [a,b]=d.ret();auto [i,j]=d.idx();
+        if(input.empty()){CHECK(i==-1 && j==-1);return;}
+        CHECK(0<=i && i<(long long)input.size() && 0<=j && j<(long long)input.size());
+        CHECK(input[i]==a && input[j]==b);CHECK(distance(a,b)==mx);
+    };
+    auto run=[&](const vector<point>& input){
+        hull_type hull;for(auto p:input)hull.add(p);
+        auto original=hull.arr;hull.build();CHECK(hull.arr.size()==original.size());
+        for(size_t i=0;i<original.size();++i)CHECK(hull.arr[i].x==original[i].x && hull.arr[i].y==original[i].y && hull.arr[i].idx==original[i].idx);
+        const auto& h=as_const(hull);const auto saved_points=h.ret();vector<long long> saved_ids;
+        CHECK(h.ret().size()==h.idx().size());
+        set<point> seen;
+        for(size_t i=0;i<h.idx().size();++i){
+            const auto& node=h.idx()[i];point p={node.x,node.y};CHECK(seen.insert(p).second);
+            CHECK(p==h.ret()[i] && input[node.idx]==p);
+            CHECK(node.idx==find(all(input),p)-input.begin());saved_ids.push_back(node.idx);
+        }
+        if(!h.ret().empty())CHECK(h.ret()[0]==*min_element(all(h.ret())));
+        if(h.ret().size()>=3)for(size_t i=0;i<h.ret().size();++i){
+            auto a=h.ret()[i],b=h.ret()[(i+1)%h.ret().size()],c=h.ret()[(i+2)%h.ret().size()];
+            CHECK(cross(a,b,c)>0);for(auto p:input)CHECK(cross(a,b,p)>=0);
+        }
+        diameter_type indexed;indexed.build(h.idx());verify(indexed,input);
+        diameter_type coords;coords.build(h.ret());verify(coords,h.ret());
+        auto polygon=h.ret();
+        for(int direction=0;direction<2;++direction){
+            reverse(all(polygon));if(!polygon.empty())rotate(polygon.begin(),polygon.begin()+1,polygon.end());
+            coords.build(polygon);verify(coords,polygon);
+        }
+        auto first=indexed.ret();auto ids=indexed.idx();indexed.build();verify(indexed,input);
+        CHECK(indexed.ret()==first && indexed.idx()==ids);
+        hull.build();CHECK(hull.ret()==saved_points);for(size_t i=0;i<saved_ids.size();++i)CHECK(hull.idx()[i].idx==saved_ids[i]);
+        point extra=input.empty()?point{90,95}:point{input[0].first+90,input[0].second+95};
+        hull.add(extra);hull.build();verify(indexed,input);
+        auto extended=input;extended.push_back(extra);indexed.build(hull.idx());verify(indexed,extended);
+    };
+    for(const auto& input:vector<vector<point>>{
+        {},{{2,3}},{{0,0},{4,3}},{{1,1},{1,1},{1,1}},
+        {{2,0},{0,0},{3,0},{1,0},{0,0}},{{0,0},{2,0},{2,2},{0,2},{1,1},{0,0}},
+        {{-5,-5},{5,5},{-5,5},{5,-5},{0,0}},
+        {{1000000000,1000000000},{-1000000000,-1000000000},{1000000000,-1000000000}},
+        {{1000000000000LL,1000000000000LL},{1000000000001LL,1000000000002LL},{1000000000003LL,1000000000000LL}}
+    })run(input);
+    mt19937 rng(7727);
+    for(unsigned mask=0;mask<(1u<<9);++mask){
+        vector<point> input;for(int i=0;i<9;++i)if((mask>>i)&1)input.push_back({i%3,i/3});run(input);
+    }
+    for(int round=0;round<300;++round){
+        vector<point> input;int n=rng()%28;for(int i=0;i<n;++i)input.push_back({(int)(rng()%31)-15,(int)(rng()%31)-15});run(input);
+    }
+    vector<point> boundary{{0,0},{1,0},{2,0},{3,0},{3,1},{3,2},{3,3},{2,3},{1,3},{0,3},{0,2},{0,1}};
+    for(int direction=0;direction<2;++direction){
+        for(size_t shift=0;shift<boundary.size();++shift){
+            rotate(boundary.begin(),boundary.begin()+1,boundary.end());diameter_type d;d.build(boundary);verify(d,boundary);
+            auto closed=boundary;closed.push_back(boundary.front());closed.insert(closed.begin(),closed.front());
+            d.build(closed);verify(d,closed);
+        }
+        reverse(all(boundary));
+    }
+    for(const auto& line:vector<vector<point>>{{{1,0},{3,0},{2,0},{0,0}},{{2,2},{3,3},{-1,-1},{0,0}}}){
+        diameter_type d;d.build(line);verify(d,line);
+    }
+    auto detached=[](){hull_type hull;hull.add(0,0);hull.add(4,3);hull.build();diameter_type d;d.build(hull.idx());return d;}();
+    CHECK(detached.dist2()==25);detached.build();CHECK(detached.dist2()==25);
+    hull_type edited;edited.add(0,0);edited.add(1,0);edited.add(0,1);edited.build();
+    edited.arr[1].x=10;edited.build();diameter_type d;d.build(edited.idx());verify(d,{{0,0},{10,0},{0,1}});
+}
+
 template<size_t m>
 void verify_gf2(geometry::_gf2<m>& system){
     using solver=geometry::_gf2<m>;
@@ -890,7 +974,7 @@ void check_alphabets(){
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
-        {"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
+        {"rc_split",check_rc_split},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
         {"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets}}){
         try { test(); cout << "PASS " << name << '\n'; }
         catch(const exception& e){ ++failures; cerr << "FAIL " << name << ": " << e.what() << '\n'; }
