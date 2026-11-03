@@ -142,40 +142,39 @@ public:
 
 //MANACHER
 template <class T = ll>
-class _mnc { // 0-based index
+class _mnc{ // 0-based index
 private:
     vector <T> arr; vector <int> rad;
-    int n, m = 0; ll even = 0, odd = 0;
-    void build(){
-        this->n = arr.size(); rad.assign(n, 0);
-        int r = -1, c = -1; even = odd = m = 0;
+    int n = 0, m = 0; ll even = 0, odd = 0;
+    void build(){ // O(n)
+        n = arr.size(); rad.assign(2 * n + 1, 0);
+        even = odd = m = 0;
+        int l = 0, r = -1;
         for(int i = 0;i < n;i++){
-            if(i <= r) rad[i] = min(r - i, rad[2 * c - i]);
-            while(i + rad[i] + 1 < n && i - rad[i] - 1 >= 0){
-                if(arr[i + rad[i] + 1] == arr[i - rad[i] - 1]) rad[i]++;
-                else break;
-            }
-            if(i + rad[i] > r) c = i, r = i + rad[i];
-            (arr[i] == inf() ? even : odd) += rad[i] / 2 + (arr[i] != inf());
-            m = max(m, rad[i]);
+            int k = 1;
+            if(i <= r) k = min(rad[2 * (l + r - i) + 1] / 2 + 1, r - i + 1);
+            while(i - k >= 0 && i + k < n && arr[i - k] == arr[i + k]) k++;
+            rad[2 * i + 1] = 2 * k - 1; odd += k;
+            m = max(m, 2 * k - 1);
+            if(i + k - 1 > r){ l = i - k + 1; r = i + k - 1; }
         }
-    }
-
-    static constexpr T inf() {
-        if constexpr (is_same_v<T, int>) return 0x3f3f3f3f;       
-        else if constexpr (is_same_v<T, char>) return (char)255;
-        else return INF; 
+        l = 0; r = -1;
+        for(int i = 0;i < n;i++){
+            int k = 0;
+            if(i <= r) k = min(rad[2 * (l + r - i + 1)] / 2, r - i + 1);
+            while(i - k - 1 >= 0 && i + k < n && arr[i - k - 1] == arr[i + k]) k++;
+            rad[2 * i] = 2 * k; even += k;
+            m = max(m, 2 * k);
+            if(i + k - 1 > r){ l = i - k; r = i + k - 1; }
+        }
     }
 
     template <class It, class F>
     void make(It begin, It end, const F& f){
         size_t len = (size_t)distance(begin, end);
-        arr.clear(); arr.reserve(2 * len + 1);
-        const T sep = inf();
-        for(auto it = begin;it != end;++it){
-            arr.push_back(sep); arr.push_back(f(*it));
-        }
-        arr.push_back(sep); build();
+        arr.clear(); arr.reserve(len);
+        for(auto it = begin;it != end;++it) arr.push_back(f(*it));
+        build();
     }
 public:
     _mnc(){} // O(1)
@@ -198,8 +197,7 @@ public:
         int r = rad[2 * idx + 1] / 2;
         return { idx - r, idx + r };
     }
-    
-    // center == (idx - 1, idx)
+
     pair<int, int> range_even(int idx) const{ // O(1)
         int r = rad[2 * idx] / 2;
         return { idx - r, idx + r - 1 };

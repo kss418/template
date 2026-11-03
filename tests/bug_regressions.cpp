@@ -612,6 +612,58 @@ void check_crt_dependents(){
     tower.clear();tower.add(3);tower.add_mod(3,3);tower.build();CHECK(read.ret().get_value()==3 && read.ret().get_mod()==27);
 }
 
+template<class T>
+void verify_manacher_values(const vector<T>& input){
+    strings::_mnc<T> m{span<const T>(input)};
+    int n=(int)input.size(),maximum=0;long long odd=0,even=0;
+    vector<int> expected(2*n+1,0);
+    for(int l=0;l<n;++l)for(int r=l;r<n;++r){
+        bool palindrome=true;for(int a=l,b=r;a<b;++a,--b)if(!(input[a]==input[b])){palindrome=false;break;}
+        CHECK(m.is_pal(l,r)==palindrome);
+        if(!palindrome)continue;
+        int len=r-l+1;maximum=max(maximum,len);if(len%2)++odd;else ++even;
+        expected[l+r+1]=max(expected[l+r+1],len);
+    }
+    CHECK(m.cnt_odd()==odd);CHECK(m.cnt_even()==even);CHECK(m.cnt()==odd+even);CHECK(m.max_len()==maximum);
+    CHECK(m.get_rad()==expected);
+    for(int i=0;i<n;++i){int r=expected[2*i+1]/2;CHECK(m.range_odd(i)==make_pair(i-r,i+r));}
+    for(int i=0;i<=n;++i){int r=expected[2*i]/2;CHECK(m.range_even(i)==make_pair(i-r,i+r-1));}
+    auto saved=m.get_rad();m.make(span<const T>(input));CHECK(m.get_rad()==saved && m.cnt()==odd+even);
+    m.make(span<const T>{});CHECK(m.get_rad()==vector<int>{0} && m.cnt()==0 && m.max_len()==0);
+    m.make(span<const T>(input));CHECK(m.get_rad()==saved && m.cnt_odd()==odd && m.cnt_even()==even);
+}
+
+void check_manacher_values(){
+    verify_manacher_values(vector<int>{0x3f3f3f3f});
+    verify_manacher_values(vector<char>{char(255)});
+    for(const auto& input:vector<vector<int>>{
+        {},{INT_MIN},{INT_MAX},{0x3f3f3f3f,0x3f3f3f3f},
+        {0x3f3f3f3f,7,0x3f3f3f3f},{7,0x3f3f3f3f,7},
+        {0x3f3f3f3f,7,7,0x3f3f3f3f},{INT_MIN,0,INT_MAX,0,INT_MIN}
+    })verify_manacher_values(input);
+    verify_manacher_values(vector<long long>{strings::INF,strings::INF,0,strings::INF,strings::INF});
+    verify_manacher_values(vector<uint64_t>{0,UINT64_MAX,0,UINT64_MAX,0});
+    verify_manacher_values(vector<char>{0,char(255),0,char(255)});
+    const array<int,3> alphabet{0x3f3f3f3f,INT_MIN,INT_MAX};
+    for(int n=0,power=1;n<=6;++n,power*=3)for(int mask=0;mask<power;++mask){
+        vector<int> input(n);int value=mask;for(auto& v:input){v=alphabet[value%3];value/=3;}verify_manacher_values(input);
+    }
+    for(int value=0;value<256;++value){
+        string text(3,char(value));strings::_mnc<char> bytes(text);strings::_mnc<> normal(text);
+        CHECK(bytes.cnt()==6 && bytes.cnt_odd()==4 && bytes.cnt_even()==2 && bytes.max_len()==3);
+        CHECK(bytes.get_rad()==normal.get_rad());CHECK(bytes.is_pal(0,2));
+    }
+    string mixed;for(unsigned c:{0u,255u,128u,255u,0u})mixed.push_back(char(c));
+    strings::_mnc<char> byte_string(mixed);vector<char> byte_values(all(mixed));verify_manacher_values(byte_values);
+    CHECK(byte_string.cnt()==7 && byte_string.max_len()==5);
+    string changed="aba";strings::_mnc<> reusable(changed);reusable.make(mixed);
+    CHECK(reusable.get_rad()==byte_string.get_rad());reusable.make(string(""));CHECK(reusable.get_rad()==vector<int>{0});
+    reusable.make(changed);CHECK(reusable.cnt()==4 && reusable.max_len()==3);
+    vector<int> large(100000,0x3f3f3f3f);strings::_mnc<int> repeated{span<const int>(large)};
+    CHECK(repeated.cnt()==5000050000LL && repeated.cnt_odd()==2500050000LL && repeated.cnt_even()==2500000000LL);
+    CHECK(repeated.max_len()==100000 && repeated.is_pal(0,99999));
+}
+
 void check_manacher(){
     strings::_mnc<> ab(string("ab")), aba(string("aba"));
     CHECK(!ab.is_pal(0, 1)); CHECK(aba.is_pal(0, 2));
@@ -974,7 +1026,7 @@ void check_alphabets(){
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
-        {"rc_split",check_rc_split},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
+        {"rc_split",check_rc_split},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
         {"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets}}){
         try { test(); cout << "PASS " << name << '\n'; }
         catch(const exception& e){ ++failures; cerr << "FAIL " << name << ": " << e.what() << '\n'; }
