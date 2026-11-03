@@ -466,51 +466,57 @@ public:
 template <size_t n, size_t m>
 class _gf2{ // 0-based index
 public:
+    enum class state{ inconsistent, unique, multiple };
+    class result{
+    public:
+        state status;
+        bitset <m> value; ll rk, fr;
+        bool inconsistent() const{ return status == state::inconsistent; } // O(1)
+        bool unique() const{ return status == state::unique; } // O(1)
+        bool multiple() const{ return status == state::multiple; } // O(1)
+        const bitset <m>& get_value() const{ return value; } // O(1)
+        ll rank() const{ return rk; } // O(1)
+        ll free_count() const{ return fr; } // O(1)
+    };
+
     vector <bitset <m + 1>> bs;
+private:
+    result ans{};
+public:
     _gf2() : bs(n){}
     void set_a(ll cy, ll cx, bool v){ bs[cy][cx] = v; }
     void set_b(ll cy, bool v){ bs[cy][m] = v; }
+    void clear(){ for(auto& i : bs) i.reset(); }
 
-    // 해가 존재하면 1, 아니면 0 반환
-    // 해는 result에 담김
-    bool ret(bitset <m>& result){
-        vector <ll> pos(m, -1);
+    void build(){
+        auto arr = bs; vector <ll> pos(m, -1);
         ll cy = 0;
-        for(ll cx = 0;cx < m && cy < n; cx++){
+        for(ll cx = 0;cx < m && cy < n;cx++){
             ll now = -1;
-            for(int i = cy;i < n;i++){
-                if(!bs[i][cx]) continue;
+            for(ll i = cy;i < n;i++){
+                if(!arr[i][cx]) continue;
                 now = i; break;
             }
             if(now == -1) continue;
 
-            swap(bs[now], bs[cy]);
+            swap(arr[now], arr[cy]);
             pos[cx] = cy;
-
-            for(int i = 0;i < n;i++){
-                if(i == cy || !bs[i][cx]) continue;
-                bs[i] ^= bs[cy];
+            for(ll i = 0;i < n;i++){
+                if(i == cy || !arr[i][cx]) continue;
+                arr[i] ^= arr[cy];
             }
-
             cy++;
         }
 
-        for(int i = 0;i < n;i++){
-            bool flag = 1;
-            for(int j = 0;j < m;j++){
-                if(!bs[i][j]) continue;
-                flag = 0; break;
-            }
-
-            if(flag && bs[i][m]) return 0;
+        ans = {cy == m ? state::unique : state::multiple, {}, cy, (ll)m - cy};
+        for(ll i = cy;i < n;i++){
+            if(!arr[i][m]) continue;
+            ans.status = state::inconsistent; return;
         }
-
-        result.reset();
-        for(int i = 0;i < m;i++) result[i] = (pos[i] != -1 ? bs[pos[i]][m] : 0);
-        return 1;
+        for(ll i = 0;i < m;i++) if(pos[i] != -1) ans.value[i] = arr[pos[i]][m];
     }
 
-    void clear(){ for(int i = 0;i < n;i++) bs[i].reset(); }
+    const result& ret() const{ return ans; } // O(1)
 };
 
 template <size_t N = 63>

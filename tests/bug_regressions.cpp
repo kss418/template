@@ -161,6 +161,80 @@ void check_fft_carry(){
     CHECK(decode(digits,2)==decode(coefficients,2));for(auto digit:digits)CHECK(digit==0 || digit==1);
 }
 
+template<size_t n,size_t m>
+void verify_gf2(geometry::_gf2<n,m>& system){
+    using solver=geometry::_gf2<n,m>;
+    static_assert(same_as<decltype(as_const(system).ret()),const typename solver::result&>);
+    static_assert(same_as<decltype(as_const(system).ret().get_value()),const bitset<m>&>);
+    auto input=system.bs;set<unsigned> image;vector<unsigned> solutions;
+    unsigned rhs=0;for(size_t row=0;row<n;++row)rhs|=(unsigned)input[row][m]<<row;
+    for(unsigned value=0;value<(1u<<m);++value){
+        unsigned mapped=0;
+        for(size_t row=0;row<n;++row){
+            bool parity=false;for(size_t col=0;col<m;++col)parity^=input[row][col] && ((value>>col)&1);
+            mapped|=(unsigned)parity<<row;
+        }
+        image.insert(mapped);if(mapped==rhs)solutions.push_back(value);
+    }
+    int rank=0;while((1u<<rank)<image.size())++rank;
+    system.build();CHECK(system.bs==input);
+    const auto& answer=as_const(system).ret();CHECK(&answer==&as_const(system).ret());
+    CHECK(answer.rank()==rank && answer.free_count()==(long long)m-rank);
+    CHECK(answer.inconsistent()==solutions.empty());CHECK(answer.unique()==(solutions.size()==1));
+    CHECK(answer.multiple()==(solutions.size()>1));
+    if(!solutions.empty()){
+        auto value=(unsigned)answer.get_value().to_ullong();
+        CHECK(find(all(solutions),value)!=solutions.end());
+        CHECK(solutions.size()==(1u<<answer.free_count()));
+    }
+}
+
+template<size_t n,size_t m>
+void check_gf2_dimensions(){
+    geometry::_gf2<n,m> system;
+    for(unsigned encoded=0;encoded<(1u<<(n*(m+1)));++encoded){
+        unsigned bits=encoded;
+        for(size_t row=0;row<n;++row){system.bs[row]=bitset<m+1>(bits);bits>>=m+1;}
+        verify_gf2(system);
+        if(encoded%31==0){
+            auto before=system.ret();system.build();const auto& after=system.ret();
+            CHECK(after.status==before.status && after.get_value()==before.get_value());
+            CHECK(after.rank()==before.rank() && after.free_count()==before.free_count());
+        }
+    }
+}
+
+void check_gf2(){
+    check_gf2_dimensions<0,0>();check_gf2_dimensions<0,1>();check_gf2_dimensions<0,2>();check_gf2_dimensions<0,3>();
+    check_gf2_dimensions<1,0>();check_gf2_dimensions<1,1>();check_gf2_dimensions<1,2>();check_gf2_dimensions<1,3>();
+    check_gf2_dimensions<2,0>();check_gf2_dimensions<2,1>();check_gf2_dimensions<2,2>();check_gf2_dimensions<2,3>();
+    check_gf2_dimensions<3,0>();check_gf2_dimensions<3,1>();check_gf2_dimensions<3,2>();check_gf2_dimensions<3,3>();
+    geometry::_gf2<2,2> system;
+    system.set_a(0,0,1);system.set_a(0,1,1);system.set_b(0,0);
+    system.set_a(1,0,1);system.set_b(1,1);verify_gf2(system);
+    CHECK(system.ret().unique() && system.ret().get_value().to_ulong()==3);
+    system.set_b(0,1);verify_gf2(system);CHECK(system.ret().get_value().to_ulong()==1);
+    system.set_a(0,1,0);system.set_b(0,0);verify_gf2(system);CHECK(system.ret().inconsistent());
+    system.set_b(1,0);verify_gf2(system);
+    CHECK(system.ret().multiple() && system.ret().rank()==1 && system.ret().free_count()==1);
+    CHECK(system.ret().get_value().none());
+    system.set_a(1,1,1);system.set_b(1,1);verify_gf2(system);
+    CHECK(system.ret().unique() && system.ret().get_value().to_ulong()==2);
+    system.clear();verify_gf2(system);CHECK(system.ret().multiple() && system.ret().free_count()==2);
+    geometry::_gf2<130,129> wide;
+    for(int i=0;i<129;++i){
+        wide.set_a(i,i,1);if(i+1<129)wide.set_a(i,i+1,1);
+        wide.set_b(i,(i%2) ^ (i+1<129?(i+1)%2:0));wide.set_a(129,i,1);
+    }
+    auto input=wide.bs;wide.build();CHECK(wide.bs==input);
+    CHECK(wide.ret().unique() && wide.ret().rank()==129 && wide.ret().free_count()==0);
+    for(int i=0;i<129;++i)CHECK(wide.ret().get_value()[i]==(bool)(i%2));
+    wide.set_b(129,1);input=wide.bs;wide.build();CHECK(wide.bs==input);
+    CHECK(wide.ret().inconsistent() && wide.ret().rank()==129 && wide.ret().free_count()==0);
+    wide.clear();wide.build();CHECK(wide.ret().multiple() && wide.ret().free_count()==129);
+    CHECK(wide.ret().rank()==0 && wide.ret().get_value().none());
+}
+
 template<uint64_t mod>
 void check_fixed_comb_mod(){
     combinatorics::_comb<mod> table((int)min<uint64_t>(mod-1,60));
@@ -808,7 +882,7 @@ void check_alphabets(){
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
-        {"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
+        {"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
         {"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets}}){
         try { test(); cout << "PASS " << name << '\n'; }
         catch(const exception& e){ ++failures; cerr << "FAIL " << name << ": " << e.what() << '\n'; }
