@@ -612,6 +612,61 @@ void check_crt_dependents(){
     tower.clear();tower.add(3);tower.add_mod(3,3);tower.build();CHECK(read.ret().get_value()==3 && read.ret().get_mod()==27);
 }
 
+void check_kmp_go(){
+    auto naive_state=[](const vector<int>& pattern,const vector<int>& text){
+        int answer=0;
+        for(int len=1;len<=(int)pattern.size() && len<=(int)text.size();++len){
+            bool equal=true;for(int i=0;i<len;++i)if(pattern[i]!=text[text.size()-len+i]){equal=false;break;}
+            if(equal)answer=len;
+        }
+        return answer;
+    };
+    auto naive_matches=[](const vector<int>& pattern,const vector<int>& text){
+        vector<int> matches;if(pattern.empty())return matches;
+        for(int i=0;i+(int)pattern.size()<=(int)text.size();++i){
+            bool equal=true;for(int j=0;j<(int)pattern.size();++j)if(pattern[j]!=text[i+j]){equal=false;break;}
+            if(equal)matches.push_back(i);
+        }
+        return matches;
+    };
+    for(int m=0;m<=4;++m)for(int mask=0;mask<(1<<m);++mask){
+        vector<int> pattern(m);for(int i=0;i<m;++i)pattern[i]=(mask>>i)&1;
+        strings::_kmp<int> kmp{span<const int>(pattern)};const auto& view=kmp;
+        for(int state=0;state<=m;++state)for(int value:{-1,0,1,2}){
+            vector<int> history(pattern.begin(),pattern.begin()+state);history.push_back(value);
+            CHECK(view.go(state,value)==naive_state(pattern,history));
+        }
+        for(int n=0;n<=6;++n)for(int bits=0;bits<(1<<n);++bits){
+            vector<int> input(n);for(int i=0;i<n;++i)input[i]=(bits>>i)&1;
+            vector<int> history,matches;int state=0;
+            for(int i=0;i<n;++i){
+                history.push_back(input[i]);state=view.go(state,input[i]);CHECK(state==naive_state(pattern,history));
+                if(m && state==m)matches.push_back(i-m+1);
+            }
+            CHECK(matches==naive_matches(pattern,input));
+            vector<int> batch;view.it_match(span<const int>(input),[&](int index){batch.push_back(index);});CHECK(batch==matches);
+        }
+    }
+    strings::_kmp<> text_pattern("aba");string text="ababa";vector<int> states;int state=0;
+    for(unsigned char c:text){state=text_pattern.go(state,c);states.push_back(state);}
+    CHECK(states==vector<int>({1,2,3,2,3}));
+    for(size_t split=0;split<=text.size();++split){
+        int current=0,index=0;vector<int> matches;
+        for(const auto& part:vector<string>{text.substr(0,split),text.substr(split)})for(unsigned char c:part){
+            current=text_pattern.go(current,c);if(current==3)matches.push_back(index-2);++index;
+        }
+        CHECK(matches==vector<int>({0,2}));
+    }
+    string pattern;pattern.push_back(char(255));pattern.push_back(0);pattern.push_back(char(255));
+    string bytes=pattern+pattern.substr(1);strings::_kmp<> byte_kmp(pattern);vector<int> streamed,batch;state=0;
+    for(int i=0;i<(int)bytes.size();++i){state=byte_kmp.go(state,(unsigned char)bytes[i]);if(state==3)streamed.push_back(i-2);}
+    byte_kmp.it_match(bytes,[&](int index){batch.push_back(index);});CHECK(streamed==vector<int>({0,2}) && batch==streamed);
+    text_pattern.make(string("aa"));state=0;states.clear();for(unsigned char c:string("aaaa")){state=text_pattern.go(state,c);states.push_back(state);}
+    CHECK(states==vector<int>({1,2,2,2}));text_pattern.clear();CHECK(text_pattern.go(0,'a')==0);
+    strings::_kmp<int> numeric;vector<int> numbers{-3,INT_MAX,-3};numeric.make(span<const int>(numbers));state=0;
+    for(int value:numbers)state=numeric.go(state,value);CHECK(state==3);
+}
+
 template<class T>
 void verify_manacher_values(const vector<T>& input){
     strings::_mnc<T> m{span<const T>(input)};
@@ -1026,7 +1081,7 @@ void check_alphabets(){
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
-        {"rc_split",check_rc_split},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
+        {"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
         {"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets}}){
         try { test(); cout << "PASS " << name << '\n'; }
         catch(const exception& e){ ++failures; cerr << "FAIL " << name << ": " << e.what() << '\n'; }

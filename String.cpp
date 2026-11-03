@@ -27,10 +27,6 @@ private:
         return pat[cur] == pat[nxt];
     }
 
-    bool match_chk(span<const T> v, int idx, int state) const{
-        return v[idx] == pat[state];
-    }
-
     static vector <T> tf(const string& s){
         vector <T> ret; ret.reserve(s.size());
         for(unsigned char c : s) ret.push_back(T(c));
@@ -52,16 +48,16 @@ public:
         int n = (int)v.size();
         if(!m) return; int state = 0;
         for(int i = 0;i < n;i++){
-            state = go(state, v, i);
+            state = go(state, v[i]);
             if(state == m) f(i - m + 1);
         }
     }
 
-    int go(int state, span<const T> v, int idx) const{ // amortized O(1)
+    int go(int state, const T& value) const{ // O(m), amortized O(1)
         if(!m) return 0;
         if(state == m) state = arr[m - 1];
-        while(state && !match_chk(v, idx, state)) state = arr[state - 1];
-        if(match_chk(v, idx, state)) state++;
+        while(state && !(value == pat[state])) state = arr[state - 1];
+        if(value == pat[state]) state++;
         return state;
     }
 
