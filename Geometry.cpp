@@ -463,7 +463,7 @@ public:
     }
 };
 
-template <size_t n, size_t m>
+template <size_t m>
 class _gf2{ // 0-based index
 public:
     enum class state{ inconsistent, unique, multiple };
@@ -483,12 +483,13 @@ public:
 private:
     result ans{};
 public:
-    _gf2() : bs(n){}
+    _gf2(ll n = 0) : bs(n){}
     void set_a(ll cy, ll cx, bool v){ bs[cy][cx] = v; }
     void set_b(ll cy, bool v){ bs[cy][m] = v; }
     void clear(){ for(auto& i : bs) i.reset(); }
 
     void build(){
+        ll n = bs.size();
         auto arr = bs; vector <ll> pos(m, -1);
         ll cy = 0;
         for(ll cx = 0;cx < m && cy < n;cx++){

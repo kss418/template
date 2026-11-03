@@ -161,9 +161,10 @@ void check_fft_carry(){
     CHECK(decode(digits,2)==decode(coefficients,2));for(auto digit:digits)CHECK(digit==0 || digit==1);
 }
 
-template<size_t n,size_t m>
-void verify_gf2(geometry::_gf2<n,m>& system){
-    using solver=geometry::_gf2<n,m>;
+template<size_t m>
+void verify_gf2(geometry::_gf2<m>& system){
+    using solver=geometry::_gf2<m>;
+    size_t n=system.bs.size();
     static_assert(same_as<decltype(as_const(system).ret()),const typename solver::result&>);
     static_assert(same_as<decltype(as_const(system).ret().get_value()),const bitset<m>&>);
     auto input=system.bs;set<unsigned> image;vector<unsigned> solutions;
@@ -189,27 +190,34 @@ void verify_gf2(geometry::_gf2<n,m>& system){
     }
 }
 
-template<size_t n,size_t m>
+template<size_t m>
 void check_gf2_dimensions(){
-    geometry::_gf2<n,m> system;
-    for(unsigned encoded=0;encoded<(1u<<(n*(m+1)));++encoded){
-        unsigned bits=encoded;
-        for(size_t row=0;row<n;++row){system.bs[row]=bitset<m+1>(bits);bits>>=m+1;}
-        verify_gf2(system);
-        if(encoded%31==0){
-            auto before=system.ret();system.build();const auto& after=system.ret();
-            CHECK(after.status==before.status && after.get_value()==before.get_value());
-            CHECK(after.rank()==before.rank() && after.free_count()==before.free_count());
+    for(size_t n=0;n<=3;++n){
+        geometry::_gf2<m> system(n);
+        for(unsigned encoded=0;encoded<(1u<<(n*(m+1)));++encoded){
+            unsigned bits=encoded;
+            for(size_t row=0;row<n;++row){system.bs[row]=bitset<m+1>(bits);bits>>=m+1;}
+            verify_gf2(system);
+            if(encoded%31==0){
+                auto before=system.ret();system.build();const auto& after=system.ret();
+                CHECK(after.status==before.status && after.get_value()==before.get_value());
+                CHECK(after.rank()==before.rank() && after.free_count()==before.free_count());
+            }
         }
     }
 }
 
 void check_gf2(){
-    check_gf2_dimensions<0,0>();check_gf2_dimensions<0,1>();check_gf2_dimensions<0,2>();check_gf2_dimensions<0,3>();
-    check_gf2_dimensions<1,0>();check_gf2_dimensions<1,1>();check_gf2_dimensions<1,2>();check_gf2_dimensions<1,3>();
-    check_gf2_dimensions<2,0>();check_gf2_dimensions<2,1>();check_gf2_dimensions<2,2>();check_gf2_dimensions<2,3>();
-    check_gf2_dimensions<3,0>();check_gf2_dimensions<3,1>();check_gf2_dimensions<3,2>();check_gf2_dimensions<3,3>();
-    geometry::_gf2<2,2> system;
+    check_gf2_dimensions<0>();check_gf2_dimensions<1>();check_gf2_dimensions<2>();check_gf2_dimensions<3>();
+    geometry::_gf2<2> empty;verify_gf2(empty);CHECK(empty.ret().multiple() && empty.ret().free_count()==2);
+    for(long long n:vector<long long>{5,0,2,1,7}){
+        geometry::_gf2<2> input(n);
+        if(n){input.set_a(n-1,1,1);input.set_b(n-1,1);}
+        verify_gf2(input);CHECK(input.bs.size()==(size_t)n);
+        if(n)CHECK(input.ret().get_value().to_ulong()==2);
+        input.clear();verify_gf2(input);CHECK(input.bs.size()==(size_t)n);
+    }
+    geometry::_gf2<2> system(2);
     system.set_a(0,0,1);system.set_a(0,1,1);system.set_b(0,0);
     system.set_a(1,0,1);system.set_b(1,1);verify_gf2(system);
     CHECK(system.ret().unique() && system.ret().get_value().to_ulong()==3);
@@ -221,7 +229,7 @@ void check_gf2(){
     system.set_a(1,1,1);system.set_b(1,1);verify_gf2(system);
     CHECK(system.ret().unique() && system.ret().get_value().to_ulong()==2);
     system.clear();verify_gf2(system);CHECK(system.ret().multiple() && system.ret().free_count()==2);
-    geometry::_gf2<130,129> wide;
+    geometry::_gf2<129> wide(130);
     for(int i=0;i<129;++i){
         wide.set_a(i,i,1);if(i+1<129)wide.set_a(i,i+1,1);
         wide.set_b(i,(i%2) ^ (i+1<129?(i+1)%2:0));wide.set_a(129,i,1);
