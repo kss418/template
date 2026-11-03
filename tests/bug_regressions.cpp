@@ -6,11 +6,13 @@ namespace numeric_templates {
 #include "../Number_Theory.cpp"
 }
 namespace combinatorics {
+using numeric_templates::_mint;
 using numeric_templates::_dynamic_mint;
 using numeric_templates::_crt;
 #include "../Combinatorics.cpp"
 }
 namespace geometry {
+using numeric_templates::_mint;
 using numeric_templates::_dynamic_mint;
 #include "../Geometry.cpp"
 }
@@ -157,6 +159,84 @@ void check_fft_carry(){
     auto source=wide.make(vector<value>{big,big});auto coefficients=wide.inverse(source);
     auto digits=wide.inverse(wide.carry(source,2));
     CHECK(decode(digits,2)==decode(coefficients,2));for(auto digit:digits)CHECK(digit==0 || digit==1);
+}
+
+template<uint64_t mod>
+void check_fixed_comb_mod(){
+    combinatorics::_comb<mod> table((int)min<uint64_t>(mod-1,60));
+    vector<vector<uint64_t>> pascal(table.n+1,vector<uint64_t>(table.n+1));
+    for(int n=0;n<=table.n;++n){
+        pascal[n][0]=pascal[n][n]=1;
+        for(int r=1;r<n;++r)pascal[n][r]=(pascal[n-1][r-1]+pascal[n-1][r])%mod;
+        for(int r=0;r<=n;++r)CHECK(table.ret(n,r)==(long long)pascal[n][r]);
+        CHECK(table.ret(n,-1)==0 && table.ret(n,n+1)==0);
+    }
+    CHECK(table.ret(-1,0)==0);
+}
+
+void check_fixed_comb(){
+    check_fixed_comb_mod<2>();check_fixed_comb_mod<7>();check_fixed_comb_mod<61>();
+    check_fixed_comb_mod<998244353>();check_fixed_comb_mod<1000000007>();
+    combinatorics::_comb table(5);CHECK(table.ret(5,2)==10);
+    combinatorics::_comb<> zero(0);CHECK(zero.ret(0,0)==1 && zero.ret(0,1)==0);
+    static_assert(same_as<decltype(table.fac)::value_type,numeric_templates::_mint<998244353>>);
+    static_assert(!is_constructible_v<combinatorics::_comb<7>,int,int>);
+}
+
+template<class A,class B>
+concept matrix_arithmetic=requires(const A& a,const B& b){a+b;a*b;};
+
+template<uint64_t mod>
+void check_fixed_matrix_mod(){
+    using matrix=geometry::_mod_matrix<mod>;using mint=numeric_templates::_mint<mod>;
+    auto norm=[](long long v){__int128_t x=v;x%=mod;if(x<0)x+=mod;return (uint64_t)x;};
+    auto product=[](const vector<vector<long long>>& a,const vector<vector<long long>>& b){
+        vector<vector<long long>> ret(a.size(),vector<long long>(b[0].size()));
+        for(size_t i=0;i<a.size();++i)for(size_t j=0;j<b[0].size();++j)
+            for(size_t k=0;k<b.size();++k)ret[i][j]+=a[i][k]*b[k][j];
+        return ret;
+    };
+    auto make=[](const vector<vector<long long>>& a){
+        matrix ret((int)a.size(),(int)a[0].size());
+        for(int i=0;i<ret.n;++i)for(int j=0;j<ret.m;++j)ret.set(i,j,a[i][j]);return ret;
+    };
+    auto equal=[&](const matrix& got,const vector<vector<long long>>& want){
+        CHECK(got.n==(int)want.size() && got.m==(int)want[0].size());
+        for(int i=0;i<got.n;++i)for(int j=0;j<got.m;++j)CHECK(got.at(i,j).v==norm(want[i][j]));
+    };
+    matrix a(2,3);for(const auto& v:a.arr)CHECK(v==0);
+    a.set(0,0,-1);a.add(0,0,3);CHECK(a.at(0,0)==2);a.at(1,2)=-3;CHECK(a.at(1,2).v==norm(-3));
+    static_assert(same_as<decltype(a.at(0,0)),mint&>);
+    static_assert(same_as<decltype(as_const(a).at(0,0)),const mint&>);
+    const vector<vector<long long>> av{{1,2,3},{-4,5,6}},bv{{7,-8},{9,10},{11,12}};
+    auto left=make(av),right=make(bv);equal(left*right,{{58,48},{83,154}});
+    equal(left+left,{{2,4,6},{-8,10,12}});equal(left.transpose(),{{1,-4},{2,5},{3,6}});
+    equal(left*matrix::id(3),av);equal(matrix::id(2)*left,av);
+    auto fib=make({{1,1},{1,0}});equal(fib.pow(0),{{1,0},{0,1}});equal(fib.pow(10),{{89,55},{55,34}});
+    equal(left,av);equal(right,bv);
+    matrix empty;CHECK(empty.n==0 && empty.m==0 && empty.arr.empty());
+    auto empty_pow=empty.pow(0);CHECK(empty_pow.n==0 && empty_pow.m==0 && empty_pow.arr.empty());
+    matrix rows(0,3),cols(3,0);auto empty_product=rows*cols;
+    CHECK(empty_product.n==0 && empty_product.m==0 && empty_product.arr.empty());
+    auto transposed=rows.transpose();CHECK(transposed.n==3 && transposed.m==0 && transposed.arr.empty());
+    auto zeros=cols*rows;CHECK(zeros.n==3 && zeros.m==3);for(const auto& v:zeros.arr)CHECK(v==0);
+    mt19937 rng(393);
+    for(int n=1;n<=4;++n)for(int k=1;k<=4;++k)for(int m=1;m<=4;++m){
+        vector<vector<long long>> av(n,vector<long long>(k)),bv(k,vector<long long>(m));
+        for(auto& row:av)for(auto& v:row)v=(int)(rng()%21)-10;
+        for(auto& row:bv)for(auto& v:row)v=(int)(rng()%21)-10;
+        equal(make(av)*make(bv),product(av,bv));
+    }
+}
+
+void check_fixed_matrix(){
+    check_fixed_matrix_mod<1>();check_fixed_matrix_mod<7>();check_fixed_matrix_mod<12>();
+    check_fixed_matrix_mod<998244353>();check_fixed_matrix_mod<18446744073709551557ULL>();
+    geometry::_mod_matrix a(1,1);a.set(0,0,998244354);CHECK(a.at(0,0)==1);
+    static_assert(!matrix_arithmetic<geometry::_mod_matrix<7>,geometry::_mod_matrix<11>>);
+    static_assert(!is_constructible_v<geometry::_mod_matrix<7>,int,int,int>);
+    ostringstream out;geometry::_mod_matrix<7> b(1,2);b.set(0,0,-1);b.set(0,1,9);out<<b;
+    CHECK(out.str()=="6 2 \n");
 }
 
 template<class A,class B>
@@ -728,7 +808,7 @@ void check_alphabets(){
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
-        {"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
+        {"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
         {"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets}}){
         try { test(); cout << "PASS " << name << '\n'; }
         catch(const exception& e){ ++failures; cerr << "FAIL " << name << ": " << e.what() << '\n'; }

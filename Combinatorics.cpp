@@ -9,14 +9,16 @@ using pll = pair<ll, ll>; using tll = tuple<ll, ll, ll>;
 constexpr ll INF = 0x3f3f3f3f3f3f3f3f;
 constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 
+template <u64 mod = 998244353>
 class _comb{
 public:
-    vector <_dynamic_mint> fac, inv; int n; ll m; // m == prime
-    _comb(int n, ll m = 998244353) : n(n), m(m), fac(n + 1), inv(n + 1){ 
-        assert(n < m);
-        fac[0] = _dynamic_mint(1, m);
+    using mint = _mint<mod>;
+    vector <mint> fac, inv; int n;
+    _comb(int n) : n(n), fac(n + 1), inv(n + 1){
+        assert(n < mod);
+        fac[0] = 1;
         for(int i = 1;i <= n;i++) fac[i] = fac[i - 1] * i;
-        inv[n] = fac[n].pow(m - 2);
+        inv[n] = fac[n].pow(mod - 2);
         for(int i = n - 1;i >= 0;i--) inv[i] = inv[i + 1] * (i + 1);
     }
 

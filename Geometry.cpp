@@ -198,31 +198,31 @@ public:
     vector <node> idx(){ return st; } // 좌표 + 인덱스 반환
 };
 
-class _mod_matrix{ // 0-based index, Require _dynamic_mint
+template <u64 mod = 998244353>
+class _mod_matrix{ // 0-based index, Require _mint
 public:
-    int n, m; ll mod; vector<_dynamic_mint> arr;
-    _mod_matrix() : n(0), m(0), mod(1){}
-    _mod_matrix(int n, int m, ll mod = 998244353)
-        : n(n), m(m), mod(mod), arr(1LL * n * m, _dynamic_mint(0, mod)) {}
+    using mint = _mint<mod>;
+    int n, m; vector <mint> arr;
+    _mod_matrix() : n(0), m(0){}
+    _mod_matrix(int n, int m) : n(n), m(m), arr(1LL * n * m){}
 
-    _dynamic_mint& at(int i, int j){ return arr[1LL * i * m + j]; }
-    const _dynamic_mint& at(int i, int j) const{ return arr[1LL * i * m + j]; }
+    mint& at(int i, int j){ return arr[1LL * i * m + j]; }
+    const mint& at(int i, int j) const{ return arr[1LL * i * m + j]; }
     void add(int i, int j, ll v){ at(i, j) += v; }
-    void set(int i, int j, ll v){ at(i, j) = _dynamic_mint(v, mod); }
+    void set(int i, int j, ll v){ at(i, j) = v; }
 
-    static _mod_matrix id(int n, ll mod){
-        _mod_matrix ret(n, n, mod);
-        for(int i = 0; i < n; i++) ret.at(i, i) = _dynamic_mint(1, mod);
+    static _mod_matrix id(int n){
+        _mod_matrix ret(n, n);
+        for(int i = 0; i < n; i++) ret.at(i, i) = 1;
         return ret;
     }
 
     _mod_matrix operator*(const _mod_matrix& ot) const{
         assert(m == ot.n);
-        assert(mod == ot.mod);
-        _mod_matrix ret(n, ot.m, mod);
+        _mod_matrix ret(n, ot.m);
         for(int i = 0; i < n; i++){
             for(int k = 0; k < m; k++){
-                const _dynamic_mint v = at(i, k);
+                const mint v = at(i, k);
                 if(!v.v) continue;
                 for(int j = 0; j < ot.m; j++) ret.at(i, j) += v * ot.at(k, j);
             }
@@ -232,14 +232,14 @@ public:
 
     _mod_matrix operator+(const _mod_matrix& ot) const{
         assert(n == ot.n && m == ot.m);
-        _mod_matrix ret(n, m, mod);
+        _mod_matrix ret(n, m);
         for(int i = 0; i < n * m; i++) ret.arr[i] = arr[i] + ot.arr[i];
         return ret;
     }
 
     _mod_matrix pow(ll k) const{ // n*n matrix
         assert(n == m); assert(k >= 0);
-        _mod_matrix base = *this, ret = id(n, mod);
+        _mod_matrix base = *this, ret = id(n);
         while(k > 0){
             if(k & 1) ret = ret * base;
             base = base * base;
@@ -249,7 +249,7 @@ public:
     }
 
     _mod_matrix transpose() const{
-        _mod_matrix ret(m, n, mod);
+        _mod_matrix ret(m, n);
         for(int i = 0;i < n;i++) for(int j = 0;j < m;j++) ret.at(j, i) = at(i, j);
         return ret;
     }

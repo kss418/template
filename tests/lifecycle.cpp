@@ -11,6 +11,7 @@ namespace numbers_life {
 #include "../Number_Theory.cpp"
 }
 namespace geometry_life {
+using numbers_life::_mint;
 using numbers_life::_dynamic_mint;
 #include "../Geometry.cpp"
 }
