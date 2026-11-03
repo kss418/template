@@ -146,7 +146,7 @@ class _mnc{ // 0-based index
 private:
     vector <T> arr; vector <int> rad;
     int n = 0, m = 0; ll even = 0, odd = 0;
-    void build(){ // O(n)
+    void cal(){ // O(n)
         n = arr.size(); rad.assign(2 * n + 1, 0);
         even = odd = m = 0;
         int l = 0, r = -1;
@@ -168,20 +168,21 @@ private:
             if(i + k - 1 > r){ l = i - k; r = i + k - 1; }
         }
     }
-
-    template <class It, class F>
-    void make(It begin, It end, const F& f){
-        size_t len = (size_t)distance(begin, end);
-        arr.clear(); arr.reserve(len);
-        for(auto it = begin;it != end;++it) arr.push_back(f(*it));
-        build();
-    }
 public:
     _mnc(){} // O(1)
-    _mnc(const string& s){ make(s); } // O(n)
-    _mnc(span<const T> v){ make(v); } // O(n)
-    void make(const string& s){ make(all(s), [&](char c){ return (unsigned char)c; }); } // O(n)
-    void make(span<const T> v){ make(all(v), [&](const T& x){ return x; }); } // O(n)
+    _mnc(const string& s){ build(s); } // O(n)
+    _mnc(span<const T> v){ build(v); } // O(n)
+    void build(const string& s){ // O(n)
+        arr.clear(); arr.reserve(s.size());
+        for(unsigned char c : s) arr.push_back(c);
+        cal();
+    }
+
+    void build(span<const T> v){ // O(n)
+        arr.clear(); arr.reserve(v.size());
+        for(const auto& i : v) arr.push_back(i);
+        cal();
+    }
 
     const vector<int>& get_rad() const{ return rad; } // O(1)
     ll cnt() const{ return odd + even; } // O(1)

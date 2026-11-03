@@ -66,7 +66,7 @@ void check_bulk_and_numeric(){
     vector<range_templates::monoid::node>a{{99},{2},{3}};range_templates::_seg<> seg;seg.make(a);CHECK(seg.query(1,2).v==5);a[1]={7};seg.make(a);CHECK(seg.query(1,2).v==10);
     strings_life::_kmp<> k;k.make(string("ab"));int found=0;k.it_match(string("abab"),[&](int){++found;});CHECK(found==2);k.make(string("b"));found=0;k.it_match(string("abab"),[&](int){++found;});CHECK(found==2);
     strings_life::_sa<> sa;sa.make(string("aba"));CHECK(sa.get_sa()==vector<int>({2,0,1}));sa.make(string(""));CHECK(sa.get_sa().empty());
-    strings_life::_mnc<> m;m.make(string("aba"));CHECK(m.max_len()==3);m.make(string("x"));CHECK(m.max_len()==1);
+    strings_life::_mnc<> m;m.build(string("aba"));CHECK(m.max_len()==3);m.build(string("x"));CHECK(m.max_len()==1);
     strings_life::_z<> z;z.make(string("aaa"));CHECK(z.result()==vector<int>({3,2,1}));z.make(string("ab"));CHECK(z.result()==vector<int>({2,0}));
     numbers_life::_es<20> es;auto primes=es.ret();es.build();CHECK(es.ret()==primes);es.build();CHECK(es.ret()==primes);
     numbers_life::_ls sieve(20,3);CHECK(sieve.phi(18)==6);sieve.build();CHECK(sieve.phi(18)==6);CHECK(sieve.prime==primes);sieve.n=30;sieve.build();CHECK(sieve.is_prime(29));

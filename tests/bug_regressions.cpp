@@ -628,9 +628,9 @@ void verify_manacher_values(const vector<T>& input){
     CHECK(m.get_rad()==expected);
     for(int i=0;i<n;++i){int r=expected[2*i+1]/2;CHECK(m.range_odd(i)==make_pair(i-r,i+r));}
     for(int i=0;i<=n;++i){int r=expected[2*i]/2;CHECK(m.range_even(i)==make_pair(i-r,i+r-1));}
-    auto saved=m.get_rad();m.make(span<const T>(input));CHECK(m.get_rad()==saved && m.cnt()==odd+even);
-    m.make(span<const T>{});CHECK(m.get_rad()==vector<int>{0} && m.cnt()==0 && m.max_len()==0);
-    m.make(span<const T>(input));CHECK(m.get_rad()==saved && m.cnt_odd()==odd && m.cnt_even()==even);
+    auto saved=m.get_rad();m.build(span<const T>(input));CHECK(m.get_rad()==saved && m.cnt()==odd+even);
+    m.build(span<const T>{});CHECK(m.get_rad()==vector<int>{0} && m.cnt()==0 && m.max_len()==0);
+    m.build(span<const T>(input));CHECK(m.get_rad()==saved && m.cnt_odd()==odd && m.cnt_even()==even);
 }
 
 void check_manacher_values(){
@@ -656,9 +656,9 @@ void check_manacher_values(){
     string mixed;for(unsigned c:{0u,255u,128u,255u,0u})mixed.push_back(char(c));
     strings::_mnc<char> byte_string(mixed);vector<char> byte_values(all(mixed));verify_manacher_values(byte_values);
     CHECK(byte_string.cnt()==7 && byte_string.max_len()==5);
-    string changed="aba";strings::_mnc<> reusable(changed);reusable.make(mixed);
-    CHECK(reusable.get_rad()==byte_string.get_rad());reusable.make(string(""));CHECK(reusable.get_rad()==vector<int>{0});
-    reusable.make(changed);CHECK(reusable.cnt()==4 && reusable.max_len()==3);
+    string changed="aba";strings::_mnc<> reusable(changed);reusable.build(mixed);
+    CHECK(reusable.get_rad()==byte_string.get_rad());reusable.build(string(""));CHECK(reusable.get_rad()==vector<int>{0});
+    reusable.build(changed);CHECK(reusable.cnt()==4 && reusable.max_len()==3);
     vector<int> large(100000,0x3f3f3f3f);strings::_mnc<int> repeated{span<const int>(large)};
     CHECK(repeated.cnt()==5000050000LL && repeated.cnt_odd()==2500050000LL && repeated.cnt_even()==2500000000LL);
     CHECK(repeated.max_len()==100000 && repeated.is_pal(0,99999));
