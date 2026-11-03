@@ -6,7 +6,7 @@ namespace numeric_templates {
 #include "../Number_Theory.cpp"
 }
 namespace hash_templates {
-using numeric_templates::_dynamic_mint;
+using numeric_templates::_mint;
 #include "../Hash.cpp"
 }
 using namespace std;
@@ -190,7 +190,7 @@ long long naive_hash(const vector<int>& values,int l,int r,int key,int mod){
 }
 void check_hash_operations(){
     const pair<int,int> key{37,41}, mod{1'000'000'007,1'000'000'009};
-    hash_templates::_hash prefix(key,mod);hash_templates::_deque_hash window(256,key,mod);
+    hash_templates::_hash<> prefix(key);hash_templates::_deque_hash<> window(256,key);
     vector<int> values;mt19937 rng(809);
     for(int round=0;round<160;++round){
         int op=rng()%4;
@@ -210,6 +210,63 @@ void check_hash_operations(){
         }
     }
 }
+template<int mod1,int mod2>
+void check_fixed_hash_mod(){
+    using prefix_type=hash_templates::_hash<mod1,mod2>;
+    using deque_type=hash_templates::_deque_hash<mod1,mod2>;
+    static_assert(!is_constructible_v<prefix_type,pair<int,int>,pair<int,int>>);
+    static_assert(!is_constructible_v<deque_type,int,pair<int,int>,pair<int,int>>);
+    pair<int,int> key{3,5};prefix_type prefix(key);deque_type window(512,key);
+    vector<int> values;mt19937 rng(4831);
+    auto expected=[&](int l,int r){return (naive_hash(values,l,r,key.first,mod1)<<32)+naive_hash(values,l,r,key.second,mod2);};
+    auto verify=[&]{
+        CHECK(prefix.size()==(int)values.size() && window.size()==(int)values.size());
+        const auto& p=prefix;const auto& d=window;
+        CHECK(p.ret(0,-1)==0 && d.ret(0,-1)==0);
+        CHECK(p.same(0,-1,4,3) && d.same(0,-1,4,3));
+        for(int l=0;l<(int)values.size();++l)for(int r=l;r<(int)values.size();++r){
+            CHECK(p.ret(l,r)==expected(l,r));CHECK(d.ret(l,r)==expected(l,r));
+            CHECK(p.same(l,r,l,r) && d.same(l,r,l,r));
+        }
+        if(values.size()>1){CHECK(!p.same(0,0,0,1));CHECK(!d.same(0,0,0,1));}
+    };
+    auto refresh=[&]{prefix.reset();for(int v:values)prefix.push_back(v);};
+    verify();
+    for(int v:{INT_MIN,-1,0,INT_MAX,0,INT_MIN}){prefix.push_back(v);window.push_back(v);values.push_back(v);}
+    verify();CHECK(prefix.same(0,0,5,5) && window.same(0,0,5,5));
+    for(int round=0;round<80;++round){
+        int op=rng()%4;
+        if(values.empty() || (op<2 && values.size()<20)){
+            int v=round%3==0?INT_MAX:round%3==1?INT_MIN:(int)(rng()%401)-200;
+            if(op==0){window.push_front(v);values.insert(values.begin(),v);}
+            else{window.push_back(v);values.push_back(v);}
+        }else if(op%2){window.pop_back();values.pop_back();}
+        else{window.pop_front();values.erase(values.begin());}
+        refresh();verify();
+    }
+    auto saved_prefix=prefix;auto saved_window=window;auto saved_values=values;
+    window.push_front(17);values.insert(values.begin(),17);refresh();verify();
+    CHECK(saved_prefix.size()==(int)saved_values.size() && saved_window.size()==(int)saved_values.size());
+    for(int i=0;i<(int)saved_values.size();++i){
+        auto want=(naive_hash(saved_values,i,i,key.first,mod1)<<32)+naive_hash(saved_values,i,i,key.second,mod2);
+        CHECK(saved_prefix.ret(i,i)==want && saved_window.ret(i,i)==want);
+    }
+    key={11,17};prefix.clear(key);window.clear(512,key);values.clear();verify();
+    for(int v:{7,9,7,9}){values.push_back(v);prefix.push_back(v);window.push_back(v);}
+    verify();CHECK(prefix.same(0,1,2,3) && window.same(0,1,2,3));
+    CHECK(!prefix.same(0,0,1,1) && !window.same(0,0,1,1));
+    while(!values.empty()){prefix.pop_back();window.pop_back();values.pop_back();verify();}
+    for(int v:{12,-15,18}){prefix.push_back(v);window.push_back(v);values.push_back(v);}verify();
+    key={911382323,972663749};prefix.clear();window.clear(512);values.clear();
+    for(int v:{1,-2,3}){prefix.push_back(v);window.push_back(v);values.push_back(v);}verify();
+}
+
+void check_fixed_hash(){
+    check_fixed_hash_mod<101,103>();check_fixed_hash_mod<101,101>();
+    check_fixed_hash_mod<1000,1001>();check_fixed_hash_mod<1000000007,1000000009>();
+    check_fixed_hash_mod<2147483647,2147483629>();
+}
+
 namespace bidirectional_checks {
 using namespace range_templates;
 struct text_monoid {
@@ -621,7 +678,7 @@ void run(){for(bool base:{false,true}){check_monoids(base);check_actions(base);}
 int main(){
     int failures = 0;
     for(auto [name,test]:vector<pair<string,void(*)()>>{{"hld_direction",bidirectional_checks::check_hld_direction},{"bidirectional",bidirectional_checks::run},{"lazy_equality",check_lazy_equality},{"factory_construction",check_factory_construction},{"default_lazy",check_default_lazy},{"explicit_id",check_explicit_id},
-        {"affine",check_affine},{"hash_defaults",check_hash_defaults},{"hash_operations",check_hash_operations}}){
+        {"affine",check_affine},{"hash_defaults",check_hash_defaults},{"hash_operations",check_hash_operations},{"fixed_hash",check_fixed_hash}}){
         try{test();cout<<"PASS "<<name<<'\n';}catch(const exception& e){++failures;cerr<<"FAIL "<<name<<": "<<e.what()<<'\n';}
     }
     cout<<checks<<" identity/initial-leaf/hash checks, "<<failures<<" failed groups\n";

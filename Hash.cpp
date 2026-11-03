@@ -9,32 +9,35 @@ using pll = pair<ll, ll>; using tll = tuple<ll, ll, ll>;
 constexpr ll INF = 0x3f3f3f3f3f3f3f3f;
 constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 
+template <int mod1 = 1000000007, int mod2 = 1000000009>
 class _hash{ // 0-based index
 private:
     using pi = pair<int, int>;
-    class _core {
+    template <int mod>
+    class _core{
     public:
-        vector <int> pw, pre, ipw; 
-        _dynamic_mint key, inv; int mod;
-        _core(){};
-        _core(int key, int mod) : mod(mod), key(key, mod){ // O(n)
+        using mint = _mint<mod>;
+        vector <int> pw, pre, ipw;
+        mint key, inv;
+        _core() = default;
+        _core(int key) : key(key){ // O(n)
             assert(mod > 1); assert(this->key.v > 0);
             pre.clear(); pw.clear(); ipw.clear();
             pw.push_back(1); ipw.push_back(1); inv = this->key.inv();
         }
 
-        void ensure_pw(int k){ 
+        void ensure_pw(int k){
             while((int)pw.size() <= k){
-                pw.push_back((_dynamic_mint(pw.back(), mod) * key).v);
-                ipw.push_back((_dynamic_mint(ipw.back(), mod) * inv).v);
+                pw.push_back((mint(pw.back()) * key).v);
+                ipw.push_back((mint(ipw.back()) * inv).v);
             }
         }
 
         int size() const{ return (int)pre.size(); }
         void push_back(int v){ // O(1)
-            _dynamic_mint now = _dynamic_mint(v, mod); ensure_pw(size());
+            mint now = v; ensure_pw(size());
             if(pre.empty()) pre.push_back(now.v);
-            else pre.push_back((_dynamic_mint(pre.back(), mod) + now * pw[size()]).v);
+            else pre.push_back((mint(pre.back()) + now * pw[size()]).v);
         }
 
         void pop_back(){ // O(1)
@@ -43,73 +46,75 @@ private:
         }
 
         ll ret(int l, int r) const{ // O(1)
-            _dynamic_mint ret = _dynamic_mint(pre[r], mod);
-            if(l > 0) ret -= _dynamic_mint(pre[l - 1], mod);
+            mint ret = pre[r];
+            if(l > 0) ret -= pre[l - 1];
             ret *= ipw[l];
             return ret.v;
         }
-    }; array <_core, 2> arr; 
+    }; pair <_core<mod1>, _core<mod2>> arr;
 public:
-    _hash(pi key = {911382323, 972663749}, pi mod = {1000000007, 1000000009}){ clear(key, mod); }
-    void clear(pi key = {911382323, 972663749}, pi mod = {1000000007, 1000000009}){ // O(1)
-        arr[0] = {key.x, mod.x}; arr[1] = {key.y, mod.y};
-    } 
+    _hash(pi key = {911382323, 972663749}){ clear(key); }
+    void clear(pi key = {911382323, 972663749}){ // O(1)
+        arr.x = {key.x}; arr.y = {key.y};
+    }
 
-    void reset(){ arr[0].pre.clear(); arr[1].pre.clear(); }
-    void push_back(int v){ for(auto& c : arr) c.push_back(v); } // O(1)
-    void pop_back(){ for(auto& c : arr) c.pop_back(); } // O(1)
-    int size() const{ return arr[0].size(); } // O(1)
+    void reset(){ arr.x.pre.clear(); arr.y.pre.clear(); }
+    void push_back(int v){ arr.x.push_back(v); arr.y.push_back(v); } // O(1)
+    void pop_back(){ arr.x.pop_back(); arr.y.pop_back(); } // O(1)
+    int size() const{ return arr.x.size(); } // O(1)
     ll ret(int l, int r) const{ // O(1)
         if(l > r) return 0;
-        return ((ll)arr[0].ret(l, r) << 32) + arr[1].ret(l, r);
+        return ((ll)arr.x.ret(l, r) << 32) + arr.y.ret(l, r);
     }
 
     bool same(int l1, int r1, int l2, int r2) const{ // O(1)
         if(r1 - l1 != r2 - l2) return false;
         if(l1 > r1) return true;
-        for(const auto& c : arr) if(c.ret(l1, r1) != c.ret(l2, r2)) return 0;
-        return 1;
+        return arr.x.ret(l1, r1) == arr.x.ret(l2, r2) && arr.y.ret(l1, r1) == arr.y.ret(l2, r2);
     }
 };
 
+template <int mod1 = 1000000007, int mod2 = 1000000009>
 class _deque_hash{ // 0-based index
 private:
-    class _core{ 
+    template <int mod>
+    class _core{
     public:
+        using mint = _mint<mod>;
         vector <int> bit, arr, pw, ipw;
-        int mod, key, inv, n, s, e;
-        _core() : mod(1), key(0), inv(0), n(0), s(0), e(-1){}
-        _core(int n, int key, int mod) : mod(mod), key(key) { // mod == prime
+        mint key, inv; int n, s, e;
+        _core() : n(0), s(0), e(-1){}
+        _core(int n, int key) : key(key){
             assert(mod > 1); assert(key > 0);
-            inv = _dynamic_mint(key, mod).inv().v;
+            inv = this->key.inv();
             n = 2 * n + 5, s = n / 2; e = s - 1; this->n = n;
             bit.assign(n, 0); arr.assign(n, 0);
             pw.assign(n, 1); ipw.assign(n, 1);
             for(int i = 1;i < n;i++){
-                pw[i] = (_dynamic_mint(pw[i - 1], mod) * key).v;
-                ipw[i] = (_dynamic_mint(ipw[i - 1], mod) * inv).v;
+                pw[i] = (mint(pw[i - 1]) * this->key).v;
+                ipw[i] = (mint(ipw[i - 1]) * inv).v;
             }
-        }       
+        }
 
         void set(int idx, ll v){ // O(log n)
-            _dynamic_mint now(v, mod), diff = now - _dynamic_mint(arr[idx], mod);
-            arr[idx] = now.v; add(idx, (diff * _dynamic_mint(pw[idx], mod)).v);
+            mint now = v, diff = now - arr[idx];
+            arr[idx] = now.v; add(idx, diff * pw[idx]);
         }
 
         void clear(int idx){ // O(log n)
-            _dynamic_mint diff = _dynamic_mint(0, mod) - _dynamic_mint(arr[idx], mod);
-            arr[idx] = 0; add(idx, (diff * _dynamic_mint(pw[idx], mod)).v);
+            mint diff = -mint(arr[idx]);
+            arr[idx] = 0; add(idx, diff * pw[idx]);
         }
 
-        void add(int idx, int v){ // O(log n)
+        void add(int idx, mint v){ // O(log n)
             for(int i = idx;i < n;i = (i | (i + 1))){
-                bit[i] += v; bit[i] %= mod;
+                bit[i] = (mint(bit[i]) + v).v;
             }
         }
 
-        int sum(int idx) const{ // O(log n)
-            int ret = 0;
-            for(int i = idx;i >= 0;i = (i & (i + 1)) - 1) ret += bit[i], ret %= mod;
+        mint sum(int idx) const{ // O(log n)
+            mint ret = 0;
+            for(int i = idx;i >= 0;i = (i & (i + 1)) - 1) ret += bit[i];
             return ret;
         }
 
@@ -121,33 +126,31 @@ private:
 
         int ret(int l, int r) const{ // O(log n)
             l += s; r += s;
-            int ret = sum(r);
+            mint ret = sum(r);
             if(l) ret -= sum(l - 1);
-            if(ret < 0) ret += mod;
-            return (_dynamic_mint(ipw[l], mod) * ret).v;
+            return (ret * ipw[l]).v;
         }
-    }; array <_core, 2> arr; int n;
+    }; pair <_core<mod1>, _core<mod2>> arr;
 public:
     using pi = pair<int, int>;
-    _deque_hash(int n = 0, pi key = {911382323, 972663749}, pi mod = {1000000007, 1000000009}){ clear(n, key, mod); }
-    void clear(int n, pi key = {911382323, 972663749}, pi mod = {1000000007, 1000000009}){ // O(n)
-        arr[0] = {n, key.x, mod.x}; arr[1] = {n, key.y, mod.y};
-    } 
+    _deque_hash(int n = 0, pi key = {911382323, 972663749}){ clear(n, key); }
+    void clear(int n, pi key = {911382323, 972663749}){ // O(n)
+        arr.x = {n, key.x}; arr.y = {n, key.y};
+    }
 
-    void push_back(int v){ for(auto& c : arr) c.push_back(v); } // O(log n)
-    void push_front(int v){ for(auto& c : arr) c.push_front(v); } // O(log n)
-    void pop_back(){ for(auto& c : arr) c.pop_back(); } // O(log n)
-    void pop_front(){ for(auto& c : arr) c.pop_front(); } // O(log n)
-    int size() const{ return arr[0].size(); } // O(1)
+    void push_back(int v){ arr.x.push_back(v); arr.y.push_back(v); } // O(log n)
+    void push_front(int v){ arr.x.push_front(v); arr.y.push_front(v); } // O(log n)
+    void pop_back(){ arr.x.pop_back(); arr.y.pop_back(); } // O(log n)
+    void pop_front(){ arr.x.pop_front(); arr.y.pop_front(); } // O(log n)
+    int size() const{ return arr.x.size(); } // O(1)
     ll ret(int l, int r) const{ // O(log n)
         if(l > r) return 0;
-        return ((ll)arr[0].ret(l, r) << 32) + arr[1].ret(l, r);
+        return ((ll)arr.x.ret(l, r) << 32) + arr.y.ret(l, r);
     }
 
     bool same(int l1, int r1, int l2, int r2) const{ // O(log n)
         if(r1 - l1 != r2 - l2) return false;
         if(l1 > r1) return true;
-        for(const auto& c : arr) if(c.ret(l1, r1) != c.ret(l2, r2)) return 0;
-        return 1;
+        return arr.x.ret(l1, r1) == arr.x.ret(l2, r2) && arr.y.ret(l1, r1) == arr.y.ret(l2, r2);
     }
 };
