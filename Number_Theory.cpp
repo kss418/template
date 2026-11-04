@@ -257,11 +257,12 @@ public:
 
     void factor(ll p){ // 소인수분해
         prime.clear();  
-        for(ll i = 2;i * i <= p;i++){
+        for(ll i = 2;i <= p / i;i++){
             if(p % i) continue;
             prime.push_back(i);
-            if(i * i != p) prime.push_back(p / i);
+            while(p % i == 0) p /= i;
         }
+        if(p > 1) prime.push_back(p);
     }
 
     ll phi(ll p){ 
@@ -273,18 +274,19 @@ public:
     ll sqrt(ll num){
         ll lo = 0, hi = num;
         while(hi > lo){
-            ll mid = (lo + hi + 1) >> 1;
-            if(mid * mid < num) lo = mid;
+            ll mid = midpoint(hi, lo);
+            if((i128)mid * mid < num) lo = mid;
             else hi = mid - 1;
         }
         return lo;
     }
 
     ll pow(ll a, ll b, ll p){
-        ll ret = 1;
+        ll ret = 1 % p; a %= p;
+        if(a < 0) a += p;
         while(b){
-            if(b & 1) ret *= a % p, ret %= p;
-            a *= a; a %= p; b >>= 1;
+            if(b & 1) ret = (i128)ret * a % p;
+            a = (i128)a * a % p; b >>= 1;
         }      
         return ret;
     }
@@ -292,13 +294,14 @@ public:
     ll ret(ll a, ll b, ll p) { // a^x = b (mod p), ret x
         ll mx = sqrt(phi(p)) + 1; num.clear();
         ll inv = pow(a, p - 2, p), cur = b;
-        for(int i = 0;i < mx;i++) {
+        for(ll i = 0;i < mx;i++) {
             if(num.find(cur) == num.end()) num[cur] = i;
-            cur *= inv; cur %= p;
+            cur = (i128)cur * inv % p;
         }
-        cur = 1; for(int i = 0;i < mx;i++){
+        ll step = pow(a, mx, p);
+        cur = 1; for(ll i = 0;i < mx;i++){
             if(num.find(cur) != num.end()) return i * mx + num[cur];
-            cur *= pow(a, mx, p); cur %= p;
+            cur = (i128)cur * step % p;
         }
         return -1;
     }

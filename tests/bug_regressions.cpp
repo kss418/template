@@ -1297,13 +1297,51 @@ void check_ternary_search_large_bounds(){
     CHECK(offline::_ts::max(LLONG_MIN,LLONG_MAX,[&](long long v){return -distance(v);})==0);
 }
 
+void check_ccw_large_coordinates(){
+    geometry::_ccw ccw;
+    CHECK(ccw.ret(-2000000000LL,-2000000000LL,2000000000LL,-2000000000LL,-2000000000LL,2000000000LL)==1);
+    CHECK(ccw.ret(-2000000000LL,-2000000000LL,-2000000000LL,2000000000LL,2000000000LL,-2000000000LL)==-1);
+    CHECK(ccw.ret({-2000000000LL,-2000000000LL},{0,0},{2000000000LL,2000000000LL})==0);
+    CHECK(ccw.ret({LLONG_MIN,0},{LLONG_MAX,1},{0,2})==1);
+    CHECK(ccw.ret({LLONG_MIN,LLONG_MIN},{LLONG_MAX,LLONG_MIN},{LLONG_MIN,LLONG_MAX})==1);
+    CHECK(ccw.ret({LLONG_MIN,LLONG_MIN},{LLONG_MIN,LLONG_MAX},{LLONG_MAX,LLONG_MIN})==-1);
+    CHECK(ccw.ret({LLONG_MIN,LLONG_MIN},{0,0},{LLONG_MAX,LLONG_MAX})==0);
+}
+
+void check_dlog_phi(){
+    numeric_templates::_dlog d;
+    for(auto [n,expected]:vector<pair<long long,long long>>{{1,1},{2,1},{7,6},{12,4},{36,12},{49,42},{100,40},{1000000007,1000000006}})
+        CHECK(d.phi(n)==expected);
+    d.factor(60);CHECK(d.prime==vector<long long>({2,3,5}));
+    d.factor(7);CHECK(d.prime==vector<long long>({7}));
+}
+
+void check_dlog_large_arithmetic(){
+    numeric_templates::_dlog d;
+    CHECK(d.pow(4294967290LL,2,4294967291LL)==1);
+    CHECK(d.pow(LLONG_MAX-1,2,LLONG_MAX)==1);
+    CHECK(d.sqrt(LLONG_MAX)==3037000499LL);
+    CHECK(d.sqrt(0)==0);CHECK(d.sqrt(1)==0);CHECK(d.sqrt(4)==1);CHECK(d.sqrt(9)==2);CHECK(d.sqrt(10)==3);
+    CHECK(d.ret(4294967290LL,4294967290LL,4294967291LL)==1);
+    CHECK(d.ret(4294967290LL,1,4294967291LL)==0);
+    for(long long p:{2,3,5,7,11,13,17,19,23,29,31})for(long long a=1;a<p;a++)for(long long b=0;b<p;b++){
+        long long expected=-1,cur=1;
+        for(long long exponent=0;exponent<p-1;exponent++){
+            if(cur==b){expected=exponent;break;}
+            cur=cur*a%p;
+        }
+        CHECK(d.ret(a,b,p)==expected);
+    }
+}
+
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
         {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
         {"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
-        {"ternary_search_large_bounds",check_ternary_search_large_bounds}}){
+        {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"ccw_large_coordinates",check_ccw_large_coordinates},
+        {"dlog_phi",check_dlog_phi},{"dlog_large_arithmetic",check_dlog_large_arithmetic}}){
         try { test(); cout << "PASS " << name << '\n'; }
         catch(const exception& e){ ++failures; cerr << "FAIL " << name << ": " << e.what() << '\n'; }
     }
