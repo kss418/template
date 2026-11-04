@@ -58,19 +58,8 @@ private:
     }
 public:
     _kmp() : m(0){}
-    _kmp(const string& s, policy cmp = {}) : cmp(move(cmp)){ make(s); }
-    _kmp(span<const T> v, policy cmp = {}) : cmp(move(cmp)){ make(v); }
-    _kmp(const _kmp& other) requires (is_copy_constructible_v<policy>)
-        : pat(other.pat), cmp(other.cmp){ build(); }
-    _kmp(_kmp&&) = default;
-
-    _kmp& operator=(const _kmp& other) requires (is_copy_assignable_v<policy>){
-        if(this == &other) return *this;
-        pat = other.pat; cmp = other.cmp; build();
-        return *this;
-    }
-
-    _kmp& operator=(_kmp&&) = default;
+    _kmp(const string& s){ make(s); }
+    _kmp(span<const T> v){ make(v); }
     void clear(){ pat.clear(); arr.clear(); m = 0; cmp.build(span<const T>(pat)); }
     void make(const string& s){ pat = tf(s); build(); }
     void make(span<const T> v){ pat.assign(all(v)); build(); }

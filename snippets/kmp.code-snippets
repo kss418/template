@@ -50,19 +50,8 @@
       "    }",
       "public:",
       "    _kmp() : m(0){}",
-      "    _kmp(const string& s, policy cmp = {}) : cmp(move(cmp)){ make(s); }",
-      "    _kmp(span<const T> v, policy cmp = {}) : cmp(move(cmp)){ make(v); }",
-      "    _kmp(const _kmp& other) requires (is_copy_constructible_v<policy>)",
-      "        : pat(other.pat), cmp(other.cmp){ build(); }",
-      "    _kmp(_kmp&&) = default;",
-      "",
-      "    _kmp& operator=(const _kmp& other) requires (is_copy_assignable_v<policy>){",
-      "        if(this == &other) return *this;",
-      "        pat = other.pat; cmp = other.cmp; build();",
-      "        return *this;",
-      "    }",
-      "",
-      "    _kmp& operator=(_kmp&&) = default;",
+      "    _kmp(const string& s){ make(s); }",
+      "    _kmp(span<const T> v){ make(v); }",
       "    void clear(){ pat.clear(); arr.clear(); m = 0; cmp.build(span<const T>(pat)); }",
       "    void make(const string& s){ pat = tf(s); build(); }",
       "    void make(span<const T> v){ pat.assign(all(v)); build(); }",
@@ -96,6 +85,6 @@
       "    }",
       "};"
     ],
-    "description": "KMP<T,policy=kmp_policy<T>>. Policy build(pat), build_chk(pat,cur,state), scalar match_chk(pat,value,state) and/or contextual match_chk(pat,text,idx,state). Per-object metadata; failure/search conditions must be compatible. Scalar go requires scalar hook; contextual go prefers contextual hook. Includes default equality policy."
+    "description": "KMP<T,policy=kmp_policy<T>>. Policy is default-constructed and stores owned values/containers and indices; do not cache borrowed pattern spans, pointers or references. Compiler-generated copy/move preserves prepared data. Hooks: build(pat), build_chk(pat,cur,state), scalar match_chk(pat,value,state) and/or contextual match_chk(pat,text,idx,state). Failure/search conditions must be compatible."
   }
 }

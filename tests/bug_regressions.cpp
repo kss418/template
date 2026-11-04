@@ -643,22 +643,21 @@ public:
 
 class modular_kmp_policy{
 private:
-    int mod;
+    int mod = 3;
     int norm(int x)const{return (x%mod+mod)%mod;}
 public:
-    explicit modular_kmp_policy(int mod):mod(mod){}
     void build(span<const int>){}
     bool build_chk(span<const int> pat,int cur,int state)const{return norm(pat[cur])==norm(pat[state]);}
     bool match_chk(span<const int> pat,const int& value,int state)const{return norm(value)==norm(pat[state]);}
 };
 
-class view_kmp_policy{
+class owned_kmp_policy{
 private:
-    span<const int> saved;
+    vector<int> saved;
 public:
-    void build(span<const int> pat){saved=pat;}
-    bool build_chk(span<const int> pat,int cur,int state)const{return pat.data()==saved.data() && pat[cur]==saved[state];}
-    bool match_chk(span<const int> pat,const int& value,int state)const{return pat.data()==saved.data() && value==saved[state];}
+    void build(span<const int> pat){saved.assign(all(pat));}
+    bool build_chk(span<const int> pat,int cur,int state)const{return pat[cur]==saved[state];}
+    bool match_chk(span<const int> pat,const int& value,int state)const{return value==saved[state];}
 };
 
 class move_only_kmp_policy{
@@ -670,10 +669,31 @@ public:
     bool match_chk(span<const int> pat,const int& value,int state)const{return value%*mod==pat[state]%*mod;}
 };
 
+class prepared_kmp_policy{
+private:
+    int phase=0;
+    int norm(int x)const{return x%(phase?3:2);}
+public:
+    void build(span<const int>){phase^=1;}
+    bool build_chk(span<const int> pat,int cur,int state)const{return norm(pat[cur])==norm(pat[state]);}
+    bool match_chk(span<const int> pat,const int& value,int state)const{return norm(value)==norm(pat[state]);}
+};
+
 template<class K>
 concept scalar_kmp_go=requires(const K& k){k.go(0,1);};
 
 void check_kmp_policy(){
+    vector<int> prepared_pattern{1,2},prepared_text{4,5};
+    using prepared_type=strings::_kmp<int,prepared_kmp_policy>;
+    prepared_type prepared{span<const int>(prepared_pattern)};
+    auto prepared_copy=prepared;prepared_type prepared_assigned;prepared_assigned=prepared;
+    for(const auto* candidate:{&prepared,&prepared_copy,&prepared_assigned}){
+        vector<int> matches;candidate->it_match(span<const int>(prepared_text),[&](int i){matches.push_back(i);});CHECK(matches==vector<int>{0});
+    }
+    prepared.make(span<const int>(prepared_pattern));
+    for(const auto* candidate:{&prepared_copy,&prepared_assigned}){
+        vector<int> matches;candidate->it_match(span<const int>(prepared_text),[&](int i){matches.push_back(i);});CHECK(matches==vector<int>{0});
+    }
     using order_type=strings::_kmp<int,order_kmp_policy>;
     using prev_type=strings::_kmp<int,predecessor_kmp_policy>;
     static_assert(scalar_kmp_go<strings::_kmp<int>> && scalar_kmp_go<prev_type>);
@@ -743,13 +763,13 @@ void check_kmp_policy(){
         int state=0;matches.clear();for(auto [l,r]:vector<pair<int,int>>{{0,split},{split,(int)text.size()}})for(int i=l;i<r;++i){state=a.go(state,span<const int>(text),i);if(state==3)matches.push_back(i-2);}
         CHECK(matches==expected_matches(pat,text,order_equal));
     }
-    strings::_kmp<int,modular_kmp_policy> mod{span<const int>(pat),modular_kmp_policy(3)};vector<int> values{5,8,6};int state=0;
+    strings::_kmp<int,modular_kmp_policy> mod{span<const int>(pat)};vector<int> values{5,8,6};int state=0;
     for(int value:values)state=mod.go(state,value);CHECK(state==3);mod.clear();mod.make(span<const int>(pat));state=0;for(int value:values)state=mod.go(state,value);CHECK(state==3);
     strings::_kmp<int> plain{span<const int>(pat)};state=0;for(int i=0;i<(int)pat.size();++i)state=plain.go(state,span<const int>(pat),i);CHECK(state==3);
     order_type letters(string("bec"));matches.clear();letters.it_match(string("aymmyb"),[&](int i){matches.push_back(i);});CHECK(matches==vector<int>{0});
-    vector<int> original{1,2,1};strings::_kmp<int,view_kmp_policy> source{span<const int>(original)};
+    vector<int> original{1,2,1};strings::_kmp<int,owned_kmp_policy> source{span<const int>(original)};
     auto copied=source;matches.clear();copied.it_match(span<const int>(original),[&](int i){matches.push_back(i);});CHECK(matches==vector<int>{0});
-    strings::_kmp<int,view_kmp_policy> assigned;assigned=source;
+    strings::_kmp<int,owned_kmp_policy> assigned;assigned=source;
     vector<int> changed{3,4,3};source.make(span<const int>(changed));
     for(const auto* candidate:{&copied,&assigned}){
         matches.clear();candidate->it_match(span<const int>(original),[&](int i){matches.push_back(i);});CHECK(matches==vector<int>{0});
@@ -757,7 +777,7 @@ void check_kmp_policy(){
     copied=copied;matches.clear();copied.it_match(span<const int>(original),[&](int i){matches.push_back(i);});CHECK(matches==vector<int>{0});
     auto moved=move(copied);matches.clear();moved.it_match(span<const int>(original),[&](int i){matches.push_back(i);});CHECK(matches==vector<int>{0});
     assigned=move(moved);matches.clear();assigned.it_match(span<const int>(original),[&](int i){matches.push_back(i);});CHECK(matches==vector<int>{0});
-    auto detached=[&](){strings::_kmp<int,view_kmp_policy> local{span<const int>(original)};return strings::_kmp<int,view_kmp_policy>(local);}();
+    auto detached=[&](){strings::_kmp<int,owned_kmp_policy> local{span<const int>(original)};return strings::_kmp<int,owned_kmp_policy>(local);}();
     matches.clear();detached.it_match(span<const int>(original),[&](int i){matches.push_back(i);});CHECK(matches==vector<int>{0});
     move_type moving{span<const int>(pat)};auto moved_policy=move(moving);state=0;for(int value:values)state=moved_policy.go(state,value);CHECK(state==3);
     move_type move_assigned;move_assigned=move(moved_policy);state=0;for(int value:values)state=move_assigned.go(state,value);CHECK(state==3);
