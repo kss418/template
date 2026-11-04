@@ -292,6 +292,8 @@ public:
     }
     
     ll ret(ll a, ll b, ll p) { // a^x = b (mod p), ret x
+        b %= p;
+        if(b < 0) b += p;
         ll mx = sqrt(phi(p)) + 1; num.clear();
         ll inv = pow(a, p - 2, p), cur = b;
         for(ll i = 0;i < mx;i++) {

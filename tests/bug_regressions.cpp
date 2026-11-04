@@ -1331,6 +1331,17 @@ void check_dlog_large_arithmetic(){
     }
 }
 
+void check_dlog_normalized_target(){
+    numeric_templates::_dlog d;
+    for(auto [a,b,p,expected]:vector<tuple<long long,long long,long long,long long>>{
+        {2,8,7,0},{2,15,7,0},{2,-6,7,0},{2,-13,7,0},
+        {2,9,7,1},{2,-5,7,1},{2,11,7,2},{2,-3,7,2},
+        {2,10,7,-1},{2,-4,7,-1},{2,7,7,-1},
+        {2,LLONG_MAX-6,7,0},{2,LLONG_MIN+2,7,0},
+        {2,14,13,0},{2,-11,13,1},{3,16,13,1},{3,-4,13,2},{3,15,13,-1}})
+        CHECK(d.ret(a,b,p)==expected);
+}
+
 void check_area_translated(){
     geometry::_area area;
     for(long long offset:{1000000000000LL,-1000000000000LL,0LL}){
@@ -1354,7 +1365,8 @@ int main(){
         {"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
         {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"ccw_large_coordinates",check_ccw_large_coordinates},
-        {"dlog_phi",check_dlog_phi},{"dlog_large_arithmetic",check_dlog_large_arithmetic},{"area_translated",check_area_translated}}){
+        {"dlog_phi",check_dlog_phi},{"dlog_large_arithmetic",check_dlog_large_arithmetic},
+        {"dlog_normalized_target",check_dlog_normalized_target},{"area_translated",check_area_translated}}){
         try { test(); cout << "PASS " << name << '\n'; }
         catch(const exception& e){ ++failures; cerr << "FAIL " << name << ": " << e.what() << '\n'; }
     }
