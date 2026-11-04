@@ -1331,6 +1331,22 @@ void check_dlog_large_arithmetic(){
     }
 }
 
+void check_area_translated(){
+    geometry::_area area;
+    for(long long offset:{1000000000000LL,-1000000000000LL,0LL}){
+        for(long long width:{1LL,2000000000LL}){
+            vector<pair<long long,long long>> polygon{{offset,offset},{offset+width,offset},{offset+width,offset+1},{offset,offset+1}};
+            for(int rotation=0;rotation<4;rotation++){
+                CHECK(area.ret(polygon)==2*width);
+                reverse(polygon.begin(),polygon.end());CHECK(area.ret(polygon)==2*width);
+                reverse(polygon.begin(),polygon.end());rotate(polygon.begin(),polygon.begin()+1,polygon.end());
+            }
+        }
+    }
+    vector<pair<long long,long long>> empty;CHECK(area.ret(empty)==0);
+    vector<pair<long long,long long>> triangle{{0,0},{3,0},{0,1}};CHECK(area.ret(triangle)==3);
+}
+
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
@@ -1338,7 +1354,7 @@ int main(){
         {"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
         {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"ccw_large_coordinates",check_ccw_large_coordinates},
-        {"dlog_phi",check_dlog_phi},{"dlog_large_arithmetic",check_dlog_large_arithmetic}}){
+        {"dlog_phi",check_dlog_phi},{"dlog_large_arithmetic",check_dlog_large_arithmetic},{"area_translated",check_area_translated}}){
         try { test(); cout << "PASS " << name << '\n'; }
         catch(const exception& e){ ++failures; cerr << "FAIL " << name << ": " << e.what() << '\n'; }
     }

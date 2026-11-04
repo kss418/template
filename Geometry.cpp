@@ -268,14 +268,14 @@ public:
     _area() {}
 
     ll ret(span<const pll> v){ // div by 2
-        ll num = 0;
+        i128 num = 0;
         for(int i = 0;i < v.size();i++){
             auto [x1, y1] = v[i];
             auto [x2, y2] = v[(i + 1) % v.size()];
-            num += x1 * y2 - x2 * y1;
+            num += (i128)x1 * y2 - (i128)x2 * y1;
         }
 
-        return abs(num);
+        return (ll)abs(num);
     }
 };
 
