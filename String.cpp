@@ -14,8 +14,12 @@ template <class T>
 class kmp_policy{
 public:
     static void build(span<const T>){}
-    static bool build_chk(span<const T> pat, int cur, int state){ return pat[cur] == pat[state]; }
-    static bool match_chk(span<const T> pat, const T& value, int state){ return value == pat[state]; }
+    static bool build_chk(span<const T> pat, int cur, int state){
+        return pat[cur] == pat[state];
+    }
+    static bool match_chk(span<const T> pat, span<const T> text, int idx, int state){
+        return text[idx] == pat[state];
+    }
 };
 
 template <class T = ll, class policy = kmp_policy<T>>
@@ -37,18 +41,7 @@ private:
     }
 
     bool match_chk(span<const T> v, int idx, int state) const{
-        if constexpr(requires{ cmp.match_chk(span<const T>(pat), v, idx, state); })
-            return cmp.match_chk(span<const T>(pat), v, idx, state);
-        else return cmp.match_chk(span<const T>(pat), v[idx], state);
-    }
-
-    template <class F>
-    int step(int state, const F& f) const{
-        if(!m) return 0;
-        if(state == m) state = arr[m - 1];
-        while(state && !f(state)) state = arr[state - 1];
-        if(f(state)) state++;
-        return state;
+        return cmp.match_chk(span<const T>(pat), v, idx, state);
     }
 
     static vector <T> tf(const string& s){
@@ -77,13 +70,12 @@ public:
         }
     }
 
-    int go(int state, const T& value) const
-        requires requires{ cmp.match_chk(span<const T>(pat), value, state); }{ // O(m) checks, amortized O(1) checks
-        return step(state, [&](int nxt){ return cmp.match_chk(span<const T>(pat), value, nxt); });
-    }
-
     int go(int state, span<const T> v, int idx) const{ // O(m) checks, amortized O(1) checks
-        return step(state, [&](int nxt){ return match_chk(v, idx, nxt); });
+        if(!m) return 0;
+        if(state == m) state = arr[m - 1];
+        while(state && !match_chk(v, idx, state)) state = arr[state - 1];
+        if(match_chk(v, idx, state)) state++;
+        return state;
     }
 
     template <class F>
