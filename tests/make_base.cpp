@@ -181,7 +181,46 @@ void check_pst_xor(bool base){
     }
 }
 
+void check_pst_large_coordinates(bool base){
+    for(long long n:{(1LL<<40)+100,2000000000LL,1000000000000000000LL,LLONG_MAX-1}){
+        _pst_diff<> tree(n,base);
+        auto always=[](const auto&){return true;};
+        auto cap=[](long long limit){return [=](const auto& v){return v.v<=limit;};};
+        CHECK(tree.max_right(0,base,always)==n);
+        CHECK(tree.min_left(0,n,always)==int(base));
+        int a=tree.set(0,n-2,{3});
+        int b=tree.set(a,n,{5});
+        int c=tree.set(b,base,{2});
+        int branch=tree.set(a,n-2,{7});
+        int nodes=tree.node_count();CHECK(nodes<=4*64);
+        CHECK(tree.get(a,n-2).v==3);CHECK(tree.get(a,n).v==0);
+        CHECK(tree.query(b,n-2,n).v==8);CHECK(tree.query(c,base,n).v==10);
+        CHECK(tree.get(branch,n-2).v==7);CHECK(tree.get(c,n-2).v==3);
+        CHECK(tree.query(c,-1,n+1).v==10);CHECK(tree.query(c,n+1,n+1).v==0);
+        CHECK(tree.max_right(c,base,cap(5))==n-1);
+        CHECK(tree.max_right(c,n-2,cap(2))==n-3);
+        CHECK(tree.min_left(c,n,cap(5))==n-1);
+        CHECK(tree.min_left(c,n-2,cap(3))==base+1);
+        CHECK(tree.max_right(c,base,cap(0))==base-1);
+        CHECK(tree.max_right(c,n+1,always)==n);
+        CHECK(tree.min_left(c,base-1,always)==int(base));
+        CHECK(tree.diff_get(a,c,n).v==5);CHECK(tree.diff_get(a,c,n-2).v==0);
+        CHECK(tree.diff_query(a,c,base,n).v==7);CHECK(tree.diff_query(c,a,base,n).v==-7);
+        CHECK(tree.diff_max_right(a,c,base,cap(2))==n-1);
+        CHECK(tree.diff_min_left(a,c,n,cap(5))==base+1);
+        CHECK(tree.diff_max_right(a,a,base,cap(0))==n);
+        CHECK(tree.diff_min_left(a,a,n,cap(0))==int(base));
+        CHECK(tree.diff_max_right(a,c,n+1,always)==n);
+        CHECK(tree.diff_min_left(a,c,base-1,always)==int(base));
+        CHECK(tree.node_count()==nodes);
+        _pst<> plain(n,base);int root=plain.set(0,n,{9});
+        CHECK(plain.get(root,n).v==9);CHECK(plain.query(0,base,n).v==0);
+        tree.clear(n,!base);CHECK(tree.node_count()==0);
+        int root2=tree.set(0,n,{4});CHECK(tree.get(root2,n).v==4);
+    }
+}
+
 int main(){
-    try{for(bool base:{false,true}){check_sum<_seg<>,monoid::node>(base);check_sum<_prop<>,action::node>(base);check_sum<_fw<>,group::node>(base);check_sorted(base);check_sorted<mt_no_default>(base);check_sorted_nodes(base);check_pst_text(base);check_pst_diff(base);check_pst_xor(base);}cout<<"PASS "<<checks<<" make-base/PST checks\n";return 0;}
+    try{for(bool base:{false,true}){check_sum<_seg<>,monoid::node>(base);check_sum<_prop<>,action::node>(base);check_sum<_fw<>,group::node>(base);check_sorted(base);check_sorted<mt_no_default>(base);check_sorted_nodes(base);check_pst_text(base);check_pst_diff(base);check_pst_xor(base);check_pst_large_coordinates(base);}cout<<"PASS "<<checks<<" make-base/PST checks\n";return 0;}
     catch(const exception&e){cerr<<"FAIL "<<e.what()<<'\n';return 1;}
 }

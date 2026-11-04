@@ -534,7 +534,7 @@ public:
 protected:
     vector <int> lv, rv;
     vector <node> seg;
-    int n;
+    ll n;
 private:
     int clone(int idx){
         int l = lv[idx], r = rv[idx];
@@ -545,27 +545,27 @@ private:
         return (int)seg.size() - 1;
     }
 
-    int set(int idx, int s, int e, int pos, const node& v){
+    int set(int idx, ll s, ll e, ll pos, const node& v){
         int cur = clone(idx);
         if(s == e){ seg[cur] = v; return cur; }
-        int m = (s + e) >> 1;
+        ll m = midpoint(s, e);
         if(pos <= m) lv[cur] = set(lv[cur], s, m, pos, v);
         else rv[cur] = set(rv[cur], m + 1, e, pos, v);
         seg[cur] = op(seg[lv[cur]], seg[rv[cur]]);
         return cur;
     }
 
-    node query(int idx, int s, int e, int l, int r) const{
+    node query(int idx, ll s, ll e, ll l, ll r) const{
         if(!idx || r < s || e < l) return id();
         if(l <= s && e <= r) return seg[idx];
-        int m = (s + e) >> 1;
+        ll m = midpoint(s, e);
         node ln = query(lv[idx], s, m, l, r);
         node rn = query(rv[idx], m + 1, e, l, r);
         return op(ln, rn);
     }
 
     template<class F>
-    int bisect(int idx, int s, int e, int p, bool right, const F& f, node& v) const{
+    ll bisect(int idx, ll s, ll e, ll p, bool right, const F& f, node& v) const{
         if(right && e < p) return p - 1;
         if(!right && p < s) return p + 1;
         if(!idx) return right ? e : s;
@@ -574,20 +574,20 @@ private:
             if(f(nxt)){ v = nxt; return right ? e : s; }
             if(s == e) return right ? s - 1 : s + 1;
         }
-        int m = (s + e) >> 1;
+        ll m = midpoint(s, e);
         if(right){
-            int ret = bisect(lv[idx], s, m, p, right, f, v);
+            ll ret = bisect(lv[idx], s, m, p, right, f, v);
             if(ret < m) return ret;
             return bisect(rv[idx], m + 1, e, p, right, f, v);
         }
-        int ret = bisect(rv[idx], m + 1, e, p, right, f, v);
+        ll ret = bisect(rv[idx], m + 1, e, p, right, f, v);
         if(ret > m + 1) return ret;
         return bisect(lv[idx], s, m, p, right, f, v);
     }
 public:
-    _pst(int n = 0, bool base = 1){ clear(n, base); }
+    _pst(ll n = 0, bool base = 1){ clear(n, base); }
 
-    void clear(int n, bool base = 1){
+    void clear(ll n, bool base = 1){
         this->n = n; this->base = base;
         lv.assign(1, 0); rv.assign(1, 0);
         seg.assign(1, id());
@@ -597,23 +597,23 @@ public:
         return (int)seg.size() - 1;
     }
 
-    int set(int rt, int idx, const node& v){ // O(log n)
+    int set(int rt, ll idx, const node& v){ // O(log n)
         assert(base <= idx && idx <= n);
         return set(rt, base, n, idx, v);
     }
 
-    node get(int rt, int idx) const{ // O(log n)
+    node get(int rt, ll idx) const{ // O(log n)
         return query(rt, idx, idx);
     }
 
-    node query(int rt, int l, int r) const{ // O(log n)
-        l = max((int)base, l); r = min(n, r);
+    node query(int rt, ll l, ll r) const{ // O(log n)
+        l = max((ll)base, l); r = min(n, r);
         if(l > r) return id();
         return query(rt, base, n, l, r);
     }
 
     template<class F>
-    int max_right(int rt, int l, const F& f) const{
+    ll max_right(int rt, ll l, const F& f) const{
         assert(base <= l && l <= n + 1); assert(f(id()));
         if(l > n) return n;
         node v = id();
@@ -621,7 +621,7 @@ public:
     }
 
     template<class F>
-    int min_left(int rt, int r, const F& f) const{
+    ll min_left(int rt, ll r, const F& f) const{
         assert(base - 1 <= r && r <= n); assert(f(id()));
         if(r < base) return base;
         node v = id();
@@ -649,7 +649,7 @@ private:
     }
 
     template<class F>
-    int bisect_diff(int idx1, int idx2, int s, int e, int p, bool right, const F& f, node& v) const{
+    ll bisect_diff(int idx1, int idx2, ll s, ll e, ll p, bool right, const F& f, node& v) const{
         if(right && e < p) return p - 1;
         if(!right && p < s) return p + 1;
         if(!idx1 && !idx2) return right ? e : s;
@@ -659,31 +659,31 @@ private:
             if(f(nxt)){ v = nxt; return right ? e : s; }
             if(s == e) return right ? s - 1 : s + 1;
         }
-        int m = (s + e) >> 1;
+        ll m = midpoint(s, e);
         if(right){
-            int ret = bisect_diff(lv[idx1], lv[idx2], s, m, p, right, f, v);
+            ll ret = bisect_diff(lv[idx1], lv[idx2], s, m, p, right, f, v);
             if(ret < m) return ret;
             return bisect_diff(rv[idx1], rv[idx2], m + 1, e, p, right, f, v);
         }
-        int ret = bisect_diff(rv[idx1], rv[idx2], m + 1, e, p, right, f, v);
+        ll ret = bisect_diff(rv[idx1], rv[idx2], m + 1, e, p, right, f, v);
         if(ret > m + 1) return ret;
         return bisect_diff(lv[idx1], lv[idx2], s, m, p, right, f, v);
     }
 public:
-    _pst_diff(int n = 0, bool base = 1) : tree(n, base){}
+    _pst_diff(ll n = 0, bool base = 1) : tree(n, base){}
 
-    node diff_get(int rt1, int rt2, int idx) const{
+    node diff_get(int rt1, int rt2, ll idx) const{
         return diff_query(rt1, rt2, idx, idx);
     }
 
-    node diff_query(int rt1, int rt2, int l, int r) const{
-        l = max((int)base, l); r = min(n, r);
+    node diff_query(int rt1, int rt2, ll l, ll r) const{
+        l = max((ll)base, l); r = min(n, r);
         if(l > r) return id();
         return op(this->query(rt2, l, r), inv(this->query(rt1, l, r)));
     }
 
     template<class F>
-    int diff_max_right(int rt1, int rt2, int l, const F& f) const{
+    ll diff_max_right(int rt1, int rt2, ll l, const F& f) const{
         assert(base <= l && l <= n + 1); assert(f(id()));
         if(l > n) return n;
         node v = id();
@@ -691,7 +691,7 @@ public:
     }
 
     template<class F>
-    int diff_min_left(int rt1, int rt2, int r, const F& f) const{
+    ll diff_min_left(int rt1, int rt2, ll r, const F& f) const{
         assert(base - 1 <= r && r <= n); assert(f(id()));
         if(r < base) return base;
         node v = id();
