@@ -297,8 +297,8 @@ private:
     vector <vector<i128>> sum;
     vector <vector<int>> lift; ll m; int n, lg; 
 public:
-    _st(int n = 0, ll max_step = 0, bool base = 1){ clear(n, max_step, base); }; // O(n log m)
-    void clear(int n, ll m = 60, bool base = 1){ // O(n log m)
+    _st(int n = 0, ll max_step = (1ll << 60), bool base = 1){ clear(n, max_step, base); }; // O(n log m)
+    void clear(int n, ll m = (1ll << 60), bool base = 1){ // O(n log m)
         lg = 1; this->n = n; this->base = base; this->m = m;
         while((1ll << lg) <= m) lg++;
         lift.assign(lg + 1, vector<int>(n + 2, n + 1));

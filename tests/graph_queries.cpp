@@ -434,8 +434,30 @@ void check_clist_views(bool base){
     g.clear(base+1,base);verify({});view.push_front(6);verify({6});
 }
 
+void check_lift_defaults(){
+    constexpr long long big=1LL<<60;
+    auto verify=[&](graphs::_st& tree,int base){
+        for(long long weight:{1LL,3LL}){
+            for(int v=0;v<3;v++)tree.add(base+v,base+(v+1)%3,weight);
+            tree.build();
+            for(long long budget:{0LL,1LL,10LL,big}){
+                pair<int,long long> expected{base+int((budget/weight)%3),(budget/weight)*weight};
+                CHECK(tree.ret(base,budget)==expected);
+            }
+            tree.build();CHECK(tree.ret(base,big).second==(big/weight)*weight);
+        }
+    };
+    graphs::_st constructed(3);verify(constructed,1);
+    constructed.clear(3);verify(constructed,1);
+    graphs::_st cleared;cleared.clear(3);verify(cleared,1);
+    graphs::_st zero_based(2,big,0);verify(zero_based,0);
+    cleared.clear(3,16);for(int v=1;v<=3;v++)cleared.add(v,v==3?1:v+1);cleared.build();
+    CHECK((cleared.ret(1,10)==pair<int,long long>{2,10}));
+}
+
 int main(){
     try {
+        check_lift_defaults();
         for(bool base : {false,true}){ check_clist_views(base); check_mst_api(base); check_mst_oracle(base); check_mst_oracle<mst_max_policy>(base,true); check_bcc(base); check_cycles(base); check_lca_order(base); check_lca_numeric(base); }
         for(bool base : {false,true}) for(int mode=0;mode<4;mode++) for(unsigned seed=1;seed<=8;seed++){
             check_lca_paths<lca_text>(base,mode,seed);
