@@ -1358,6 +1358,39 @@ void check_area_translated(){
     vector<pair<long long,long long>> triangle{{0,0},{3,0},{0,1}};CHECK(area.ret(triangle)==3);
 }
 
+void check_suffix_array_bytes(){
+    vector<string> inputs;
+    string example;example.push_back(char(255));example.push_back('a');inputs.push_back(example);
+    inputs.push_back("");inputs.push_back("banana");inputs.push_back("aaaa");inputs.emplace_back("a\0b\0a",5);
+    string bytes;for(int i=0;i<256;i++)bytes.push_back(char(i));inputs.push_back(bytes);
+    reverse(bytes.begin(),bytes.end());inputs.push_back(bytes);
+    mt19937 rng(418);
+    for(int trial=0;trial<50;trial++){
+        string s;for(int i=0,n=rng()%40;i<n;i++)s.push_back(char(array<int,5>{0,97,127,128,255}[rng()%5]));
+        inputs.push_back(s);
+    }
+    auto verify=[&](const string& s,const auto& sa){
+        int n=s.size();vector<int> expected(n);iota(expected.begin(),expected.end(),0);
+        sort(expected.begin(),expected.end(),[&](int a,int b){return s.compare(a,string::npos,s,b,string::npos)<0;});
+        CHECK(sa.get_sa()==expected);
+        vector<int> lcp(n);
+        for(int i=0;i<n;i++){
+            CHECK(sa.get_pos()[expected[i]]==i);
+            if(i+1==n)continue;
+            int a=expected[i],b=expected[i+1];
+            while(a+lcp[i]<n&&b+lcp[i]<n&&s[a+lcp[i]]==s[b+lcp[i]])lcp[i]++;
+        }
+        CHECK(sa.get_lcp()==lcp);
+    };
+    strings::_sa<> reusable;
+    for(const auto& s:inputs){
+        verify(s,strings::_sa<>(s));verify(s,strings::_sa<unsigned char>(s));
+        reusable.make(s);verify(s,reusable);reusable.make(s);verify(s,reusable);
+    }
+    vector<int> signed_values{-1,97,-2};strings::_sa<int> numeric{span<const int>(signed_values)};
+    CHECK(numeric.get_sa()==vector<int>({2,0,1}));
+}
+
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
@@ -1366,7 +1399,8 @@ int main(){
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
         {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"ccw_large_coordinates",check_ccw_large_coordinates},
         {"dlog_phi",check_dlog_phi},{"dlog_large_arithmetic",check_dlog_large_arithmetic},
-        {"dlog_normalized_target",check_dlog_normalized_target},{"area_translated",check_area_translated}}){
+        {"dlog_normalized_target",check_dlog_normalized_target},{"area_translated",check_area_translated},
+        {"suffix_array_bytes",check_suffix_array_bytes}}){
         try { test(); cout << "PASS " << name << '\n'; }
         catch(const exception& e){ ++failures; cerr << "FAIL " << name << ": " << e.what() << '\n'; }
     }

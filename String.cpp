@@ -132,7 +132,7 @@ public:
     _sa(){ clear(0); } // O(1)
     _sa(const string& s){ make(s); } // O(n log n)
     _sa(span<const T> v) { make(v); } // O(n log n)
-    void make(const string& s){ clear(s.size()); for(auto& i : s) arr.push_back((T)i); build(); } // O(n log n)
+    void make(const string& s){ clear(s.size()); for(unsigned char i : s) arr.push_back((T)i); build(); } // O(n log n)
     void make(span<const T> v){ clear(v.size()); this->arr.assign(all(v)); build(); } // O(n log n)
 
     void clear(int n){ // O(n)
