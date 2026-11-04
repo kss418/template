@@ -663,11 +663,54 @@ void check_hld_make(bool base,int mode){
     CHECK(h.query(!base).v==values[!base].v);
 }
 
+void check_hld_fenwick(bool base,int mode){
+    auto adj=sample_tree();int n=base+6;
+    _hld_path<_fw<>> h(n,mode,base);add_edges(h,adj,base);h.build();
+    vector<_fw<>::node> values(n+1,_fw<>::node{0});
+    for(int v=base;v<=n;v++)values[v]={v-base+1};
+    auto verify=[&]{
+        for(int v=base;v<=n;v++)CHECK(h.query(v).v==values[v].v);
+        for(int st=0;st<7;st++)for(int en=0;en<7;en++){
+            auto path=path_vertices(adj,st,en);long long expected=0;
+            if(!mode)for(int v:path)expected+=values[v+base].v;
+            else for(int i=1;i<(int)path.size();i++){
+                int a=path[i-1]+base,b=path[i]+base;
+                expected+=values[h.parent(b)==a?b:a].v;
+            }
+            CHECK(h.query(st+base,en+base).v==expected);
+        }
+        for(int root=base;root<=n;root++){
+            long long expected=0;
+            for(int v=base;v<=n;v++){
+                int cur=v;while(cur!=-1&&cur!=root)cur=h.parent(cur);
+                if(cur==root&&(!mode||v!=root))expected+=values[v].v;
+            }
+            CHECK(h.query_sub(root).v==expected);
+        }
+    };
+    h.make(values);verify();h.set(base+4,{20});values[base+4]={20};
+    h.update(base+2,{3});values[base+2].v+=3;verify();h.build();verify();
+    vector<_fw<>::node> short_values{{9},{8}};h.make(short_values);
+    for(int v=base;v<=n;v++)values[v]=v<2?short_values[v]:_fw<>::node{0};verify();
+    h.make(vector<_fw<>::node>{});for(auto& value:values)value={0};verify();
+    h.clear(0,mode,base);h.build();h.make(vector<_fw<>::node>{});h.build();
+    h.clear(base+1,mode,base);h.add(base,base+1);h.build();h.set(base+1,{4});
+    CHECK(h.query(base,base+1).v==4);
+    if(!mode){
+        _fw2d<> grid(base+1,base+1,base);
+        using node=_fw2d<>::node;
+        grid.set(base,base,node{3});grid.set(base+1,base+1,node{5});
+        const auto& ops=grid;
+        CHECK(ops.op(ops.id(),grid.query(base,base,base+1,base+1)).v==8);
+        CHECK(ops.op(grid.query(base,base),grid.query(base+1,base+1)).v==8);
+    }
+}
+
 void check_hld_direction(){
     for(bool base:{false,true}){
         check_hld_order(base);check_hld_edges(base);check_hld_lazy(base);check_hld_forest(base);check_hld_fallback(base);
         for(int mode=0;mode<2;mode++)check_hld_subtree(base,mode);
-        for(int mode=0;mode<2;mode++)check_hld_make(base,mode);
+        for(int mode=0;mode<2;mode++){check_hld_make(base,mode);check_hld_fenwick(base,mode);}
         for(int mode=0;mode<2;mode++)for(unsigned seed=1;seed<=16;seed++)check_hld_parts(base,mode,seed);
     }
 }

@@ -702,11 +702,12 @@ public:
 template <class policy = group>
 class _fw{
     bool base;
-private:
+public:
     using node = typename policy::node;
-    vector <node> bit; int n;
     node op(const node& l, const node& r) const{ return policy::op(l, r); }
     node id() const{ return policy::id(); }
+private:
+    vector <node> bit; int n;
     node inv(const node& a) const{ return policy::inv(a); }
 public:
     _fw(int n = 0, bool base = 1){ clear(n, base); } // O(n)
@@ -756,11 +757,12 @@ public:
 template <class policy = group>
 class _fw2d{
     bool base;
-private:
+public:
     using node = typename policy::node;
-    vector<vector<node>> bit; int n, m;
     node op(const node& l, const node& r) const { return policy::op(l, r); }
     node id() const { return policy::id(); }
+private:
+    vector<vector<node>> bit; int n, m;
     node inv(const node& a) const { return policy::inv(a); }
 public:
     _fw2d(int n = 0, int m = 0, bool base = 1){ clear(n, m, base); } // O(nm)
