@@ -408,9 +408,35 @@ void check_scc_dag(bool base,unsigned seed){
     graph.addsol(!base,1);graph.build();CHECK(graph.component(!base)>=0);
 }
 
+void check_clist_views(bool base){
+    graphs::_clist<int> g(base+1,base);
+    auto view=g[base],copy=view;
+    auto read=as_const(g)[base];
+    static_assert(is_same_v<decltype(view.front()),int&>);
+    static_assert(is_same_v<decltype(read.front()),const int&>);
+    auto verify=[&](const vector<int>& expected){
+        auto check=[&](const auto& current){
+            CHECK(current.size()==(int)expected.size());CHECK(current.empty()==expected.empty());
+            vector<int> actual;for(int v:current)actual.push_back(v);
+            CHECK(actual==expected);
+            if(!expected.empty())CHECK(current.front()==expected.front());
+        };
+        check(view);check(copy);check(read);check(g[base]);
+    };
+    verify({});view.push_front(1);verify({1});copy.push_front(2);verify({2,1});
+    g.push_front(base+1,99);verify({2,1});
+    g.push_front(base,3);verify({3,2,1});view.front()=30;verify({30,2,1});
+    view.pop_front();verify({2,1});g.pop_front(base);verify({1});
+    copy.clear();verify({});g[base].push_front(4);verify({4});
+    copy.pop_front();verify({});copy.pop_front();verify({});
+    for(int i=0;i<64;i++)g.push_front(base+1,-i);
+    view.push_front(5);verify({5});
+    g.clear(base+1,base);verify({});view.push_front(6);verify({6});
+}
+
 int main(){
     try {
-        for(bool base : {false,true}){ check_mst_api(base); check_mst_oracle(base); check_mst_oracle<mst_max_policy>(base,true); check_bcc(base); check_cycles(base); check_lca_order(base); check_lca_numeric(base); }
+        for(bool base : {false,true}){ check_clist_views(base); check_mst_api(base); check_mst_oracle(base); check_mst_oracle<mst_max_policy>(base,true); check_bcc(base); check_cycles(base); check_lca_order(base); check_lca_numeric(base); }
         for(bool base : {false,true}) for(int mode=0;mode<4;mode++) for(unsigned seed=1;seed<=8;seed++){
             check_lca_paths<lca_text>(base,mode,seed);
             check_lca_paths<lca_matrix>(base,mode,seed);
