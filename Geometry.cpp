@@ -18,15 +18,12 @@ public:
         return ret({x1, y1}, {x2, y2}, {x3, y3});
     }
     ll ret(pll v1, pll v2, pll v3){
-        auto product = [](i128 a, i128 b){
-            int sign = ((a > 0) - (a < 0)) * ((b > 0) - (b < 0));
-            __uint128_t value = (__uint128_t)(a < 0 ? -a : a) * (b < 0 ? -b : b);
-            return pair{sign, value};
-        };
-        auto [sa, a] = product((i128)v2.x - v1.x, (i128)v3.y - v1.y);
-        auto [sb, b] = product((i128)v3.x - v1.x, (i128)v2.y - v1.y);
-        if(sa != sb) return (sa > sb) - (sa < sb);
-        return sa * ((a > b) - (a < b));
+        i128 num = ((i128)v2.x - v1.x) * ((i128)v3.y - v1.y);
+        num -= ((i128)v3.x - v1.x) * ((i128)v2.y - v1.y);
+
+        if(num > 0) return 1;
+        else if(num < 0) return -1;
+        return 0;
     }
 };
 
