@@ -294,7 +294,7 @@ public:
 class _st {
     bool base;
 private:
-    vector <vector<ll>> sum;
+    vector <vector<i128>> sum;
     vector <vector<int>> lift; ll m; int n, lg; 
 public:
     _st(int n = 0, ll max_step = 0, bool base = 1){ clear(n, max_step, base); }; // O(n log m)
@@ -302,7 +302,7 @@ public:
         lg = 1; this->n = n; this->base = base; this->m = m;
         while((1ll << lg) <= m) lg++;
         lift.assign(lg + 1, vector<int>(n + 2, n + 1));
-        sum.assign(lg + 1, vector<ll>(n + 2, 1));
+        sum.assign(lg + 1, vector<i128>(n + 2, 1));
     }
 
     void add(int st, int en, ll co = 1) { assert(base <= st && st <= n && base <= en && en <= n + 1); lift[0][st] = en; sum[0][st] = co; } // O(1)
@@ -311,7 +311,7 @@ public:
             for(int j = base;j <= n;j++){
                 int mid = lift[i - 1][j];
                 lift[i][j] = lift[i - 1][mid];
-                sum[i][j] = min<int>(sum[i - 1][j] + sum[i - 1][mid], 0x3f3f3f3f);
+                sum[i][j] = sum[i - 1][j] + sum[i - 1][mid];
             }
         }
     }

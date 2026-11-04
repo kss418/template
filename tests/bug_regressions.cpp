@@ -1254,11 +1254,56 @@ void check_alphabets(){
     _ac<> legacy_ac;legacy_ac.insert("ab");legacy_ac.build();CHECK(legacy_ac.count("abab")==2);
 }
 
+void check_lift_large_cost(){
+    for(bool base:{false,true}){
+        graphs::_st lift(base,4,base);
+        lift.add(base,base,2000000000LL);lift.build();
+        CHECK((lift.ret(base,1)==pair<int,long long>{base,0}));
+        CHECK((lift.ret(base,6000000000LL)==pair<int,long long>{base,6000000000LL}));
+        lift.build();CHECK((lift.ret(base,1)==pair<int,long long>{base,0}));
+        lift.add(base,base,5000000000000000000LL);lift.build();
+        CHECK((lift.ret(base,LLONG_MAX)==pair<int,long long>{base,5000000000000000000LL}));
+        lift.add(base,base,LLONG_MAX);lift.build();
+        CHECK((lift.ret(base,LLONG_MAX)==pair<int,long long>{base,LLONG_MAX}));
+    }
+}
+
+void check_binary_search_large_bounds(){
+    for(auto [l,r,target]:vector<tuple<long long,long long,long long>>{
+        {LLONG_MAX-10,LLONG_MAX-1,LLONG_MAX-5},
+        {LLONG_MIN,LLONG_MIN+10,LLONG_MIN+4},
+        {LLONG_MIN,LLONG_MAX,0},{-10,10,-3},{7,7,7},
+        {LLONG_MIN,LLONG_MAX,LLONG_MIN},{LLONG_MIN,LLONG_MAX,LLONG_MAX}}){
+        int calls=0;
+        CHECK(offline::_bs::max_right(l,r,[&](long long v){CHECK(++calls<=65);CHECK(l<=v&&v<=r);return v<=target;})==target);
+        calls=0;
+        CHECK(offline::_bs::min_left(l,r,[&](long long v){CHECK(++calls<=65);CHECK(l<=v&&v<=r);return v>=target;})==target);
+    }
+}
+
+void check_ternary_search_large_bounds(){
+    for(auto [l,r,peak]:vector<tuple<long long,long long,long long>>{
+        {4000000000000000000LL,4000000000000000010LL,4000000000000000007LL},
+        {LLONG_MIN,LLONG_MIN+10,LLONG_MIN+4},{LLONG_MAX-10,LLONG_MAX,LLONG_MAX},
+        {LLONG_MIN,LLONG_MIN,LLONG_MIN},{LLONG_MAX,LLONG_MAX,LLONG_MAX},{-10,10,-3}}){
+        int calls=0;
+        auto distance=[&](long long v){CHECK(++calls<=100);CHECK(l<=v&&v<=r);return (long long)abs((__int128)v-peak);};
+        CHECK(offline::_ts::min(l,r,distance)==0);
+        calls=0;
+        CHECK(offline::_ts::max(l,r,[&](long long v){return -distance(v);})==0);
+    }
+    auto distance=[](long long v){return (long long)(abs((__int128)v)/4);};
+    CHECK(offline::_ts::min(LLONG_MIN,LLONG_MAX,distance)==0);
+    CHECK(offline::_ts::max(LLONG_MIN,LLONG_MAX,[&](long long v){return -distance(v);})==0);
+}
+
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
         {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
-        {"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets}}){
+        {"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},
+        {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
+        {"ternary_search_large_bounds",check_ternary_search_large_bounds}}){
         try { test(); cout << "PASS " << name << '\n'; }
         catch(const exception& e){ ++failures; cerr << "FAIL " << name << ": " << e.what() << '\n'; }
     }

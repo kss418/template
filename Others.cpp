@@ -16,7 +16,7 @@ public:
     static ll max_right(ll l, ll r, const F& f) {
         ll lo = l, hi = r, mid = -1;
         while (hi > lo) {
-            mid = (hi + lo + 1) >> 1ll;
+            mid = midpoint(hi, lo);
             if (f(mid)) lo = mid;
             else hi = mid - 1;
         }
@@ -27,7 +27,7 @@ public:
     static ll min_left(ll l, ll r, const F& f) {
         ll lo = l, hi = r, mid = -1;
         while (hi > lo) {
-            mid = (hi + lo) >> 1ll;
+            mid = midpoint(lo, hi);
             if (f(mid)) hi = mid;
             else lo = mid + 1;
         }
@@ -65,27 +65,27 @@ class _ts { // integer
 public:
     template <class F>
     static ll max(ll l, ll r, const F& f) {
-        while (r - l > 3) {
-            ll st = (2 * l + r) / 3, en = (l + 2 * r) / 3;
+        while ((i128)r - l > 3) {
+            ll st = (2 * (i128)l + r) / 3, en = ((i128)l + 2 * (i128)r) / 3;
             if(f(st) < f(en)) l = st;
             else r = en;
         }
 
         ll result = MINF;
-        for(ll cur = l; cur <= r;cur++) result = std::max(result, f(cur));
+        for(i128 cur = l; cur <= r;cur++) result = std::max(result, f((ll)cur));
         return result;
     }
 
     template <class F>
     static ll min(ll l, ll r, const F& f) {
-        while (r - l > 3) {
-            ll st = (2 * l + r) / 3, en = (l + 2 * r) / 3;
+        while ((i128)r - l > 3) {
+            ll st = (2 * (i128)l + r) / 3, en = ((i128)l + 2 * (i128)r) / 3;
             if(f(st) > f(en)) l = st;
             else r = en;
         }
 
         ll result = INF;
-        for(ll cur = l; cur <= r;cur++) result = std::min(result, f(cur));
+        for(i128 cur = l; cur <= r;cur++) result = std::min(result, f((ll)cur));
         return result;
     }
 };
