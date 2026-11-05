@@ -1367,6 +1367,22 @@ void check_area_translated(){
     vector<pair<long long,long long>> triangle{{0,0},{3,0},{0,1}};CHECK(area.ret(triangle)==3);
 }
 
+void check_lcs_build_api(){
+    offline::_lcs lcs;
+    lcs.build("abcde","ace");CHECK(lcs.ret()==3);CHECK(lcs.track()=="ace");CHECK(lcs.n==5 && lcs.m==3);
+    lcs.build("abc","xyz");CHECK(lcs.ret()==0);CHECK(lcs.track().empty());
+    lcs.build("","abc");CHECK(lcs.ret()==0);CHECK(lcs.track().empty());
+    lcs.build("abc","");CHECK(lcs.ret()==0);CHECK(lcs.track().empty());
+    lcs.build("a","aa");CHECK(lcs.ret()==1);CHECK(lcs.track()=="a");
+    lcs.build("ab","ac");lcs.build(lcs.b,lcs.a);
+    CHECK(lcs.a=="ac" && lcs.b=="ab");CHECK(lcs.ret()==1);CHECK(lcs.track()=="a");
+    lcs.a="ab";lcs.b="ab";lcs.build();CHECK(lcs.ret()==2);CHECK(lcs.track()=="ab");
+    string a("a\0b",3),b("\0b",2);lcs.build(a,b);CHECK(lcs.ret()==2);CHECK(lcs.track()==b);
+    lcs.build("","");CHECK(lcs.ret()==0);CHECK(lcs.track().empty());
+    offline::_lcs seeded("banana","ana");seeded.build();CHECK(seeded.ret()==3);CHECK(seeded.track()=="ana");
+    seeded.build("ab","ab");CHECK(seeded.ret()==2);CHECK(seeded.track()=="ab");
+}
+
 void check_string_build_api(){
     string s="ababa";vector<long long> v{1,2,1,2,1};
     strings::_kmp<> kmp;strings::_sa<> sa;strings::_mnc<> mnc;strings::_z<> z;
@@ -1430,7 +1446,7 @@ int main(){
         {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"ccw_large_coordinates",check_ccw_large_coordinates},
         {"dlog_phi",check_dlog_phi},{"dlog_large_arithmetic",check_dlog_large_arithmetic},
         {"dlog_normalized_target",check_dlog_normalized_target},{"area_translated",check_area_translated},
-        {"suffix_array_bytes",check_suffix_array_bytes},{"string_build_api",check_string_build_api}}){
+        {"suffix_array_bytes",check_suffix_array_bytes},{"string_build_api",check_string_build_api},{"lcs_build_api",check_lcs_build_api}}){
         try { test(); cout << "PASS " << name << '\n'; }
         catch(const exception& e){ ++failures; cerr << "FAIL " << name << ": " << e.what() << '\n'; }
     }
