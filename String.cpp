@@ -43,11 +43,11 @@ private:
     }
 public:
     _kmp() : m(0){}
-    _kmp(const string& s){ make(s); }
-    _kmp(span<const T> v){ make(v); }
+    _kmp(const string& s){ build(s); }
+    _kmp(span<const T> v){ build(v); }
     void clear(){ pat.clear(); arr.clear(); m = 0; cmp.build(span<const T>(pat)); }
-    void make(const string& s){ pat = tf(s); build(); }
-    void make(span<const T> v){ pat.assign(all(v)); build(); }
+    void build(const string& s){ pat = tf(s); build(); }
+    void build(span<const T> v){ pat.assign(all(v)); build(); }
 
     const vector<int>& fail() const{ return arr; } // O(1)
     template <class F>
@@ -130,10 +130,10 @@ private:
     }
 public:
     _sa(){ clear(0); } // O(1)
-    _sa(const string& s){ make(s); } // O(n log n)
-    _sa(span<const T> v) { make(v); } // O(n log n)
-    void make(const string& s){ clear(s.size()); for(unsigned char i : s) arr.push_back((T)i); build(); } // O(n log n)
-    void make(span<const T> v){ clear(v.size()); this->arr.assign(all(v)); build(); } // O(n log n)
+    _sa(const string& s){ build(s); } // O(n log n)
+    _sa(span<const T> v) { build(v); } // O(n log n)
+    void build(const string& s){ clear(s.size()); for(unsigned char i : s) arr.push_back((T)i); build(); } // O(n log n)
+    void build(span<const T> v){ clear(v.size()); this->arr.assign(all(v)); build(); } // O(n log n)
 
     void clear(int n){ // O(n)
         this->n = n; d = 1; sa.assign(n, 0); arr.clear(); arr.reserve(n);
@@ -233,10 +233,10 @@ private:
     }
 public:
     _z(){}
-    _z(const string& s){ make(s); } // O(|s|)
-    _z(span<const T> v){ make(v); } // O(|v|)
+    _z(const string& s){ build(s); } // O(|s|)
+    _z(span<const T> v){ build(v); } // O(|v|)
     void clear(){ arr.clear(); z.clear(); n = 0; } // O(1)
-    void make(const string& s){ arr = tf(s); build(); } // O(|s|)
-    void make(span<const T> v){ arr.assign(all(v)); build(); } // O(|v|)
+    void build(const string& s){ arr = tf(s); build(); } // O(|s|)
+    void build(span<const T> v){ arr.assign(all(v)); build(); } // O(|v|)
     const vector<int>& result() const{ return z; } // O(1)
 };

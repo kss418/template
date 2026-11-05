@@ -37,6 +37,15 @@ static int checks = 0;
 #define CHECK(c) do { ++checks; if (!(c)) throw runtime_error(string("line ") + to_string(__LINE__) + ": " + #c); } while (0)
 
 template<class T>
+concept string_build_input = requires(T& value,const string& s,span<const long long> v){value.build(s);value.build(v);};
+template<class T>
+concept string_make_input = requires(T& value,const string& s){value.make(s);} || requires(T& value,span<const long long> v){value.make(v);};
+static_assert(string_build_input<strings::_kmp<>> && !string_make_input<strings::_kmp<>>);
+static_assert(string_build_input<strings::_sa<>> && !string_make_input<strings::_sa<>>);
+static_assert(string_build_input<strings::_mnc<>> && !string_make_input<strings::_mnc<>>);
+static_assert(string_build_input<strings::_z<>> && !string_make_input<strings::_z<>>);
+
+template<class T>
 concept fft_make_input = requires(const fft_templates::_fft<8>& f,const vector<T>& values){f.make(values);};
 template<class T>
 concept fft_inverse_output = requires(const fft_templates::_fft<8>& f,const fft_templates::_fft<8>::node& value){f.template inverse<T>(value);};
@@ -695,7 +704,7 @@ void check_kmp_policy(){
     for(const auto* candidate:{&prepared,&prepared_copy,&prepared_assigned}){
         vector<int> matches;candidate->it_match(span<const int>(prepared_text),[&](int i){matches.push_back(i);});CHECK(matches==vector<int>{0});
     }
-    prepared.make(span<const int>(prepared_pattern));
+    prepared.build(span<const int>(prepared_pattern));
     for(const auto* candidate:{&prepared_copy,&prepared_assigned}){
         vector<int> matches;candidate->it_match(span<const int>(prepared_text),[&](int i){matches.push_back(i);});CHECK(matches==vector<int>{0});
     }
@@ -761,21 +770,21 @@ void check_kmp_policy(){
         }
     }
     vector<int> pat{2,5,3},other{1,1,2},text{10,30,20,20,30,10};order_type a{span<const int>(pat)},b{span<const int>(other)};
-    auto copy=a;a.make(span<const int>(other));vector<int> matches;copy.it_match(span<const int>(text),[&](int i){matches.push_back(i);});CHECK(matches==expected_matches(pat,text,order_equal));
-    a.clear();CHECK(a.go(0,span<const int>(text),0)==0);a.make(span<const int>(pat));matches.clear();a.it_match(span<const int>(text),[&](int i){matches.push_back(i);});CHECK(matches==expected_matches(pat,text,order_equal));
+    auto copy=a;a.build(span<const int>(other));vector<int> matches;copy.it_match(span<const int>(text),[&](int i){matches.push_back(i);});CHECK(matches==expected_matches(pat,text,order_equal));
+    a.clear();CHECK(a.go(0,span<const int>(text),0)==0);a.build(span<const int>(pat));matches.clear();a.it_match(span<const int>(text),[&](int i){matches.push_back(i);});CHECK(matches==expected_matches(pat,text,order_equal));
     matches.clear();b.it_match(span<const int>(text),[&](int i){matches.push_back(i);});CHECK(matches==expected_matches(other,text,order_equal));
     for(int split=0;split<=(int)text.size();++split){
         int state=0;matches.clear();for(auto [l,r]:vector<pair<int,int>>{{0,split},{split,(int)text.size()}})for(int i=l;i<r;++i){state=a.go(state,span<const int>(text),i);if(state==3)matches.push_back(i-2);}
         CHECK(matches==expected_matches(pat,text,order_equal));
     }
     strings::_kmp<int,modular_kmp_policy> mod{span<const int>(pat)};vector<int> values{5,8,6};int state=0;
-    for(int value:values)state=kmp_value_step(mod,state,value);CHECK(state==3);mod.clear();mod.make(span<const int>(pat));state=0;for(int value:values)state=kmp_value_step(mod,state,value);CHECK(state==3);
+    for(int value:values)state=kmp_value_step(mod,state,value);CHECK(state==3);mod.clear();mod.build(span<const int>(pat));state=0;for(int value:values)state=kmp_value_step(mod,state,value);CHECK(state==3);
     strings::_kmp<int> plain{span<const int>(pat)};state=0;for(int i=0;i<(int)pat.size();++i)state=plain.go(state,span<const int>(pat),i);CHECK(state==3);
     order_type letters(string("bec"));matches.clear();letters.it_match(string("aymmyb"),[&](int i){matches.push_back(i);});CHECK(matches==vector<int>{0});
     vector<int> original{1,2,1};strings::_kmp<int,owned_kmp_policy> source{span<const int>(original)};
     auto copied=source;matches.clear();copied.it_match(span<const int>(original),[&](int i){matches.push_back(i);});CHECK(matches==vector<int>{0});
     strings::_kmp<int,owned_kmp_policy> assigned;assigned=source;
-    vector<int> changed{3,4,3};source.make(span<const int>(changed));
+    vector<int> changed{3,4,3};source.build(span<const int>(changed));
     for(const auto* candidate:{&copied,&assigned}){
         matches.clear();candidate->it_match(span<const int>(original),[&](int i){matches.push_back(i);});CHECK(matches==vector<int>{0});
     }
@@ -837,9 +846,9 @@ void check_kmp_go(){
     string bytes=pattern+pattern.substr(1);strings::_kmp<> byte_kmp(pattern);vector<int> streamed,batch;state=0;
     for(int i=0;i<(int)bytes.size();++i){state=kmp_value_step(byte_kmp,state,(unsigned char)bytes[i]);if(state==3)streamed.push_back(i-2);}
     byte_kmp.it_match(bytes,[&](int index){batch.push_back(index);});CHECK(streamed==vector<int>({0,2}) && batch==streamed);
-    text_pattern.make(string("aa"));state=0;states.clear();for(unsigned char c:string("aaaa")){state=kmp_value_step(text_pattern,state,c);states.push_back(state);}
+    text_pattern.build(string("aa"));state=0;states.clear();for(unsigned char c:string("aaaa")){state=kmp_value_step(text_pattern,state,c);states.push_back(state);}
     CHECK(states==vector<int>({1,2,2,2}));text_pattern.clear();CHECK(kmp_value_step(text_pattern,0,'a')==0);
-    strings::_kmp<int> numeric;vector<int> numbers{-3,INT_MAX,-3};numeric.make(span<const int>(numbers));state=0;
+    strings::_kmp<int> numeric;vector<int> numbers{-3,INT_MAX,-3};numeric.build(span<const int>(numbers));state=0;
     for(int value:numbers)state=kmp_value_step(numeric,state,value);CHECK(state==3);
 }
 
@@ -1358,6 +1367,27 @@ void check_area_translated(){
     vector<pair<long long,long long>> triangle{{0,0},{3,0},{0,1}};CHECK(area.ret(triangle)==3);
 }
 
+void check_string_build_api(){
+    string s="ababa";vector<long long> v{1,2,1,2,1};
+    strings::_kmp<> kmp;strings::_sa<> sa;strings::_mnc<> mnc;strings::_z<> z;
+    auto verify=[&]{
+        CHECK(kmp.fail()==vector<int>({0,0,1,2,3}));
+        CHECK(sa.get_sa()==vector<int>({4,2,0,3,1}));
+        CHECK(mnc.cnt()==9 && mnc.max_len()==5);
+        CHECK(z.result()==vector<int>({5,0,3,0,1}));
+    };
+    kmp.build(s);sa.build(s);mnc.build(s);z.build(s);verify();
+    kmp.build(span<const long long>(v));sa.build(span<const long long>(v));mnc.build(span<const long long>(v));z.build(span<const long long>(v));verify();
+    string empty;
+    kmp.build(empty);sa.build(empty);mnc.build(empty);z.build(empty);
+    CHECK(kmp.fail().empty());CHECK(sa.get_sa().empty());CHECK(mnc.cnt()==0);CHECK(z.result().empty());
+    kmp.build(s);sa.build(s);mnc.build(s);z.build(s);verify();
+    span<const long long> no_values;
+    kmp.build(no_values);sa.build(no_values);mnc.build(no_values);z.build(no_values);
+    CHECK(kmp.fail().empty());CHECK(sa.get_sa().empty());CHECK(mnc.cnt()==0);CHECK(z.result().empty());
+    kmp.build(span<const long long>(v));sa.build(span<const long long>(v));mnc.build(span<const long long>(v));z.build(span<const long long>(v));verify();
+}
+
 void check_suffix_array_bytes(){
     vector<string> inputs;
     string example;example.push_back(char(255));example.push_back('a');inputs.push_back(example);
@@ -1385,7 +1415,7 @@ void check_suffix_array_bytes(){
     strings::_sa<> reusable;
     for(const auto& s:inputs){
         verify(s,strings::_sa<>(s));verify(s,strings::_sa<unsigned char>(s));
-        reusable.make(s);verify(s,reusable);reusable.make(s);verify(s,reusable);
+        reusable.build(s);verify(s,reusable);reusable.build(s);verify(s,reusable);
     }
     vector<int> signed_values{-1,97,-2};strings::_sa<int> numeric{span<const int>(signed_values)};
     CHECK(numeric.get_sa()==vector<int>({2,0,1}));
@@ -1400,7 +1430,7 @@ int main(){
         {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"ccw_large_coordinates",check_ccw_large_coordinates},
         {"dlog_phi",check_dlog_phi},{"dlog_large_arithmetic",check_dlog_large_arithmetic},
         {"dlog_normalized_target",check_dlog_normalized_target},{"area_translated",check_area_translated},
-        {"suffix_array_bytes",check_suffix_array_bytes}}){
+        {"suffix_array_bytes",check_suffix_array_bytes},{"string_build_api",check_string_build_api}}){
         try { test(); cout << "PASS " << name << '\n'; }
         catch(const exception& e){ ++failures; cerr << "FAIL " << name << ": " << e.what() << '\n'; }
     }
