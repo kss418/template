@@ -44,6 +44,9 @@ static_assert(string_build_input<strings::_kmp<>> && !string_make_input<strings:
 static_assert(string_build_input<strings::_sa<>> && !string_make_input<strings::_sa<>>);
 static_assert(string_build_input<strings::_mnc<>> && !string_make_input<strings::_mnc<>>);
 static_assert(string_build_input<strings::_z<>> && !string_make_input<strings::_z<>>);
+template<class T>
+concept noarg_build = requires(T& value){value.build();};
+static_assert(!noarg_build<offline::_lcs>);
 
 template<class T>
 concept fft_make_input = requires(const fft_templates::_fft<8>& f,const vector<T>& values){f.make(values);};
@@ -1374,12 +1377,12 @@ void check_lcs_build_api(){
     lcs.build("","abc");CHECK(lcs.ret()==0);CHECK(lcs.track().empty());
     lcs.build("abc","");CHECK(lcs.ret()==0);CHECK(lcs.track().empty());
     lcs.build("a","aa");CHECK(lcs.ret()==1);CHECK(lcs.track()=="a");
-    lcs.build("ab","ac");lcs.build(lcs.b,lcs.a);
-    CHECK(lcs.a=="ac" && lcs.b=="ab");CHECK(lcs.ret()==1);CHECK(lcs.track()=="a");
-    lcs.a="ab";lcs.b="ab";lcs.build();CHECK(lcs.ret()==2);CHECK(lcs.track()=="ab");
+    string first="ab",second="ac";lcs.build(first,second);lcs.build(second,first);
+    first.clear();second.clear();CHECK(lcs.ret()==1);CHECK(lcs.track()=="a");
+    lcs.build("ab","ab");CHECK(lcs.ret()==2);CHECK(lcs.track()=="ab");
     string a("a\0b",3),b("\0b",2);lcs.build(a,b);CHECK(lcs.ret()==2);CHECK(lcs.track()==b);
     lcs.build("","");CHECK(lcs.ret()==0);CHECK(lcs.track().empty());
-    offline::_lcs seeded("banana","ana");seeded.build();CHECK(seeded.ret()==3);CHECK(seeded.track()=="ana");
+    offline::_lcs seeded("banana","ana");CHECK(seeded.ret()==3);CHECK(seeded.track()=="ana");
     seeded.build("ab","ab");CHECK(seeded.ret()==2);CHECK(seeded.track()=="ab");
 }
 

@@ -73,7 +73,7 @@ void check_bulk_and_numeric(){
     numbers_life::_gcd gcd;auto[g,a1,b1]=gcd.build(30,18);CHECK(g==6 && 30*a1+18*b1==6);
     geometry_life::_ch hull;for(auto p:vector<pair<long long,long long>>{{0,0},{1,0},{1,1},{0,1}})hull.add(p);hull.build();CHECK(hull.ret().size()==4);hull.build();CHECK(hull.ret().size()==4);hull.add(0,0);hull.build();CHECK(hull.ret().size()==4);
     geometry_life::_rc diameter;diameter.build(hull.idx());CHECK(abs(diameter.dist()-sqrtl(2))<1e-9);diameter.build();CHECK(abs(diameter.dist()-sqrtl(2))<1e-9);hull.add(2,0);hull.build();diameter.build(hull.idx());CHECK(abs(diameter.dist()-sqrtl(5))<1e-9);
-    offline::_lcs lcs("ab","ac");lcs.build();CHECK(lcs.ret()==1);lcs.b="ab";lcs.build();CHECK(lcs.ret()==2);
+    offline::_lcs lcs("ab","ac");CHECK(lcs.ret()==1);lcs.build("ab","ab");CHECK(lcs.ret()==2);
     offline::_pbs<> pbs(0,4);pbs.add({0});pbs.build();CHECK(pbs.get_result()[0]==5);pbs.lo=2;pbs.hi=5;pbs.build();CHECK(pbs.get_result()[0]==6);
 }
 int main(){

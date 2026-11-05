@@ -114,23 +114,19 @@ public:
 };
 
 class _lcs {
+private:
+    string a, b;
 public:
-    string a, b; vector<vector<ll>> dp;
+    vector<vector<ll>> dp;
     ll n, m;
 
     _lcs() : _lcs("", "") {}
     _lcs(string a, string b) {
-        this->a = a; this->b = b;
-        this->n = a.size(), this->m = b.size();
-        dp.resize(n + 1, vector<ll>(m + 1, 0));
+        build(move(a), move(b));
     }
 
-    void build(string a, string b) {
-        this->a = move(a); this->b = move(b);
-        build();
-    }
-
-    void build() {
+    void build(string s, string t) {
+        a = move(s); b = move(t);
         n = a.size(); m = b.size(); dp.assign(n + 1, vector<ll>(m + 1, 0));
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < m; j++) {
