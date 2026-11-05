@@ -1372,7 +1372,10 @@ void check_area_translated(){
 
 void check_lcs_build_api(){
     offline::_lcs lcs;
+    const auto& read=lcs;
+    CHECK(read.ret()==0);CHECK(read.track().empty());
     lcs.build("abcde","ace");CHECK(lcs.ret()==3);CHECK(lcs.track()=="ace");
+    CHECK(read.ret()==3);CHECK(read.track()=="ace");
     lcs.build("abc","xyz");CHECK(lcs.ret()==0);CHECK(lcs.track().empty());
     lcs.build("","abc");CHECK(lcs.ret()==0);CHECK(lcs.track().empty());
     lcs.build("abc","");CHECK(lcs.ret()==0);CHECK(lcs.track().empty());
@@ -1382,6 +1385,7 @@ void check_lcs_build_api(){
     lcs.build("ab","ab");CHECK(lcs.ret()==2);CHECK(lcs.track()=="ab");
     string a("a\0b",3),b("\0b",2);lcs.build(a,b);CHECK(lcs.ret()==2);CHECK(lcs.track()==b);
     lcs.build("","");CHECK(lcs.ret()==0);CHECK(lcs.track().empty());
+    CHECK(read.ret()==0);CHECK(read.track().empty());
     offline::_lcs seeded("banana","ana");CHECK(seeded.ret()==3);CHECK(seeded.track()=="ana");
     seeded.build("ab","ab");CHECK(seeded.ret()==2);CHECK(seeded.track()=="ab");
 }

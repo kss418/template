@@ -513,6 +513,52 @@ public:
     }
 };
 
+template<class T>
+concept const_range_query = requires(const T& t){ t.query(0,0); };
+template<class T>
+concept const_hld_query = requires(const T& t){ t.query(0); t.query(0,0); t.query_sub(0); };
+static_assert(const_range_query<_seg<>>);
+static_assert(const_range_query<_fw<>>);
+static_assert(!const_range_query<_prop<>>);
+static_assert(const_hld_query<_hld_path<_seg<>>>);
+static_assert(const_hld_query<_hld_path<_fw<>>>);
+static_assert(!const_hld_query<_hld_path<_prop<>>>);
+
+class mutable_query_backend : public point_backend{
+public:
+    node query(int l,int r){ return point_backend::query(l,r); }
+};
+static_assert(!const_hld_query<_hld_path<mutable_query_backend>>);
+
+void check_const_queries(){
+    for(bool base:{false,true}){
+        int n=base+2;
+        _seg<> seg(n,base);_fw<> fw(n,base);_fw2d<> grid(n,n,base);
+        const auto& s=seg;const auto& f=fw;const auto& g=grid;
+        vector<long long> values{2,3,5};
+        for(int i=0;i<3;i++){
+            seg.set(base+i,{values[i]});fw.set(base+i,{values[i]});grid.set(base+i,base+i,{values[i]});
+        }
+        for(int l=base-1;l<=n+1;l++)for(int r=base-1;r<=n+1;r++){
+            long long expected=0;for(int i=max(l,int(base));i<=min(r,n);i++)expected+=values[i-base];
+            CHECK(s.query(l,r).v==expected);CHECK(f.query(l,r).v==expected);CHECK(g.query(l,l,r,r).v==expected);
+        }
+        CHECK(f.query(base+1).v==3);CHECK(g.query(base+1,base+1).v==3);
+        CHECK(f.pre(n+1).v==10);CHECK(f.pre(base-1).v==0);
+        CHECK(g.pre(n+1,n+1).v==10);CHECK(g.pre(base-1,n).v==0);
+        auto within=[](const auto& v){return v.v<=5;};
+        CHECK(s.max_right(base,within)==base+1);CHECK(s.min_left(n,within)==n);
+        CHECK(s.max_right(n+1,within)==n);CHECK(s.min_left(base-1,within)==base);
+        seg.set(base,{7});fw.update(base,{5});grid.update(base,base,{5});
+        CHECK(s.query(base,n).v==15);CHECK(f.pre(n).v==15);CHECK(g.pre(n,n).v==15);
+        seg.clear(0,1);fw.clear(0,1);grid.clear(0,0,1);
+        CHECK(s.query(1,0).v==0);CHECK(f.query(1,0).v==0);CHECK(g.query(1,1,0,0).v==0);
+        _hld_path<mutable_query_backend> h(n,0,base);
+        h.add(base,base+1);h.add(base+1,n);h.build();h.set(base,{2});h.set(n,{5});
+        CHECK(h.query(base,n).v==7);CHECK(h.query_sub(base).v==7);
+    }
+}
+
 void check_hld_parts(bool base,int mode,unsigned seed){
     mt19937 rng(seed);int count=1+rng()%20,n=base+count-1;
     _hld plain(n,mode,base);_hld_path<_seg<>> wrapped(n,mode,base);
@@ -647,6 +693,7 @@ void check_hld_make(bool base,int mode){
             expected+=text.parent(b)==a?words[b].forward:words[a].backward;
         }
         CHECK(text.query(st+base,en+base).forward==expected);
+        CHECK(as_const(text).query(st+base,en+base).forward==expected);
     }
     text.build();for(int v=base;v<=n;v++)CHECK(text.query(v).forward==words[v].forward);
 
@@ -669,7 +716,8 @@ void check_hld_fenwick(bool base,int mode){
     vector<_fw<>::node> values(n+1,_fw<>::node{0});
     for(int v=base;v<=n;v++)values[v]={v-base+1};
     auto verify=[&]{
-        for(int v=base;v<=n;v++)CHECK(h.query(v).v==values[v].v);
+        const auto& read=h;
+        for(int v=base;v<=n;v++){CHECK(h.query(v).v==values[v].v);CHECK(read.query(v).v==values[v].v);}
         for(int st=0;st<7;st++)for(int en=0;en<7;en++){
             auto path=path_vertices(adj,st,en);long long expected=0;
             if(!mode)for(int v:path)expected+=values[v+base].v;
@@ -678,6 +726,7 @@ void check_hld_fenwick(bool base,int mode){
                 expected+=values[h.parent(b)==a?b:a].v;
             }
             CHECK(h.query(st+base,en+base).v==expected);
+            CHECK(read.query(st+base,en+base).v==expected);
         }
         for(int root=base;root<=n;root++){
             long long expected=0;
@@ -686,6 +735,7 @@ void check_hld_fenwick(bool base,int mode){
                 if(cur==root&&(!mode||v!=root))expected+=values[v].v;
             }
             CHECK(h.query_sub(root).v==expected);
+            CHECK(read.query_sub(root).v==expected);
         }
     };
     h.make(values);verify();h.set(base+4,{20});values[base+4]={20};
@@ -707,6 +757,7 @@ void check_hld_fenwick(bool base,int mode){
 }
 
 void check_hld_direction(){
+    check_const_queries();
     for(bool base:{false,true}){
         check_hld_order(base);check_hld_edges(base);check_hld_lazy(base);check_hld_forest(base);check_hld_fallback(base);
         for(int mode=0;mode<2;mode++)check_hld_subtree(base,mode);

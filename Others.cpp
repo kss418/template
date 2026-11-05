@@ -137,9 +137,9 @@ public:
         }
     }
 
-    ll ret(){ return dp[n][m]; } // lcs 길이 반환
+    ll ret() const{ return dp[n][m]; } // lcs 길이 반환
 
-    string track(){ // lcs string 반환
+    string track() const{ // lcs string 반환
         string ret; ll cy = n, cx = m;
         while(cy && cx){
             if(a[cy - 1] == b[cx - 1]){

@@ -39,7 +39,7 @@ private:
     }
 
     template<class F>
-    int bisect(int p, bool right, const F& f) {
+    int bisect(int p, bool right, const F& f) const{
         assert(right ? base <= p && p <= n + 1 : base - 1 <= p && p <= n); assert(f(id()));
         if(right) { if (p == n + 1) return n; }
         else { if (p == base - 1) return base; }
@@ -77,7 +77,7 @@ public:
         for(int i = sz - 1;i >= 1;i--) seg[i] = op(seg[i << 1], seg[i << 1 | 1]);
     }
 
-    node query(int st, int en){ // O(log n)
+    node query(int st, int en) const{ // O(log n)
         st = max((int)base, st); en = min(n, en);
         if(st > en) return id();
         node l = id(), r = id();
@@ -97,10 +97,10 @@ public:
     }
 
     template<class F>
-    int max_right(int l, const F& f){ return bisect(l, 1, f); } // O(log n)
+    int max_right(int l, const F& f) const{ return bisect(l, 1, f); } // O(log n)
 
     template<class F>
-    int min_left(int r, const F& f){  return bisect(r, 0, f); } // O(log n)
+    int min_left(int r, const F& f) const{  return bisect(r, 0, f); } // O(log n)
 };
 
 struct action{
@@ -358,10 +358,28 @@ public:
     using node = typename backend::node;
     backend seg;
 private:
+    static constexpr bool can_const_query = requires(const backend& s, int l, int r, const node& a){
+        { s.query(l, r) } -> std::convertible_to<node>;
+        { s.id() } -> std::convertible_to<node>;
+        { s.op(a, a) } -> std::convertible_to<node>;
+    };
     bool built = 0;
     void reset_seg(){
         if constexpr (requires(backend& s){ s.clear(n, 0); }) seg.clear(n, 0);
         else seg.clear(n);
+    }
+
+    template<class S>
+    node query_path(S& s, int st, int en) const{
+        node ret = s.id();
+        it_path(st, en, [&](int l, int r, bool rev){
+            node part = s.query(l, r);
+            if constexpr (requires(const node& v){ { v.reversed() } -> std::same_as<node>; }){
+                if(rev) part = part.reversed();
+            }
+            ret = s.op(ret, part);
+        });
+        return ret;
     }
 public:
     _hld_path(int n = 0, int m = 0, bool base = 1) : _hld(n, m, base){ reset_seg(); }
@@ -394,19 +412,20 @@ public:
         return seg.query(in[x], in[x]);
     }
 
+    node query(int x) const requires can_const_query{
+        return seg.query(in[x], in[x]);
+    }
+
     node query(int st, int en){ // O(log^2 n)
-        node ret = seg.id();
-        it_path(st, en, [&](int l, int r, bool rev){
-            node part = seg.query(l, r);
-            if constexpr (requires(const node& v){ { v.reversed() } -> std::same_as<node>; }){
-                if(rev) part = part.reversed();
-            }
-            ret = seg.op(ret, part);
-        });
-        return ret;
+        return query_path(seg, st, en);
+    }
+
+    node query(int st, int en) const requires can_const_query{ // O(log^2 n)
+        return query_path(seg, st, en);
     }
 
     node query_sub(int x){ auto [l, r] = subtree(x); return seg.query(l, r); }
+    node query_sub(int x) const requires can_const_query{ auto [l, r] = subtree(x); return seg.query(l, r); }
     void set(int x, const node& v)
         requires requires(backend s, int i, const node& nv){ s.set(i, nv); }
     { seg.set(in[x], v); }
@@ -728,15 +747,15 @@ public:
     }
 
     // range query -> need inv
-    node query(int idx) requires has_inv<policy> { return query(idx, idx); } // O(log n)
-    node query(int l, int r) requires has_inv<policy> { // O(log n)
+    node query(int idx) const requires has_inv<policy> { return query(idx, idx); } // O(log n)
+    node query(int l, int r) const requires has_inv<policy> { // O(log n)
         l = max(l, (int)base); r = min(r, n);
         if(l > r) return id();
         return op(pre(r), inv(pre(l - 1))); 
     }
 
     // return 0 ~ idx
-    node pre(int idx){ // O(log n)
+    node pre(int idx) const{ // O(log n)
         node ret = id(); if(idx < base) return ret; idx = min(idx, n);
         for(int i = idx + 1;i > 0;i -= i & -i) ret = op(ret, bit[i]);
         return ret;
@@ -772,7 +791,7 @@ public:
     }
 
     // return (0,0) ~ (y,x)
-    node pre(int y, int x){ // O(log n log m)
+    node pre(int y, int x) const{ // O(log n log m)
         if(y < base || x < base) return id();
         node ret = id(); x = min(x, m); y = min(y, n);
         for(int i = y + 1; i > 0; i -= i & -i){
@@ -784,8 +803,8 @@ public:
     }
 
     // range query -> need inv
-    node query(int y, int x) requires has_inv<policy> { return query(y, x, y, x); } // O(log n log m)
-    node query(int y1, int x1, int y2, int x2) requires has_inv<policy> { // O(log n log m)
+    node query(int y, int x) const requires has_inv<policy> { return query(y, x, y, x); } // O(log n log m)
+    node query(int y1, int x1, int y2, int x2) const requires has_inv<policy> { // O(log n log m)
         x1 = max(x1, (int)base); y1 = max(y1, (int)base);
         x2 = min(x2, m); y2 = min(y2, n);
         if(x1 > x2 || y1 > y2) return id();
