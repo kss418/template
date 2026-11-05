@@ -1372,7 +1372,7 @@ void check_area_translated(){
 
 void check_lcs_build_api(){
     offline::_lcs lcs;
-    lcs.build("abcde","ace");CHECK(lcs.ret()==3);CHECK(lcs.track()=="ace");CHECK(lcs.n==5 && lcs.m==3);
+    lcs.build("abcde","ace");CHECK(lcs.ret()==3);CHECK(lcs.track()=="ace");
     lcs.build("abc","xyz");CHECK(lcs.ret()==0);CHECK(lcs.track().empty());
     lcs.build("","abc");CHECK(lcs.ret()==0);CHECK(lcs.track().empty());
     lcs.build("abc","");CHECK(lcs.ret()==0);CHECK(lcs.track().empty());

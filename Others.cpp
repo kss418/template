@@ -116,17 +116,16 @@ public:
 class _lcs {
 private:
     string a, b;
-public:
     vector<vector<ll>> dp;
     ll n, m;
-
+public:
     _lcs() : _lcs("", "") {}
-    _lcs(string a, string b) {
-        build(move(a), move(b));
+    _lcs(const string& a, const string& b) {
+        build(a, b);
     }
 
-    void build(string s, string t) {
-        a = move(s); b = move(t);
+    void build(const string& s, const string& t) {
+        a = s; b = t;
         n = a.size(); m = b.size(); dp.assign(n + 1, vector<ll>(m + 1, 0));
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < m; j++) {
