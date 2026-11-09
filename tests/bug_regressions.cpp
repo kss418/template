@@ -1021,13 +1021,67 @@ void check_line_same(){
     }
 }
 
+void check_xor_state_api(){
+    const uint64_t full=numeric_limits<uint64_t>::max();
+    for(int bit:{0,1,2,5,63}){
+        uint64_t mask=bit==63?full:(1ull<<(bit+1))-1;
+        automata::_xor_trie tree(bit);const auto& view=tree;vector<uint64_t> values;
+        auto missing=view.get_state(0);
+        CHECK(!missing.valid());CHECK(!missing.end());CHECK(!missing.has_child());
+        CHECK(missing.count()==0);CHECK(missing.prefix_count()==0);CHECK(!missing.go(0).valid());
+        missing.it_child([&](int,auto){CHECK(false);});missing.it_subtree([&](auto){CHECK(false);});
+        auto verify=[&]{
+            auto root=view.root();CHECK(root.id()==0);CHECK(root.valid());CHECK(root.count()==0);
+            CHECK(!root.end());CHECK(root.prefix_count()==(int)values.size());CHECK(root.has_child()==!values.empty());
+            vector<uint64_t> listed;vector<int> preorder,subtree;
+            auto visit=[&](auto&& self,auto node,uint64_t prefix,int depth)->void{
+                int expected=0;
+                for(auto value:values)if(!depth || (value>>(bit+1-depth))==prefix)expected++;
+                CHECK(node.valid());CHECK(node.prefix_count()==expected);
+                CHECK(node.count()==(depth==bit+1?expected:0));CHECK(node.end()==(depth==bit+1&&expected>0));
+                CHECK(node.has_child()==(depth<bit+1&&expected>0));preorder.push_back(node.id());
+                if(depth==bit+1){
+                    for(int i=0;i<expected;i++)listed.push_back(prefix);
+                    CHECK(!node.go(0).valid());CHECK(!node.go(1).valid());
+                }else node.it_child([&](int label,auto child){
+                    CHECK(label==0||label==1);CHECK(node.go(label).id()==child.id());
+                    self(self,child,(prefix<<1)|uint64_t(label),depth+1);
+                });
+            };
+            if(!values.empty())visit(visit,root,0,0);
+            root.it_subtree([&](auto node){CHECK(node.prefix_count()>0);subtree.push_back(node.id());});
+            CHECK(subtree==preorder);auto sorted=values;sort(sorted.begin(),sorted.end());CHECK(listed==sorted);
+            for(auto value:values){
+                auto leaf=view.get_state(value),walk=root;
+                for(int i=bit;i>=0;i--)walk=walk.go((value>>i)&1ull);
+                CHECK(walk.id()==leaf.id());CHECK(leaf.count()==count(values.begin(),values.end(),value));
+                CHECK(leaf.prefix_count()==leaf.count());CHECK(leaf.end());CHECK(!leaf.has_child());
+            }
+        };
+        verify();
+        for(auto value:vector<uint64_t>{0,1,mask,mask,mask/2}){auto leaf=tree.insert(value);values.push_back(value);CHECK(leaf.id()==view.get_state(value).id());}
+        verify();auto saved=view.get_state(mask);int before=saved.count();auto copy=tree;auto copied=copy.get_state(mask);
+        CHECK(tree.insert(mask).id()==saved.id());values.push_back(mask);tree.reserve(4096);
+        CHECK(saved.count()==before+1);CHECK(copied.count()==before);verify();
+        auto pending=values;
+        for(auto value:pending){
+            auto leaf=view.get_state(value);CHECK(tree.erase(value));values.erase(find(values.begin(),values.end(),value));
+            CHECK(leaf.valid());CHECK(leaf.count()==count(values.begin(),values.end(),value));verify();
+        }
+        CHECK(!tree.erase(mask));CHECK(saved.valid());CHECK(!saved.end());CHECK(!saved.has_child());
+        CHECK(saved.count()==0);CHECK(saved.prefix_count()==0);CHECK(tree.insert(mask).id()==saved.id());
+        CHECK(saved.count()==1);tree.clear(bit);values.clear();verify();CHECK(!view.get_state(mask).valid());
+    }
+}
+
 void check_xor_thresholds(){
+    check_xor_state_api();
     automata::_xor_trie defaults;
-    defaults.insert(2);CHECK(defaults.count(0)==0);CHECK(defaults.count(2)==1);
+    defaults.insert(2);CHECK(defaults.get_state(0).count()==0);CHECK(defaults.get_state(2).count()==1);
     const uint64_t full=numeric_limits<uint64_t>::max(),high=1ull<<63;
     vector<uint64_t> default_values={2,0,1,high,high|5,full,full};
     for(size_t i=1;i<default_values.size();++i)defaults.insert(default_values[i]);
-    CHECK(defaults.count(full)==2);CHECK(defaults.count(high)==1);CHECK(defaults.count(0)==1);
+    CHECK(defaults.get_state(full).count()==2);CHECK(defaults.get_state(high).count()==1);CHECK(defaults.get_state(0).count()==1);
     const auto& default_view=defaults;
     for(uint64_t input:{0ull,1ull,2ull,1ull<<63,~0ull}){
         uint64_t best_min=full,best_max=0;

@@ -191,18 +191,10 @@ public:
 class _xor_trie { // 0-based index
 private:
     vector <array<int, 2>> adj;
-    vector <int> cnt, pass; int m;
+    vector <int> pass; int m;
     int new_node(){
-        adj.push_back({0, 0}); cnt.push_back(0); pass.push_back(0);
+        adj.push_back({0, 0}); pass.push_back(0);
         return (int)adj.size() - 1;
-    }
-    int get_state(u64 x) const{
-        int cur = 0;
-        for(int i = m;i >= 0;i--){
-            bool bit = (x >> i) & 1ull; int nxt = adj[cur][bit];
-            if(!nxt) return -1; cur = nxt;
-        }
-        return cur;
     }
 
     u64 arg(u64 x, bool is_max) const{
@@ -221,32 +213,78 @@ private:
         return ret;
     }
 public:
+    class state{
+    private:
+        friend class _xor_trie;
+        const _xor_trie* owner;
+        int idx, bit;
+        state(const _xor_trie* owner, int idx, int bit) : owner(owner), idx(idx), bit(bit){}
+    public:
+        int id() const{ return idx; } // O(1)
+        int count() const{ return idx == -1 || bit >= 0 ? 0 : owner->pass[idx]; } // O(1)
+        int prefix_count() const{ return idx == -1 ? 0 : owner->pass[idx]; } // O(1)
+        bool end() const{ return count() > 0; } // O(1)
+        bool valid() const{ return id() != -1; } // O(1)
+        bool has_child() const{ return prefix_count() > count(); } // O(1)
+
+        state go(bool c) const{ // O(1)
+            if(idx < 0 || idx >= (int)owner->adj.size()) return {owner, -1, -1};
+            int nxt = owner->adj[idx][c];
+            return {owner, nxt ? nxt : -1, bit - 1};
+        }
+
+        template<class F>
+        void it_child(const F& f) const{ // O(1)
+            if(idx < 0 || idx >= (int)owner->adj.size()) return;
+            for(int c = 0;c < 2;c++){
+                int nxt = owner->adj[idx][c];
+                if(nxt && owner->pass[nxt]) f(c, state(owner, nxt, bit - 1));
+            }
+        }
+
+        template<class F>
+        void it_subtree(const F& f) const{ // O(k)
+            if(idx < 0 || idx >= (int)owner->adj.size() || !owner->pass[idx]) return;
+            f(*this);
+            it_child([&](int, state nxt){ nxt.it_subtree(f); });
+        }
+    };
+
     _xor_trie(int max_bit = 63){ clear(max_bit); } // O(1)
     void clear(int max_bit){ // O(1)
         this->m = max_bit;
-        adj.clear(); cnt.clear(); pass.clear(); new_node();
+        adj.clear(); pass.clear(); new_node();
     }
 
     void reserve(int max_node){ // O(1)
-        adj.reserve(max_node); cnt.reserve(max_node);
-        pass.reserve(max_node);
+        adj.reserve(max_node); pass.reserve(max_node);
+    }
+
+    state root() const{ return {this, 0, m}; } // O(1)
+    state get_state(u64 x) const{ // O(max_bit)
+        int cur = 0;
+        for(int i = m;i >= 0;i--){
+            bool bit = (x >> i) & 1ull; int nxt = adj[cur][bit];
+            if(!nxt) return {this, -1, -1}; cur = nxt;
+        }
+        return {this, cur, -1};
     }
 
     int size() const { return pass.empty() ? 0 : pass[0]; } // O(1)
-    void insert(u64 x){ // O(max_bit)
+    state insert(u64 x){ // O(max_bit)
         int cur = 0; pass[cur]++;
         for(int i = m;i >= 0;i--){
             bool bit = (x >> i) & 1ull;
             if(!adj[cur][bit]) adj[cur][bit] = new_node();
             cur = adj[cur][bit]; pass[cur]++;
         }
-        cnt[cur]++;
+        return {this, cur, -1};
     }
 
     bool erase(u64 x){ // O(max_bit)
-        int state = get_state(x);
-        if(state == -1 || !cnt[state]) return 0; 
-        int cur = 0; cnt[state]--; pass[cur]--;
+        int state = get_state(x).id();
+        if(state == -1 || !pass[state]) return 0;
+        int cur = 0; pass[cur]--;
         for(int i = m;i >= 0;i--){
             bool bit = (x >> i) & 1ull;
             cur = adj[cur][bit]; pass[cur]--;
@@ -277,17 +315,6 @@ public:
             cur = adj[cur][xb ^ kb];
         }
         return ret;
-    }
-
-    int count(u64 x) const{ return count_state(get_state(x)); } // O(max_bit)
-    int count_state(int state) const{ return (state == -1 ? 0 : cnt[state]); } // O(1);
-    int sub(u64 x) const{ return sub_state(get_state(x)); } // O(max_bit)
-    int sub_state(int state) const{ return (state == -1 ? 0 : pass[state]); } // O(1)
-
-    int go(int state, bool bit) const{ // O(1)
-        if(state < 0 || state >= (int)adj.size()) return -1;
-        int nxt = adj[state][bit];
-        return nxt ? nxt : -1;
     }
 };
 
