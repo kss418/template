@@ -354,6 +354,26 @@ private:
         return (int)adj.size() - 1;
     }
 public:
+    class state{
+    private:
+        friend class _ac;
+        const _ac* owner;
+        int idx;
+        state(const _ac* owner, int idx) : owner(owner), idx(idx){}
+    public:
+        int id() const{ return idx; } // O(1)
+        ll terminal_count() const{ return owner->terminal_count[idx]; } // O(1)
+        ll match_count() const{ return owner->cnt[idx]; } // O(1)
+        state go(int c) const{ return {owner, owner->go(idx, c)}; } // O(1)
+        int max_match_len() const{ return owner->max_match_len(idx); } // O(1)
+
+        template<class F>
+        void it_match_lens(const F& f) const{ owner->it_match_lens(idx, f); } // O(matches)
+
+        template<class F>
+        void it_match_lens(int k, const F& f) const{ owner->it_match_lens(idx, k, f); } // O(min(k, matches))
+    };
+
     _ac(){ clear(); } // O(1)
     void clear(){ // O(1)
         built = 0; adj.clear(); end.clear(); dep.clear();
@@ -365,6 +385,7 @@ public:
         cnt.reserve(max_node); terminal_count.reserve(max_node); end.reserve(max_node); dict.reserve(max_node);
     }
 
+    state root() const{ return {this, 0}; } // O(1)
     const vector<int>& depth() const{ return dep; }
     const vector<bool>& terminal() const{ return end; }
     int size() const{ return (int)adj.size(); } // O(1)
@@ -480,6 +501,26 @@ private:
         return ret;
     }
 public:
+    class state{
+    private:
+        friend class _sparse_ac;
+        const _sparse_ac* owner;
+        int idx;
+        state(const _sparse_ac* owner, int idx) : owner(owner), idx(idx){}
+    public:
+        int id() const{ return idx; } // O(1)
+        ll terminal_count() const{ return owner->terminal_count[idx]; } // O(1)
+        ll match_count() const{ return owner->cnt[idx]; } // O(1)
+        state go(const T& c) const{ return {owner, owner->go(idx, c)}; }
+        int max_match_len() const{ return owner->max_match_len(idx); } // O(1)
+
+        template<class F>
+        void it_match_lens(const F& f) const{ owner->it_match_lens(idx, f); } // O(matches)
+
+        template<class F>
+        void it_match_lens(int k, const F& f) const{ owner->it_match_lens(idx, k, f); } // O(min(k, matches))
+    };
+
     _sparse_ac(){ clear(); } // O(1)
     void clear(){ // O(1)
         built = 0; end.clear(); dep.clear();
@@ -502,6 +543,7 @@ public:
         to.reserve(max_edge + 1); next.reserve(max_edge + 1); ch.reserve(max_edge + 1);
     }
 
+    state root() const{ return {this, 0}; } // O(1)
     const vector<int>& depth() const{ return dep; } // O(1)
     const vector<bool>& terminal() const{ return end; } // O(1)
     int size() const{ return (int)head.size(); } // O(1)
