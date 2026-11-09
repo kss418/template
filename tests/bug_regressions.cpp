@@ -1174,7 +1174,11 @@ void check_alphabet_trie(){
         string s;for(int j=0,len=rng()%5;j<len;j++)s+=char(A::decode(rng()%A::size));words.push_back(s);
     }
     multiset<vector<int>> expected;
-    for(const string& s:words){tree.insert(s);expected.insert(encoded<A>(s));}
+    for(const string& s:words){
+        auto word=encoded<A>(s);int state=tree.insert(s);
+        CHECK(tree.get_state(s)==state);CHECK(tree.get_state(span<const int>(word))==state);
+        expected.insert(word);
+    }
     auto verify=[&]{
         CHECK(tree.size()==(int)expected.size());int k=1;
         for(const auto& word:expected){CHECK(tree.kth(k)==word);k++;}
@@ -1186,6 +1190,8 @@ void check_alphabet_trie(){
             int prefixes=0;for(const auto& candidate:expected)if(candidate.size()>=word.size()&&equal(word.begin(),word.end(),candidate.begin()))prefixes++;
             CHECK(tree.prefix_count(s)==prefixes);CHECK(tree.prefix_count(span<const int>(word))==prefixes);
             int state=0;for(int c:word)state=tree.go(state,c);
+            const auto& view=tree;
+            CHECK(view.get_state(s)==state);CHECK(view.get_state(span<const int>(word))==state);
             CHECK(tree.count(state)==tree.count(s));CHECK(tree.prefix_count(state)==prefixes);
         }
     };
@@ -1196,9 +1202,23 @@ void check_alphabet_trie(){
     }
     verify();
     string missing(8,char(A::decode(0)));CHECK(!tree.erase(missing));
-    auto raw=encoded<A>(missing);tree.insert(span<const int>(raw));CHECK(tree.count(missing)==1);
+    auto raw=encoded<A>(missing);
+    CHECK(tree.get_state(missing)==-1);CHECK(tree.get_state(span<const int>(raw))==-1);
+    int state=tree.insert(span<const int>(raw));CHECK(tree.count(state)==1);
+    CHECK(tree.get_state(missing)==state);CHECK(tree.get_state(span<const int>(raw))==state);
+    string prefix=missing.substr(0,7);int prefix_state=tree.get_state(prefix);
+    CHECK(prefix_state==tree.go(tree.get_state(prefix.substr(0,6)),0));
+    CHECK(tree.count(prefix_state)==0);CHECK(tree.prefix_count(prefix_state)==1);
     CHECK(tree.erase(span<const int>(raw)));CHECK(tree.count(missing)==0);
+    CHECK(tree.get_state(missing)==state);CHECK(tree.count(state)==0);CHECK(tree.prefix_count(state)==0);
+    CHECK(tree.insert(missing)==state);CHECK(tree.erase(missing));
+    tree.insert(string(2048,char(A::decode(0))));tree.reserve(8192);
+    CHECK(tree.get_state(missing)==state);CHECK(tree.get_state(prefix)==prefix_state);
+    CHECK(tree.count(state)==0);CHECK(tree.prefix_count(state)==1);
     tree.clear();CHECK(tree.size()==0);CHECK(tree.prefix_count(string())==0);
+    CHECK(tree.get_state(missing)==-1);CHECK(tree.get_state(string())==0);
+    CHECK(tree.get_state(span<const int>())==0);CHECK(tree.insert(string())==0);
+    CHECK(tree.insert(span<const int>())==0);CHECK(tree.count(0)==2);
 }
 
 template<class A>
@@ -1253,8 +1273,11 @@ void check_alphabets(){
     check_alphabet_ac<alphabet::lowercase>();check_alphabet_ac<alphabet::uppercase>();check_alphabet_ac<alphabet::digits>();
     check_alphabet_ac<alphabet::alnum>();check_alphabet_ac<alphabet::bytes>();check_alphabet_ac<reverse_alphabet>();
     _trie<alphabet::alnum> mixed;mixed.insert("a");CHECK(mixed.count("A")==0);CHECK(mixed.count("0")==0);
-    _trie<folded_alphabet> folded;folded.insert("Ab");CHECK(folded.count("aB")==1);
+    _trie<folded_alphabet> folded;int folded_state=folded.insert("Ab");CHECK(folded.count("aB")==1);
+    CHECK(folded.get_state("aB")==folded_state);
     _trie<span_only_alphabet> numeric;vector<int> word{2,0,1};numeric.insert(span<const int>(word));
+    int numeric_state=numeric.insert(span<const int>(word));CHECK(numeric.get_state(span<const int>(word))==numeric_state);
+    CHECK(numeric.erase(span<const int>(word)));
     CHECK(numeric.count(span<const int>(word))==1);CHECK(numeric.kth(1)==word);
     _ac<span_only_alphabet> d;_sparse_ac<int,span_only_alphabet> s;
     d.insert(span<const int>(word));s.insert(span<const int>(word));d.build();s.build();

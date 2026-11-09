@@ -82,15 +82,6 @@ private:
         for(unsigned char c : s) ret.push_back(Alphabet::encode(c));
         return ret;
     }
-
-    int get_state(span<const int> v) const{
-        int cur = 0;
-        for(auto& c : v){
-            if (!adj[cur][c]) return -1;
-            cur = adj[cur][c];
-        }
-        return cur;
-    }
 public:
     _trie(){ clear(); } // O(1)
     void clear(){ adj.clear(); cnt.clear(); pass.clear(); new_node(); } // O(1)
@@ -99,15 +90,25 @@ public:
         pass.reserve(max_node);
     }
 
+    int get_state(const string& s) const{ auto v = tf(s); return get_state(v); } // O(|s|)
+    int get_state(span<const int> v) const{ // O(|v|)
+        int cur = 0;
+        for(auto& c : v){
+            if (!adj[cur][c]) return -1;
+            cur = adj[cur][c];
+        }
+        return cur;
+    }
+
     int size() const{ return pass.empty() ? 0 : pass[0]; } // O(1)
-    void insert(const string& s){ auto v = tf(s); insert(v); } // O(|s|)
-    void insert(span<const int> v){ // O(|v|)
+    int insert(const string& s){ auto v = tf(s); return insert(v); } // O(|s|)
+    int insert(span<const int> v){ // O(|v|)
         int cur = 0; pass[cur]++;
         for(auto &c : v){
             if(!adj[cur][c]) adj[cur][c] = new_node();
             cur = adj[cur][c]; pass[cur]++;
         }
-        cnt[cur]++;
+        cnt[cur]++; return cur;
     }
 
     bool erase(const string& s){ auto v = tf(s); return erase(v); } // O(|s|)
