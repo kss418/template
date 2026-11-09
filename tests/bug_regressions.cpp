@@ -1074,8 +1074,49 @@ void check_xor_state_api(){
     }
 }
 
+void check_xor_kth(){
+    const uint64_t full=numeric_limits<uint64_t>::max();
+    for(int bit:{0,1,2,5,31,63}){
+        uint64_t mask=bit==63?full:(1ull<<(bit+1))-1;
+        automata::_xor_trie tree(bit);const auto& view=tree;vector<uint64_t> values;
+        auto verify=[&]{
+            for(uint64_t input:vector<uint64_t>{0,1,7,mask,1ull<<32,1ull<<63,full}){
+                vector<pair<uint64_t,uint64_t>> ordered;
+                for(auto value:values)ordered.emplace_back(input^value,value);
+                sort(ordered.begin(),ordered.end());
+                for(int k=1;k<=(int)ordered.size();k++){
+                    CHECK(view.kth(input,k)==ordered[k-1].first);
+                    CHECK(view.argkth(input,k)==ordered[k-1].second);
+                }
+                if(!values.empty()){
+                    CHECK(view.kth(input,1)==view.min(input));CHECK(view.kth(input,values.size())==view.max(input));
+                    CHECK(view.argkth(input,1)==view.argmin(input));CHECK(view.argkth(input,values.size())==view.argmax(input));
+                }
+            }
+        };
+        for(auto value:vector<uint64_t>{0,mask,mask/2,mask,1,1ull<<bit}){
+            tree.insert(value);values.push_back(value);verify();
+        }
+        for(int round=0;round<2;round++){
+            auto pending=values;
+            for(auto value:pending){CHECK(tree.erase(value));values.erase(find(values.begin(),values.end(),value));verify();}
+            for(auto value:vector<uint64_t>{mask,0,mask,mask/2}){tree.insert(value);values.push_back(value);verify();}
+        }
+        mt19937_64 rng(713+bit);
+        for(int round=0;round<150;round++){
+            if(values.empty() || (values.size()<30 && rng()%3)){
+                uint64_t value=rng()&mask;tree.insert(value);values.push_back(value);
+            }else{
+                int i=rng()%values.size();CHECK(tree.erase(values[i]));values.erase(values.begin()+i);
+            }
+            if(round%4==0)verify();
+        }
+        tree.clear(bit);values.clear();tree.insert(mask);values.push_back(mask);verify();
+    }
+}
+
 void check_xor_thresholds(){
-    check_xor_state_api();
+    check_xor_state_api();check_xor_kth();
     automata::_xor_trie defaults;
     defaults.insert(2);CHECK(defaults.get_state(0).count()==0);CHECK(defaults.get_state(2).count()==1);
     const uint64_t full=numeric_limits<uint64_t>::max(),high=1ull<<63;
