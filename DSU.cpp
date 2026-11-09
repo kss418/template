@@ -49,8 +49,9 @@ public:
 
 template <class policy = uf_policy>
 class _uf_value : public _uf{
-private:
+public:
     using node = typename policy::node;
+private:
     vector<node> arr;
     node leaf() const{ return policy::leaf(); }
 public:

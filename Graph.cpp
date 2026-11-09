@@ -116,9 +116,10 @@ public:
 
 template<class policy = lca_policy>
 class _lca_path : public _lca {
-private:
+public:
     using node = typename policy::node;
     using cost = typename policy::cost;
+private:
     class path {
     public:
         node up, down;

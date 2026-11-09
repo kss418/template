@@ -28,8 +28,9 @@ struct sp_policy{
 template<class policy = sp_policy>
 class _dij {
     bool base;
-private:
+public:
     using dist = typename policy::dist; using cost = typename policy::cost;
+private:
     struct edge{ cost w; int nxt; }; struct node{ dist d; int v; };
     struct cmp{ bool operator()(const node& a, const node& b) const{ return _dij::less(b.d, a.d); } };
     vector<vector<edge>> adj; int n; bool built = 0;
@@ -109,8 +110,9 @@ public:
 template <class policy = sp_policy>
 class _floyd {
     bool base;
-private:
+public:
     using dist = typename policy::dist; using cost = typename policy::cost;
+private:
     vector <vector<dist>> d, input; vector <vector<int>> nxt;
     int n; bool built = 0;
 
@@ -181,8 +183,9 @@ public:
 template <class policy = sp_policy>
 class _spfa {
     bool base;
-private:
+public:
     using dist = typename policy::dist; using cost = typename policy::cost;
+private:
     struct edge{ cost w; int nxt; };
     vector <int> pre, cnt; deque <int> q;
     vector <dist> d; vector <bool> in, cy;
