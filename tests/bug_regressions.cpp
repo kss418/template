@@ -1240,10 +1240,15 @@ void check_alphabet_trie(){
 void check_trie_state_handles(){
     automata::_trie<> tree;const auto& view=tree;
     auto root=view.get_state("");CHECK(root.id()==0);CHECK(root.count()==0);CHECK(root.prefix_count()==0);
+    CHECK(root.valid());CHECK(!root.end());CHECK(!root.has_child());
     auto ab=tree.insert("ab");auto a=root.go(0);
     CHECK(a.go(1).id()==ab.id());CHECK(ab.count()==1);CHECK(ab.prefix_count()==1);
-    CHECK(tree.insert("ab").id()==ab.id());auto abc=tree.insert("abc");tree.insert("ad");
+    CHECK(a.valid());CHECK(!a.end());CHECK(a.has_child());
+    CHECK(ab.valid());CHECK(ab.end());CHECK(!ab.has_child());
+    CHECK(tree.insert("ab").id()==ab.id());CHECK(ab.end());CHECK(!ab.has_child());
+    auto abc=tree.insert("abc");tree.insert("ad");
     CHECK(ab.count()==2);CHECK(ab.prefix_count()==3);CHECK(a.prefix_count()==4);
+    CHECK(ab.end());CHECK(ab.has_child());
     vector<pair<int,int>> children;
     ab.it_child([&](int label,auto child){CHECK(child.count()==1);children.emplace_back(label,child.id());});
     CHECK((children==vector<pair<int,int>>{{2,abc.id()}}));
@@ -1252,17 +1257,22 @@ void check_trie_state_handles(){
     CHECK((visited==vector<int>{ab.id(),abc.id()}));
     CHECK(tree.rank("ab")==0);CHECK(tree.rank("ac")==3);
     CHECK(tree.erase("ab"));CHECK(tree.erase("ab"));CHECK(ab.count()==0);CHECK(ab.prefix_count()==1);
+    CHECK(ab.valid());CHECK(!ab.end());CHECK(ab.has_child());
     CHECK(tree.erase("abc"));CHECK(ab.prefix_count()==0);children.clear();visited.clear();
+    CHECK(ab.valid());CHECK(!ab.end());CHECK(!ab.has_child());
     ab.it_child([&](int label,auto child){children.emplace_back(label,child.id());});
     ab.it_subtree([&](auto node){visited.push_back(node.id());});CHECK(children.empty());CHECK(visited.empty());
     CHECK(tree.insert("ab").id()==ab.id());tree.insert(string(4096,'z'));CHECK(ab.count()==1);
     auto saved=ab;auto other=tree;auto copied=other.get_state("ab");tree.insert("ab");
     CHECK(saved.count()==2);CHECK(copied.count()==1);CHECK(copied.id()==ab.id());
     auto missing=view.get_state("missing");CHECK(missing.id()==-1);CHECK(missing.count()==0);CHECK(missing.prefix_count()==0);
+    CHECK(!missing.valid());CHECK(!missing.end());CHECK(!missing.has_child());CHECK(!missing.go(0).valid());
     CHECK(missing.go(0).id()==-1);missing.it_child([&](int,auto){CHECK(false);});
     missing.it_subtree([&](auto){CHECK(false);});
     tree.clear();auto fresh=view.get_state("");CHECK(fresh.id()==0);CHECK(fresh.prefix_count()==0);
+    CHECK(fresh.valid());CHECK(!fresh.end());CHECK(!fresh.has_child());
     fresh.it_subtree([&](auto){CHECK(false);});CHECK(tree.insert("").id()==0);CHECK(fresh.count()==1);
+    CHECK(fresh.valid());CHECK(fresh.end());CHECK(!fresh.has_child());
 }
 
 void check_trie_children(){
