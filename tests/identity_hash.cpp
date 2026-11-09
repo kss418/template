@@ -210,6 +210,69 @@ void check_hash_operations(){
         }
     }
 }
+
+template<int mod1,int mod2>
+void check_deque_hash_reuse_mod(){
+    using deque_type=hash_templates::_deque_hash<mod1,mod2>;
+    for(int capacity:{0,1,2,7}){
+        int limit=max(1,capacity);pair<int,int> key{3,5};
+        deque_type window(capacity,key);vector<int> values;
+        auto verify=[&](const deque_type& current,const vector<int>& want){
+            int count=want.size();CHECK(current.size()==count);CHECK(current.ret(0,-1)==0);
+            CHECK(current.same(0,-1,count,count-1));
+            for(int l=0;l<count;l++)for(int r=l;r<count;r++){
+                long long expected=(naive_hash(want,l,r,key.first,mod1)<<32)+naive_hash(want,l,r,key.second,mod2);
+                CHECK(current.ret(l,r)==expected);
+            }
+            if(count){
+                CHECK(!current.same(0,0,0,-1));
+                int len=(count+1)/2;
+                bool equal=naive_hash(want,0,len-1,key.first,mod1)==naive_hash(want,count-len,count-1,key.first,mod1)
+                    && naive_hash(want,0,len-1,key.second,mod2)==naive_hash(want,count-len,count-1,key.second,mod2);
+                CHECK(current.same(0,len-1,count-len,count-1)==equal);
+            }
+        };
+        verify(window,values);
+        for(int i=0;i<limit;i++){window.push_back(i%3);values.push_back(i%3);}
+        verify(window,values);
+        for(int round=0;round<120;round++){
+            window.pop_front();values.erase(values.begin());verify(window,values);
+            int value=round%2?INT_MIN:round;
+            window.push_back(value);values.push_back(value);verify(window,values);
+        }
+        auto saved=window;auto saved_values=values;
+        for(int round=0;round<120;round++){
+            window.pop_back();values.pop_back();verify(window,values);
+            int value=round%2?INT_MAX:-round;
+            window.push_front(value);values.insert(values.begin(),value);verify(window,values);
+        }
+        verify(saved,saved_values);
+        mt19937 rng(901+capacity);
+        for(int round=0;round<200;round++){
+            bool front=rng()%2;
+            if(values.empty() || ((int)values.size()<limit && rng()%2)){
+                int value=(int)(rng()%11)-5;
+                if(front){window.push_front(value);values.insert(values.begin(),value);}
+                else{window.push_back(value);values.push_back(value);}
+            }else if(front){window.pop_front();values.erase(values.begin());}
+            else{window.pop_back();values.pop_back();}
+            verify(window,values);
+        }
+        key={11,17};window.clear(capacity,key);values.clear();verify(window,values);
+        for(int round=0;round<80;round++){
+            window.push_front(round);values.insert(values.begin(),round);verify(window,values);
+            window.pop_back();values.pop_back();verify(window,values);
+            window.push_back(-round);values.push_back(-round);verify(window,values);
+            window.pop_front();values.erase(values.begin());verify(window,values);
+        }
+    }
+}
+
+void check_deque_hash_reuse(){
+    check_deque_hash_reuse_mod<101,103>();check_deque_hash_reuse_mod<1000,1001>();
+    check_deque_hash_reuse_mod<1000000007,1000000009>();
+}
+
 template<int mod1,int mod2>
 void check_fixed_hash_mod(){
     using prefix_type=hash_templates::_hash<mod1,mod2>;
@@ -772,7 +835,7 @@ void run(){for(bool base:{false,true}){check_monoids(base);check_actions(base);}
 int main(){
     int failures = 0;
     for(auto [name,test]:vector<pair<string,void(*)()>>{{"hld_direction",bidirectional_checks::check_hld_direction},{"bidirectional",bidirectional_checks::run},{"lazy_equality",check_lazy_equality},{"factory_construction",check_factory_construction},{"default_lazy",check_default_lazy},{"explicit_id",check_explicit_id},
-        {"affine",check_affine},{"hash_defaults",check_hash_defaults},{"hash_operations",check_hash_operations},{"fixed_hash",check_fixed_hash}}){
+        {"affine",check_affine},{"hash_defaults",check_hash_defaults},{"hash_operations",check_hash_operations},{"deque_hash_reuse",check_deque_hash_reuse},{"fixed_hash",check_fixed_hash}}){
         try{test();cout<<"PASS "<<name<<'\n';}catch(const exception& e){++failures;cerr<<"FAIL "<<name<<": "<<e.what()<<'\n';}
     }
     cout<<checks<<" identity/initial-leaf/hash checks, "<<failures<<" failed groups\n";
