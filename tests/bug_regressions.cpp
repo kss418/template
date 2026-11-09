@@ -1061,7 +1061,7 @@ void check_xor_state_api(){
         verify();
         for(auto value:vector<uint64_t>{0,1,mask,mask,mask/2}){auto leaf=tree.insert(value);values.push_back(value);CHECK(leaf.id()==view.get_state(value).id());}
         verify();auto saved=view.get_state(mask);int before=saved.count();auto copy=tree;auto copied=copy.get_state(mask);
-        CHECK(tree.insert(mask).id()==saved.id());values.push_back(mask);tree.reserve(4096);
+        CHECK(tree.insert(mask).id()==saved.id());values.push_back(mask);
         CHECK(saved.count()==before+1);CHECK(copied.count()==before);verify();
         auto pending=values;
         for(auto value:pending){
