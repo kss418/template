@@ -111,24 +111,24 @@ private:
                 bit[i] = (mint(bit[i]) + v).v;
             }
         }
-
+    private:
         mint sum(int idx) const{ // O(log n)
             mint ret = 0;
             for(int i = idx;i >= 0;i = (i & (i + 1)) - 1) ret += bit[i];
             return ret;
         }
 
-        int size() const{ return sz; } // O(1)
-        void push_back(int v){ set((s + sz) % n, v); sz++; } // O(log n)
-        void push_front(int v){ s = (s + n - 1) % n; set(s, v); sz++; } // O(log n)
-        void pop_back(){ clear((s + sz - 1) % n); sz--; } // O(log n)
-        void pop_front(){ clear(s); s = (s + 1) % n; sz--; } // O(log n)
-
         mint range(int l, int r) const{ // O(log n)
             mint ret = sum(r);
             if(l) ret -= sum(l - 1);
             return ret * ipw[l];
         }
+    public:
+        int size() const{ return sz; } // O(1)
+        void push_back(int v){ set((s + sz) % n, v); sz++; } // O(log n)
+        void push_front(int v){ s = (s + n - 1) % n; set(s, v); sz++; } // O(log n)
+        void pop_back(){ clear((s + sz - 1) % n); sz--; } // O(log n)
+        void pop_front(){ clear(s); s = (s + 1) % n; sz--; } // O(log n)
 
         int ret(int l, int r) const{ // O(log n)
             l = (s + l) % n; r = (s + r) % n;
