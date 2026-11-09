@@ -1191,6 +1191,14 @@ void check_alphabet_trie(){
             });
         };
         visit(visit,0);CHECK(listed==vector<vector<int>>(expected.begin(),expected.end()));
+        set<vector<int>> prefixes;
+        for(const auto& word:expected)for(int len=0;len<=(int)word.size();len++)prefixes.emplace(word.begin(),word.begin()+len);
+        vector<int> wanted,visited;int total=0;
+        for(const auto& prefix:prefixes)wanted.push_back(view.get_state(span<const int>(prefix)));
+        view.it_subtree(0,[&](int state){
+            CHECK(view.prefix_count(state)>0);visited.push_back(state);total+=view.count(state);
+        });
+        CHECK(visited==wanted);CHECK(total==(int)expected.size());
         for(const string& s:words){
             auto word=encoded<A>(s);
             CHECK(tree.count(s)==(int)expected.count(word));CHECK(tree.count(span<const int>(word))==tree.count(s));
@@ -1237,15 +1245,41 @@ void check_trie_children(){
     view.it_child(0,collect);
     CHECK((children==vector<pair<int,int>>{{0,view.get_state("a")},{1,b}}));
     CHECK(tree.erase("ab"));children.clear();view.it_child(view.get_state("a"),collect);
-    CHECK((children==vector<pair<int,int>>{{1,ab},{2,ac}}));
+    CHECK((children==vector<pair<int,int>>{{2,ac}}));
     vector<int> live;
-    view.it_child(view.get_state("a"),[&](int label,int child){if(view.prefix_count(child))live.push_back(label);});
+    view.it_child(view.get_state("a"),[&](int label,int){live.push_back(label);});
     CHECK(live==vector<int>{2});
     children.clear();view.it_child(ab,collect);view.it_child(-1,collect);view.it_child(INT_MAX,collect);
     CHECK(children.empty());
     tree.clear();view.it_child(0,collect);CHECK(children.empty());
     int fresh=tree.insert("z");view.it_child(0,collect);
     CHECK((children==vector<pair<int,int>>{{25,fresh}}));
+}
+
+void check_trie_subtree(){
+    automata::_trie<> tree;const auto& view=tree;vector<int> visited;
+    auto collect=[&](int state){visited.push_back(state);};
+    view.it_subtree(0,collect);CHECK(visited.empty());
+    int abc=tree.insert("abc"),ab=tree.insert("ab"),a=tree.get_state("a");
+    CHECK(tree.insert("ab")==ab);
+    int ac=tree.insert("ac"),z=tree.insert("z");tree.insert("");
+    view.it_subtree(0,collect);CHECK((visited==vector<int>{0,a,ab,abc,ac,z}));
+    CHECK(tree.erase("ac"));visited.clear();view.it_subtree(0,collect);
+    CHECK((visited==vector<int>{0,a,ab,abc,z}));
+    visited.clear();view.it_subtree(a,collect);CHECK((visited==vector<int>{a,ab,abc}));
+    visited.clear();view.it_subtree(abc,collect);CHECK(visited==vector<int>{abc});
+    visited.clear();view.it_subtree(ac,collect);view.it_subtree(-1,collect);view.it_subtree(INT_MAX,collect);
+    CHECK(visited.empty());
+    CHECK(tree.erase("abc"));view.it_subtree(a,collect);CHECK((visited==vector<int>{a,ab}));
+    CHECK(tree.erase("ab"));visited.clear();view.it_subtree(a,collect);
+    CHECK((visited==vector<int>{a,ab}));CHECK(view.count(ab)==1);
+    CHECK(tree.erase("ab"));visited.clear();view.it_subtree(a,collect);CHECK(visited.empty());
+    CHECK(tree.insert("abc")==abc);view.it_subtree(a,collect);CHECK((visited==vector<int>{a,ab,abc}));
+    tree.clear();visited.clear();view.it_subtree(0,collect);CHECK(visited.empty());
+    tree.insert("");tree.insert("");view.it_subtree(0,collect);CHECK(visited==vector<int>{0});
+    CHECK(view.count(0)==2);
+    tree.clear();int fresh=tree.insert("b");visited.clear();view.it_subtree(0,collect);
+    CHECK((visited==vector<int>{0,fresh}));
 }
 
 template<class A>
@@ -1289,7 +1323,7 @@ void check_alphabet_ac(){
 }
 
 void check_alphabets(){
-    check_trie_children();
+    check_trie_children();check_trie_subtree();
     using namespace automata;
     static_assert(alphabet::lowercase::encode('a')==0&&alphabet::lowercase::encode('z')==25);
     static_assert(alphabet::uppercase::encode('A')==0&&alphabet::uppercase::encode('Z')==25);
@@ -1307,6 +1341,7 @@ void check_alphabets(){
     int numeric_state=numeric.insert(span<const int>(word));CHECK(numeric.get_state(span<const int>(word))==numeric_state);
     CHECK(numeric.erase(span<const int>(word)));
     CHECK(numeric.count(span<const int>(word))==1);CHECK(numeric.kth(1)==word);
+    int states=0;numeric.it_subtree(0,[&](int){states++;});CHECK(states==4);
     _ac<span_only_alphabet> d;_sparse_ac<int,span_only_alphabet> s;
     d.insert(span<const int>(word));s.insert(span<const int>(word));d.build();s.build();
     CHECK(d.count(span<const int>(word))==1);CHECK(s.count(span<const int>(word))==1);
