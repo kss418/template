@@ -1166,7 +1166,7 @@ void check_alphabet_trie(){
     for(int i=0;i<A::size;i++){
         unsigned char c=A::decode(i);CHECK(!seen[c]);seen[c]=1;CHECK(A::encode(c)==i);
     }
-    automata::_trie<A> tree;tree.reserve(1024);
+    automata::_trie<A> tree;
     vector<string> words{"",""};
     for(int i=0;i<A::size;i++)words.push_back(string(1,char(A::decode(i))));
     mt19937 rng(431+A::size);
@@ -1180,8 +1180,17 @@ void check_alphabet_trie(){
         expected.insert(word);
     }
     auto verify=[&]{
+        const auto& view=tree;
         CHECK(tree.size()==(int)expected.size());int k=1;
         for(const auto& word:expected){CHECK(tree.kth(k)==word);k++;}
+        vector<vector<int>> listed;vector<int> path;
+        auto visit=[&](auto&& self,int state)->void{
+            for(int i=0;i<view.count(state);i++)listed.push_back(path);
+            view.it_child(state,[&](int label,int child){
+                path.push_back(label);self(self,child);path.pop_back();
+            });
+        };
+        visit(visit,0);CHECK(listed==vector<vector<int>>(expected.begin(),expected.end()));
         for(const string& s:words){
             auto word=encoded<A>(s);
             CHECK(tree.count(s)==(int)expected.count(word));CHECK(tree.count(span<const int>(word))==tree.count(s));
@@ -1190,7 +1199,6 @@ void check_alphabet_trie(){
             int prefixes=0;for(const auto& candidate:expected)if(candidate.size()>=word.size()&&equal(word.begin(),word.end(),candidate.begin()))prefixes++;
             CHECK(tree.prefix_count(s)==prefixes);CHECK(tree.prefix_count(span<const int>(word))==prefixes);
             int state=0;for(int c:word)state=tree.go(state,c);
-            const auto& view=tree;
             CHECK(view.get_state(s)==state);CHECK(view.get_state(span<const int>(word))==state);
             CHECK(tree.count(state)==tree.count(s));CHECK(tree.prefix_count(state)==prefixes);
         }
@@ -1212,13 +1220,32 @@ void check_alphabet_trie(){
     CHECK(tree.erase(span<const int>(raw)));CHECK(tree.count(missing)==0);
     CHECK(tree.get_state(missing)==state);CHECK(tree.count(state)==0);CHECK(tree.prefix_count(state)==0);
     CHECK(tree.insert(missing)==state);CHECK(tree.erase(missing));
-    tree.insert(string(2048,char(A::decode(0))));tree.reserve(8192);
+    tree.insert(string(2048,char(A::decode(0))));
     CHECK(tree.get_state(missing)==state);CHECK(tree.get_state(prefix)==prefix_state);
     CHECK(tree.count(state)==0);CHECK(tree.prefix_count(state)==1);
     tree.clear();CHECK(tree.size()==0);CHECK(tree.prefix_count(string())==0);
     CHECK(tree.get_state(missing)==-1);CHECK(tree.get_state(string())==0);
     CHECK(tree.get_state(span<const int>())==0);CHECK(tree.insert(string())==0);
     CHECK(tree.insert(span<const int>())==0);CHECK(tree.count(0)==2);
+}
+
+void check_trie_children(){
+    automata::_trie<> tree;
+    int ab=tree.insert("ab"),ac=tree.insert("ac"),b=tree.insert("b");tree.insert("");
+    const auto& view=tree;vector<pair<int,int>> children;
+    auto collect=[&](int label,int child){children.emplace_back(label,child);};
+    view.it_child(0,collect);
+    CHECK((children==vector<pair<int,int>>{{0,view.get_state("a")},{1,b}}));
+    CHECK(tree.erase("ab"));children.clear();view.it_child(view.get_state("a"),collect);
+    CHECK((children==vector<pair<int,int>>{{1,ab},{2,ac}}));
+    vector<int> live;
+    view.it_child(view.get_state("a"),[&](int label,int child){if(view.prefix_count(child))live.push_back(label);});
+    CHECK(live==vector<int>{2});
+    children.clear();view.it_child(ab,collect);view.it_child(-1,collect);view.it_child(INT_MAX,collect);
+    CHECK(children.empty());
+    tree.clear();view.it_child(0,collect);CHECK(children.empty());
+    int fresh=tree.insert("z");view.it_child(0,collect);
+    CHECK((children==vector<pair<int,int>>{{25,fresh}}));
 }
 
 template<class A>
@@ -1262,6 +1289,7 @@ void check_alphabet_ac(){
 }
 
 void check_alphabets(){
+    check_trie_children();
     using namespace automata;
     static_assert(alphabet::lowercase::encode('a')==0&&alphabet::lowercase::encode('z')==25);
     static_assert(alphabet::uppercase::encode('A')==0&&alphabet::uppercase::encode('Z')==25);
