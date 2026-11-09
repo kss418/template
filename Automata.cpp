@@ -91,18 +91,29 @@ public:
         state(const _trie* owner, int idx) : owner(owner), idx(idx){}
     public:
         int id() const{ return idx; } // O(1)
-        int count() const{ return owner->count(idx); } // O(1)
-        int prefix_count() const{ return owner->prefix_count(idx); } // O(1)
-        state go(int c) const{ return {owner, owner->go(idx, c)}; } // O(1)
+        int count() const{ return idx == -1 ? 0 : owner->cnt[idx]; } // O(1)
+        int prefix_count() const{ return idx == -1 ? 0 : owner->pass[idx]; } // O(1)
+
+        state go(int c) const{ // O(1)
+            if(idx < 0 || idx >= (int)owner->adj.size()) return {owner, -1};
+            int nxt = owner->adj[idx][c];
+            return {owner, nxt ? nxt : -1};
+        }
 
         template<class F>
         void it_child(const F& f) const{ // O(Alphabet::size)
-            owner->it_child(idx, [&](int c, int nxt){ f(c, state(owner, nxt)); });
+            if(idx < 0 || idx >= (int)owner->adj.size()) return;
+            for(int c = 0;c < Alphabet::size;c++){
+                int nxt = owner->adj[idx][c];
+                if(nxt && owner->pass[nxt]) f(c, state(owner, nxt));
+            }
         }
 
         template<class F>
         void it_subtree(const F& f) const{ // O(k * Alphabet::size)
-            owner->it_subtree(idx, [&](int cur){ f(state(owner, cur)); });
+            if(idx < 0 || idx >= (int)owner->adj.size() || !owner->pass[idx]) return;
+            f(*this);
+            it_child([&](int, state nxt){ nxt.it_subtree(f); });
         }
     };
 
@@ -139,14 +150,6 @@ public:
         return 1;
     }
 
-    int count(const string& s) const{ auto v = tf(s); return count(v); } // O(|s|)
-    int count(span<const int> v) const{ return get_state(v).count(); } // O(|v|)
-    int count(int state) const{ return (state == -1 ? 0 : cnt[state]); } // O(1);
-
-    int prefix_count(const string& prefix) const { auto v = tf(prefix); return prefix_count(v); } // O(|s|)
-    int prefix_count(span<const int> v) const { return get_state(v).prefix_count(); } // O(|v|)
-    int prefix_count(int state) const{ return (state == -1 ? 0 : pass[state]); } // O(1)
-
     int rank(const string& s) const{ auto v = tf(s); return rank(v); } // O(|s| * Alphabet::size)
     int rank(span<const int> v) const{ // O(|v| * Alphabet::size)
         int ret = 0, cur = 0;
@@ -179,28 +182,6 @@ public:
             }
         }
         return ret;
-    }
-
-    int go(int state, int c) const{ // O(1)
-        if(state < 0 || state >= (int)adj.size()) return -1;
-        int nxt = adj[state][c];
-        return nxt ? nxt : -1;
-    }
-
-    template<class F>
-    void it_child(int state, const F& f) const{ // O(Alphabet::size)
-        if(state < 0 || state >= (int)adj.size()) return;
-        for(int c = 0;c < Alphabet::size;c++){
-            int nxt = adj[state][c];
-            if(nxt && pass[nxt]) f(c, nxt);
-        }
-    }
-
-    template<class F>
-    void it_subtree(int state, const F& f) const{ // O(k * Alphabet::size)
-        if(state < 0 || state >= (int)adj.size() || !pass[state]) return;
-        f(state);
-        it_child(state, [&](int, int nxt){ it_subtree(nxt, f); });
     }
 };
 
