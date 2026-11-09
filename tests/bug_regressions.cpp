@@ -1115,8 +1115,95 @@ void check_xor_kth(){
     }
 }
 
+void check_xor_all(){
+    const uint64_t full=numeric_limits<uint64_t>::max();
+    for(int bit:{0,1,2,5,31,63}){
+        uint64_t mask=bit==63?full:(1ull<<(bit+1))-1;
+        automata::_xor_trie tree(bit);vector<uint64_t> values;
+        auto apply=[&](uint64_t change){tree.xor_all(change);for(auto& value:values)value^=change;};
+        auto verify=[&](const automata::_xor_trie& current,const vector<uint64_t>& expected){
+            CHECK(current.size()==(int)expected.size());auto root=current.root();
+            CHECK(root.valid());CHECK(root.count()==0);CHECK(root.prefix_count()==(int)expected.size());
+            vector<uint64_t> listed;vector<int> preorder,subtree;
+            auto visit=[&](auto&& self,auto node,uint64_t prefix,int depth)->void{
+                int total=0;for(auto value:expected)if(!depth || (value>>(bit+1-depth))==prefix)total++;
+                CHECK(node.prefix_count()==total);CHECK(node.count()==(depth==bit+1?total:0));
+                CHECK(node.end()==(depth==bit+1&&total>0));CHECK(node.has_child()==(depth<bit+1&&total>0));
+                preorder.push_back(node.id());
+                if(depth==bit+1){
+                    for(int i=0;i<total;i++)listed.push_back(prefix);
+                    CHECK(!node.go(0).valid());CHECK(!node.go(1).valid());
+                    node.it_child([&](int,auto){CHECK(false);});
+                }else node.it_child([&](int label,auto child){
+                    auto stepped=node.go(label);CHECK(stepped.id()==child.id());CHECK(stepped.count()==child.count());
+                    self(self,child,(prefix<<1)|uint64_t(label),depth+1);
+                });
+            };
+            if(!expected.empty())visit(visit,root,0,0);
+            root.it_subtree([&](auto node){CHECK(node.prefix_count()>0);subtree.push_back(node.id());});
+            auto sorted=expected;sort(sorted.begin(),sorted.end());CHECK(listed==sorted);CHECK(subtree==preorder);
+            for(auto value:expected){
+                auto leaf=current.get_state(value),walk=root;
+                for(int i=bit;i>=0;i--)walk=walk.go((value>>i)&1ull);
+                CHECK(leaf.id()==walk.id());CHECK(leaf.count()==count(expected.begin(),expected.end(),value));
+                CHECK(walk.count()==leaf.count());CHECK(leaf.prefix_count()==leaf.count());
+            }
+            for(auto probe:vector<uint64_t>{0,mask})CHECK(current.get_state(probe).count()==count(expected.begin(),expected.end(),probe));
+            vector<uint64_t> limits{0,1,mask,full-1,full};if(bit<63)limits.push_back(mask+1);
+            for(uint64_t input:vector<uint64_t>{0,1,mask,1ull<<63,full}){
+                vector<pair<uint64_t,uint64_t>> ordered;
+                for(auto value:expected)ordered.emplace_back(input^value,value);
+                sort(ordered.begin(),ordered.end());
+                for(int k=1;k<=(int)ordered.size();k++){
+                    CHECK(current.kth(input,k)==ordered[k-1].first);CHECK(current.argkth(input,k)==ordered[k-1].second);
+                }
+                if(!ordered.empty()){
+                    CHECK(current.min(input)==ordered.front().first);CHECK(current.max(input)==ordered.back().first);
+                    CHECK(current.argmin(input)==ordered.front().second);CHECK(current.argmax(input)==ordered.back().second);
+                }
+                for(auto limit:limits){
+                    int less=0,equal=0,greater=0;
+                    for(auto value:expected){auto result=input^value;less+=result<limit;equal+=result==limit;greater+=result>limit;}
+                    CHECK(current.less(input,limit)==less);CHECK(current.equal(input,limit)==equal);CHECK(current.greater(input,limit)==greater);
+                }
+            }
+        };
+        apply(mask);verify(tree,values);
+        for(auto value:vector<uint64_t>{0,mask,mask/2,mask,1,1ull<<bit}){tree.insert(value);values.push_back(value);}
+        auto saved=tree.get_state(values.front());auto prefix=tree.root().go((values.front()>>bit)&1ull);
+        uint64_t retained=values.front();int saved_count=saved.count(),prefix_count=prefix.prefix_count();
+        for(auto change:vector<uint64_t>{0,1,mask,mask/2,1ull<<bit,mask}){
+            apply(change);retained^=change;
+            CHECK(tree.get_state(retained).id()==saved.id());CHECK(saved.count()==saved_count);
+            CHECK(tree.root().go((retained>>bit)&1ull).id()==prefix.id());CHECK(prefix.prefix_count()==prefix_count);
+            verify(tree,values);
+        }
+        tree.insert(1);values.push_back(1);verify(tree,values);
+        CHECK(tree.erase(values[1]));values.erase(values.begin()+1);verify(tree,values);
+        auto copy=tree;auto snapshot=values;apply(mask);verify(tree,values);verify(copy,snapshot);
+        mt19937_64 rng(1709+bit);
+        for(int round=0;round<80;round++){
+            int op=rng()%3;
+            if(op==0)apply(rng()&mask);
+            else if(values.empty() || (op==1&&values.size()<12)){
+                uint64_t value=rng()&mask;tree.insert(value);values.push_back(value);
+            }else{
+                int i=rng()%values.size();CHECK(tree.erase(values[i]));values.erase(values.begin()+i);
+            }
+            if(round%4==0)verify(tree,values);
+        }
+        auto pending=values;
+        for(auto value:pending){CHECK(tree.erase(value));values.erase(find(values.begin(),values.end(),value));}
+        CHECK(!tree.erase(0));apply(mask);verify(tree,values);
+        tree.insert(0);values.push_back(0);verify(tree,values);
+        tree.clear(bit);values.clear();verify(tree,values);
+    }
+    automata::_xor_trie reset;reset.insert(0);reset.xor_all(full);reset.clear(0);reset.insert(1);
+    CHECK(reset.min(0)==1);CHECK(reset.max(0)==1);CHECK(reset.root().go(1).count()==1);
+}
+
 void check_xor_thresholds(){
-    check_xor_state_api();check_xor_kth();
+    check_xor_state_api();check_xor_kth();check_xor_all();
     automata::_xor_trie defaults;
     defaults.insert(2);CHECK(defaults.get_state(0).count()==0);CHECK(defaults.get_state(2).count()==1);
     const uint64_t full=numeric_limits<uint64_t>::max(),high=1ull<<63;
