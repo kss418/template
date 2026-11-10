@@ -1338,13 +1338,13 @@ template<class A>
 vector<int> encoded(const string& s){
     vector<int> result;for(unsigned char c:s)result.push_back(A::encode(c));return result;
 }
-template<class A>
+template<class A,class Trie=automata::_trie<A>>
 void check_alphabet_trie(){
     vector<int> seen(256,0);
     for(int i=0;i<A::size;i++){
         unsigned char c=A::decode(i);CHECK(!seen[c]);seen[c]=1;CHECK(A::encode(c)==i);
     }
-    automata::_trie<A> tree;
+    Trie tree;
     vector<string> words{"",""};
     for(int i=0;i<A::size;i++)words.push_back(string(1,char(A::decode(i))));
     mt19937 rng(431+A::size);
@@ -1655,6 +1655,83 @@ void check_alphabet_ac(){
     dense.clear();sparse.clear();dense.build();sparse.build();CHECK(dense.count(text)==0);CHECK(sparse.count(text)==0);
 }
 
+void check_sparse_trie(){
+    check_alphabet_trie<automata::alphabet::bytes,automata::_sparse_trie<int>>();
+    using word=vector<long long>;
+    const long long low=LLONG_MIN,high=LLONG_MAX;
+    automata::_sparse_trie<> tree;
+    multiset<word> model;
+    set<word> probes{{},{42},{low},{high},{low,high},{high,low},{-1,0},{1ll<<40}};
+    auto insert=[&](const word& value){
+        int previous=tree.get_state(span<const long long>(value)).id();
+        auto terminal=tree.insert(span<const long long>(value));
+        if(previous!=-1)CHECK(terminal.id()==previous);
+        CHECK(terminal.end());model.insert(value);probes.insert(value);
+    };
+    auto verify=[&](const auto& current,const multiset<word>& values){
+        CHECK(current.size()==(int)values.size());
+        CHECK(current.kth(0).empty());CHECK(current.kth(values.size()+1).empty());
+        int k=1;for(const auto& value:values)CHECK(current.kth(k++)==value);
+        set<word> live_prefixes;
+        for(const auto& value:values)for(size_t len=0;len<=value.size();len++)live_prefixes.emplace(value.begin(),value.begin()+len);
+        set<word> queries=probes;queries.insert(live_prefixes.begin(),live_prefixes.end());
+        for(const auto& value:queries){
+            auto state=current.get_state(span<const long long>(value));
+            int prefix_count=0;set<long long> children;
+            for(const auto& candidate:values)if(candidate.size()>=value.size()&&equal(value.begin(),value.end(),candidate.begin())){
+                prefix_count++;if(candidate.size()>value.size())children.insert(candidate[value.size()]);
+            }
+            CHECK(state.count()==(int)values.count(value));CHECK(state.prefix_count()==prefix_count);
+            CHECK(state.end()==(values.count(value)>0));CHECK(state.has_child()==!children.empty());
+            CHECK(current.rank(span<const long long>(value))==distance(values.begin(),values.lower_bound(value)));
+            vector<long long> labels;
+            state.it_child([&](long long label,auto child){
+                labels.push_back(label);CHECK(child.valid());CHECK(child.prefix_count()>0);
+                CHECK(child.id()==state.go(label).id());
+            });
+            CHECK(labels==vector<long long>(children.begin(),children.end()));
+        }
+        vector<int> wanted,visited;
+        for(const auto& prefix:live_prefixes)wanted.push_back(current.get_state(span<const long long>(prefix)).id());
+        auto root=current.get_state(span<const long long>());CHECK(root.valid());CHECK(root.id()==0);
+        root.it_subtree([&](auto state){visited.push_back(state.id());});CHECK(visited==wanted);
+        auto missing=root.go(42);CHECK(!missing.valid());CHECK(missing.id()==-1);
+        CHECK(missing.count()==0);CHECK(missing.prefix_count()==0);CHECK(!missing.go(low).valid());
+        missing.it_child([&](long long,auto){CHECK(false);});missing.it_subtree([&](auto){CHECK(false);});
+    };
+    verify(tree,model);
+    for(const auto& value:vector<word>{{},{},{low},{high},{-1},{0},{low,high},{low,high},{high,low},{1ll<<40,0},{1ll<<40}})insert(value);
+    verify(tree,model);
+    mt19937 rng(41823);array<long long,6> labels{low,-1,0,1,1ll<<40,high};
+    for(int round=0;round<160;round++){
+        if(model.empty()||(model.size()<45&&rng()%3)){
+            word value;for(int len=rng()%5;len--; )value.push_back(labels[rng()%labels.size()]);insert(value);
+        }else{
+            auto it=next(model.begin(),rng()%model.size());word value=*it;
+            CHECK(tree.erase(span<const long long>(value)));model.erase(it);
+        }
+        if(round%8==0)verify(tree,model);
+    }
+    CHECK(!tree.erase(span<const long long>(word{42})));verify(tree,model);
+    insert({low,high});auto saved=tree.get_state(span<const long long>(word{low,high}));
+    auto copy=tree;auto copied=copy.get_state(span<const long long>(word{low,high}));int before=saved.count();
+    insert({low,high});CHECK(saved.count()==before+1);CHECK(copied.count()==before);
+    auto snapshot=model;snapshot.erase(snapshot.find(word{low,high}));verify(copy,snapshot);verify(tree,model);
+    auto pending=model;for(const auto& value:pending)CHECK(tree.erase(span<const long long>(value)));
+    model.clear();verify(tree,model);CHECK(saved.valid());CHECK(!saved.end());CHECK(saved.prefix_count()==0);
+    int saved_id=saved.id();insert({low,high});CHECK(tree.get_state(span<const long long>(word{low,high})).id()==saved_id);CHECK(saved.count()==1);
+    for(int label=100;label<2200;label++)tree.insert(span<const long long>(word{label}));
+    CHECK(saved.count()==1);CHECK(tree.get_state(span<const long long>(word{low,high})).id()==saved_id);
+    tree.clear();model.clear();verify(tree,model);CHECK(!tree.get_state(span<const long long>(word{low,high})).valid());
+    insert({});verify(tree,model);CHECK(tree.get_state("").count()==1);
+    automata::_sparse_trie<pair<long long,long long>> pairs;
+    vector<pair<long long,long long>> first{{low,high},{0,-1}},second{{high,low}};
+    auto terminal=pairs.insert(span<const pair<long long,long long>>(first));pairs.insert(span<const pair<long long,long long>>(second));
+    CHECK(terminal.count()==1);CHECK(pairs.kth(1)==first);CHECK(pairs.kth(2)==second);
+    CHECK(pairs.rank(span<const pair<long long,long long>>(second))==1);
+    CHECK(pairs.erase(span<const pair<long long,long long>>(first)));CHECK(terminal.valid());CHECK(!terminal.end());
+}
+
 void check_alphabets(){
     check_trie_state_handles();check_trie_children();check_trie_subtree();
     check_ac_state_api<automata::_ac<>,automata::alphabet::lowercase>();
@@ -1882,7 +1959,7 @@ int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
         {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
-        {"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},
+        {"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},{"sparse_trie",check_sparse_trie},
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
         {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"ccw_large_coordinates",check_ccw_large_coordinates},
         {"dlog_phi",check_dlog_phi},{"dlog_large_arithmetic",check_dlog_large_arithmetic},
