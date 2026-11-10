@@ -1661,6 +1661,11 @@ void check_alphabets(){
     check_ac_state_api<automata::_sparse_ac<>,automata::alphabet::bytes>();
     check_ac_count_each<automata::_ac<>>();check_ac_count_each<automata::_sparse_ac<>>();
     using namespace automata;
+    CHECK((alphabet::tf<alphabet::lowercase>("azba")==vector<int>{0,25,1,0}));
+    CHECK((alphabet::tf<alphabet::alnum,long long>("0AZaz9")==vector<long long>{0,10,35,36,61,9}));
+    CHECK((alphabet::tf<folded_alphabet>("aBZ")==vector<int>{0,1,25}));
+    CHECK((alphabet::tf<alphabet::bytes,long long>(string("\0\x80\xff",3))==vector<long long>{0,128,255}));
+    CHECK(alphabet::tf<alphabet::bytes>("").empty());
     static_assert(alphabet::lowercase::encode('a')==0&&alphabet::lowercase::encode('z')==25);
     static_assert(alphabet::uppercase::encode('A')==0&&alphabet::uppercase::encode('Z')==25);
     static_assert(alphabet::digits::encode('0')==0&&alphabet::digits::encode('9')==9);

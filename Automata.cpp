@@ -66,6 +66,13 @@ namespace alphabet{
             return static_cast<unsigned char>(i);
         }
     };
+
+    template <class Alphabet, class T = int>
+    vector <T> tf(const string& s){ // O(|s|)
+        vector <T> ret; ret.reserve(s.size());
+        for(unsigned char c : s) ret.push_back(static_cast<T>(Alphabet::encode(c)));
+        return ret;
+    }
 }
 
 template <class Alphabet = alphabet::lowercase>
@@ -76,11 +83,6 @@ private:
     int new_node(){
         adj.push_back(array<int, Alphabet::size>{}); cnt.push_back(0); pass.push_back(0);
         return (int)adj.size() - 1;
-    }
-    vector <int> tf(const string& s) const{
-        vector <int> ret; ret.reserve(s.size());
-        for(unsigned char c : s) ret.push_back(Alphabet::encode(c));
-        return ret;
     }
 public:
     class state{
@@ -123,7 +125,7 @@ public:
     _trie(){ clear(); } // O(1)
     void clear(){ adj.clear(); cnt.clear(); pass.clear(); new_node(); } // O(1)
 
-    state get_state(const string& s) const{ auto v = tf(s); return get_state(v); } // O(|s|)
+    state get_state(const string& s) const{ auto v = alphabet::tf<Alphabet>(s); return get_state(v); } // O(|s|)
     state get_state(span<const int> v) const{ // O(|v|)
         int cur = 0;
         for(auto& c : v){
@@ -134,7 +136,7 @@ public:
     }
 
     int size() const{ return pass.empty() ? 0 : pass[0]; } // O(1)
-    state insert(const string& s){ auto v = tf(s); return insert(v); } // O(|s|)
+    state insert(const string& s){ auto v = alphabet::tf<Alphabet>(s); return insert(v); } // O(|s|)
     state insert(span<const int> v){ // O(|v|)
         int cur = 0; pass[cur]++;
         for(auto &c : v){
@@ -144,7 +146,7 @@ public:
         cnt[cur]++; return {this, cur};
     }
 
-    bool erase(const string& s){ auto v = tf(s); return erase(v); } // O(|s|)
+    bool erase(const string& s){ auto v = alphabet::tf<Alphabet>(s); return erase(v); } // O(|s|)
     bool erase(span<const int> v){ // O(|v|)
         int state = get_state(v).id();
         if(state == -1 || !cnt[state]) return 0; 
@@ -153,7 +155,7 @@ public:
         return 1;
     }
 
-    int rank(const string& s) const{ auto v = tf(s); return rank(v); } // O(|s| * Alphabet::size)
+    int rank(const string& s) const{ auto v = alphabet::tf<Alphabet>(s); return rank(v); } // O(|s| * Alphabet::size)
     int rank(span<const int> v) const{ // O(|v| * Alphabet::size)
         int ret = 0, cur = 0;
         for(auto& c : v){
@@ -342,12 +344,6 @@ private:
     vector <array<int, Alphabet::size>> adj;
     vector<int> cnt, terminal_count, f, dep, dict, order;
     vector <bool> end;
-    vector <int> tf(const string& s) const{
-        vector <int> ret; ret.reserve(s.size());
-        for(unsigned char c : s) ret.push_back(Alphabet::encode(c));
-        return ret;
-    }
-
     int new_node(){
         adj.push_back(array<int, Alphabet::size>{}); f.push_back(0); cnt.push_back(0); terminal_count.push_back(0);
         end.push_back(0); dict.push_back(0); dep.push_back(0);
@@ -400,7 +396,7 @@ public:
     const vector<int>& depth() const{ return dep; }
     const vector<bool>& terminal() const{ return end; }
     int size() const{ return (int)adj.size(); } // O(1)
-    state insert(const string& s){ auto v = tf(s); return insert(v); } // O(|s|)
+    state insert(const string& s){ auto v = alphabet::tf<Alphabet>(s); return insert(v); } // O(|s|)
     state insert(span<const int> v){ // O(|v|)
         int cur = 0;
         for(auto &c : v){
@@ -443,7 +439,7 @@ public:
         }
     }
 
-    vector<ll> count_each(const string& s) const{ auto v = tf(s); return count_each(v); } // O(|s| + max_node)
+    vector<ll> count_each(const string& s) const{ auto v = alphabet::tf<Alphabet>(s); return count_each(v); } // O(|s| + max_node)
     vector<ll> count_each(span<const int> v) const{ // O(|v| + max_node)
         vector<ll> ret(size(), 0);
         it_state(v, [&](const state& st){ ret[st.id()]++; });
@@ -453,7 +449,7 @@ public:
         return ret;
     }
 
-    ll count(const string& s) const{ auto v = tf(s); return count(v); } // O(|s|)
+    ll count(const string& s) const{ auto v = alphabet::tf<Alphabet>(s); return count(v); } // O(|s|)
     ll count(span<const int> v) const{ // O(|v|)
         ll ret = 0;
         it_state(v, [&](const state& st){ ret += st.match_count(); });
@@ -461,7 +457,7 @@ public:
     }
 
     template <class F> 
-    void it_state(const string& s, const F& f) const{ auto v = tf(s); it_state(v, f); } // O(|s|)
+    void it_state(const string& s, const F& f) const{ auto v = alphabet::tf<Alphabet>(s); it_state(v, f); } // O(|s|)
     template <class F> 
     void it_state(span<const int> v, const F& f) const{ // O(|v|)
         auto cur = root();
@@ -499,12 +495,6 @@ private:
         int nxt = child(state, c);
         if(nxt) return nxt;
         int ret = new_node(); add_edge(state, c, ret);
-        return ret;
-    }
-
-    vector <T> tf(const string& s) const{
-        vector <T> ret; ret.reserve(s.size());
-        for(unsigned char c : s) ret.push_back(static_cast<T>(Alphabet::encode(c)));
         return ret;
     }
 public:
@@ -561,7 +551,7 @@ public:
     const vector<int>& depth() const{ return dep; } // O(1)
     const vector<bool>& terminal() const{ return end; } // O(1)
     int size() const{ return (int)head.size(); } // O(1)
-    state insert(const string& s){ auto v = tf(s); return insert(v); } // O(|s|)
+    state insert(const string& s){ auto v = alphabet::tf<Alphabet, T>(s); return insert(v); } // O(|s|)
     state insert(span<const T> v){ // O(|v|)
         int cur = 0;
         for(auto &c : v){
@@ -595,7 +585,7 @@ public:
         }
     }
 
-    vector<ll> count_each(const string& s) const{ auto v = tf(s); return count_each(v); } // O(scan + max_node)
+    vector<ll> count_each(const string& s) const{ auto v = alphabet::tf<Alphabet, T>(s); return count_each(v); } // O(scan + max_node)
     vector<ll> count_each(span<const T> v) const{ // O(scan + max_node)
         vector<ll> ret(size(), 0);
         it_state(v, [&](const state& st){ ret[st.id()]++; });
@@ -605,7 +595,7 @@ public:
         return ret;
     }
 
-    ll count(const string& s) const{ auto v = tf(s); return count(v); } // O(|s|)
+    ll count(const string& s) const{ auto v = alphabet::tf<Alphabet, T>(s); return count(v); } // O(|s|)
     ll count(span<const T> v) const{ // O(|v|)
         ll ret = 0;
         it_state(v, [&](const state& st){ ret += st.match_count(); });
@@ -613,7 +603,7 @@ public:
     }
 
     template <class F>
-    void it_state(const string& s, const F& f) const{ auto v = tf(s); it_state(v, f); } // O(|s|)
+    void it_state(const string& s, const F& f) const{ auto v = alphabet::tf<Alphabet, T>(s); it_state(v, f); } // O(|s|)
     template <class F>
     void it_state(span<const T> v, const F& f) const{ // O(|v|)
         auto cur = root();
