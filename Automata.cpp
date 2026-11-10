@@ -340,8 +340,8 @@ template <class Alphabet = alphabet::lowercase>
 class _ac{
 private:
     vector <array<int, Alphabet::size>> adj;
-    vector<int> cnt, terminal_count, f, dep, dict;
-    vector <bool> end; bool built;
+    vector<int> cnt, terminal_count, f, dep, dict, order;
+    vector <bool> end;
     vector <int> tf(const string& s) const{
         vector <int> ret; ret.reserve(s.size());
         for(unsigned char c : s) ret.push_back(Alphabet::encode(c));
@@ -392,15 +392,10 @@ public:
 
     _ac(){ clear(); } // O(1)
     void clear(){ // O(1)
-        built = 0; adj.clear(); end.clear(); dep.clear();
+        order.clear(); adj.clear(); end.clear(); dep.clear();
         f.clear(); cnt.clear(); terminal_count.clear(); dict.clear(); new_node();
     }
     
-    void reserve(int max_node){ // O(1)
-        adj.reserve(max_node); f.reserve(max_node); dep.reserve(max_node);
-        cnt.reserve(max_node); terminal_count.reserve(max_node); end.reserve(max_node); dict.reserve(max_node);
-    }
-
     state root() const{ return {this, 0}; } // O(1)
     const vector<int>& depth() const{ return dep; }
     const vector<bool>& terminal() const{ return end; }
@@ -426,15 +421,15 @@ public:
             int nxt = adj[cur][c];
             if(nxt && dep[nxt] != dep[cur] + 1) adj[cur][c] = 0;
         }
-        built = 1; deque <int> q;
+        order.assign(1, 0);
         for(int c = 0;c < Alphabet::size;c++){
             int nxt = adj[0][c];
             if(!nxt) continue;
-            f[nxt] = 0; dict[nxt] = 0; q.push_back(nxt);
+            f[nxt] = 0; dict[nxt] = 0; order.push_back(nxt);
         }
         
-        while(!q.empty()){
-            int cur = q.front(); q.pop_front();
+        for(int i = 1;i < (int)order.size();i++){
+            int cur = order[i];
             cnt[cur] += cnt[f[cur]];
             dict[cur] = end[f[cur]] ? f[cur] : dict[f[cur]];
             for(int c = 0;c < Alphabet::size;c++){
@@ -442,10 +437,20 @@ public:
                 if(!nxt) adj[cur][c] = adj[f[cur]][c];
                 else{
                     f[nxt] = adj[f[cur]][c];
-                    q.push_back(nxt);
+                    order.push_back(nxt);
                 }
             }
         }
+    }
+
+    vector<ll> count_each(const string& s) const{ auto v = tf(s); return count_each(v); } // O(|s| + max_node)
+    vector<ll> count_each(span<const int> v) const{ // O(|v| + max_node)
+        vector<ll> ret(size(), 0);
+        it_state(v, [&](const state& st){ ret[st.id()]++; });
+        for(int i = (int)order.size() - 1;i > 0;i--){
+            int cur = order[i]; ret[f[cur]] += ret[cur];
+        }
+        return ret;
     }
 
     ll count(const string& s) const{ auto v = tf(s); return count(v); } // O(|s|)
@@ -470,8 +475,8 @@ template <class T = ll, class Alphabet = alphabet::bytes>
 class _sparse_ac{
 private:
     vector <ll> cnt, terminal_count;
-    vector <int> f, dep, dict, head, to, next;
-    vector <T> ch; vector <bool> end; bool built;
+    vector <int> f, dep, dict, head, to, next, order;
+    vector <T> ch; vector <bool> end;
     
     int new_node(){
         f.push_back(0); cnt.push_back(0); terminal_count.push_back(0); head.push_back(0);
@@ -494,6 +499,12 @@ private:
         int nxt = child(state, c);
         if(nxt) return nxt;
         int ret = new_node(); add_edge(state, c, ret);
+        return ret;
+    }
+
+    vector <T> tf(const string& s) const{
+        vector <T> ret; ret.reserve(s.size());
+        for(unsigned char c : s) ret.push_back(static_cast<T>(Alphabet::encode(c)));
         return ret;
     }
 public:
@@ -539,24 +550,11 @@ public:
 
     _sparse_ac(){ clear(); } // O(1)
     void clear(){ // O(1)
-        built = 0; end.clear(); dep.clear();
+        order.clear(); end.clear(); dep.clear();
         f.clear(); dict.clear(); cnt.clear(); terminal_count.clear();
         to.clear(); next.clear(); ch.clear(); head.clear();
         to.push_back(0); next.push_back(0); ch.push_back(T{});
         new_node();
-    }
-
-    vector <T> tf(const string& s) const{
-        vector <T> ret; ret.reserve(s.size());
-        for(unsigned char c : s) ret.push_back(static_cast<T>(Alphabet::encode(c)));
-        return ret;
-    }
-    
-    void reserve(int max_node, int max_edge = -1){ // O(1)
-        f.reserve(max_node); dep.reserve(max_node); head.reserve(max_node);
-        end.reserve(max_node); dict.reserve(max_node); cnt.reserve(max_node); terminal_count.reserve(max_node);
-        if(max_edge == -1) return;
-        to.reserve(max_edge + 1); next.reserve(max_edge + 1); ch.reserve(max_edge + 1);
     }
 
     state root() const{ return {this, 0}; } // O(1)
@@ -579,22 +577,32 @@ public:
     
     void build(){ 
         cnt = terminal_count; fill(all(f), 0); fill(all(dict), 0);
-        built = 1; deque <int> q;
+        order.assign(1, 0);
         for(int e = head[0]; e > 0; e = next[e]){
             int nxt = to[e]; f[nxt] = dict[nxt] = 0;
-            q.push_back(nxt);
+            order.push_back(nxt);
         }
         
-        while(!q.empty()){
-            int cur = q.front(); q.pop_front();
+        for(int i = 1;i < (int)order.size();i++){
+            int cur = order[i];
             cnt[cur] += cnt[f[cur]];
             dict[cur] = end[f[cur]] ? f[cur] : dict[f[cur]];
             for(int e = head[cur];e > 0;e = next[e]){
                 auto c = ch[e]; int p = f[cur], u = child(p, c);
                 while(p && !u) p = f[p], u = child(p, c);
-                int nxt = to[e]; f[nxt] = u; q.push_back(nxt);
+                int nxt = to[e]; f[nxt] = u; order.push_back(nxt);
             }
         }
+    }
+
+    vector<ll> count_each(const string& s) const{ auto v = tf(s); return count_each(v); } // O(scan + max_node)
+    vector<ll> count_each(span<const T> v) const{ // O(scan + max_node)
+        vector<ll> ret(size(), 0);
+        it_state(v, [&](const state& st){ ret[st.id()]++; });
+        for(int i = (int)order.size() - 1;i > 0;i--){
+            int cur = order[i]; ret[f[cur]] += ret[cur];
+        }
+        return ret;
     }
 
     ll count(const string& s) const{ auto v = tf(s); return count(v); } // O(|s|)

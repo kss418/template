@@ -1555,6 +1555,37 @@ void check_ac_state_api(){
     CHECK(total==view.count("xyz"));CHECK(view.count("")==0);
 }
 
+template<class AC>
+void check_ac_count_each(){
+    AC ac;const auto& view=ac;
+    vector<string> patterns{"ababa","baba","aba","ba","a","aba","x"};
+    vector<typename AC::state> terminals;
+    for(const auto& pattern:patterns)terminals.push_back(ac.insert(pattern));
+    ac.build();string text="abababaxababa";
+    vector<long long> wanted{3,3,5,5,7,5,1};
+    auto verify=[&]{
+        auto counts=view.count_each(text);CHECK(counts.size()==size_t(view.size()));CHECK(counts[0]==(long long)text.size());
+        long long total=0;
+        for(int i=0;i<(int)terminals.size();i++){CHECK(counts[terminals[i].id()]==wanted[i]);total+=counts[terminals[i].id()];}
+        CHECK(total==view.count(text));CHECK(view.count_each(text)==counts);
+        auto empty=view.count_each(string());CHECK(empty==vector<long long>(view.size(),0));
+        auto missing=view.count_each(string("zzzz"));CHECK(missing[0]==4);
+        for(auto terminal:terminals)CHECK(missing[terminal.id()]==0);
+        CHECK(view.count_each(text)==counts);
+    };
+    verify();ac.build();verify();CHECK(terminals[2].id()==terminals[5].id());
+    auto copy=ac;CHECK(copy.count_each(text)==view.count_each(text));
+    auto extra=ac.insert("bab");auto long_pattern=ac.insert(string(1024,'z'));
+    terminals.push_back(extra);wanted.push_back(3);terminals.push_back(long_pattern);wanted.push_back(0);ac.build();verify();
+    auto counts=view.count_each(text);CHECK(counts[extra.id()]==3);CHECK(counts[long_pattern.id()]==0);
+    ac.build();CHECK(view.count_each(text)==counts);
+    ac.clear();auto first=ac.insert(""),second=ac.insert(""),letter=ac.insert("a");ac.build();
+    counts=view.count_each(string("aba"));CHECK(first.id()==second.id());CHECK(counts[first.id()]==3);CHECK(counts[letter.id()]==2);
+    CHECK(counts[first.id()]+counts[second.id()]+counts[letter.id()]==view.count("aba"));
+    CHECK(view.count_each(string())==vector<long long>(view.size(),0));
+    ac.clear();ac.build();counts=view.count_each(string("abc"));CHECK(counts==vector<long long>{3});CHECK(view.count("abc")==0);
+}
+
 template<class A>
 void check_alphabet_ac(){
     automata::_ac<A> dense,dense_span;
@@ -1592,6 +1623,15 @@ void check_alphabet_ac(){
             CHECK(actual==vector<int>(lengths.begin(),lengths.end()));CHECK(cur.max_match_len()==*lengths.begin());
         }
         auto verify_states=[&](const auto& current){
+            auto counts=current.count_each(text);CHECK(counts==current.count_each(span<const int>(codes)));
+            CHECK(counts.size()==size_t(current.size()));CHECK(counts[0]==(long long)text.size());
+            long long sum=0;
+            for(const auto& pattern:patterns){
+                long long wanted=0;for(size_t i=0;i+pattern.size()<=text.size();i++)wanted+=text.compare(i,pattern.size(),pattern)==0;
+                auto terminal=current.root();for(int label:encoded<A>(pattern))terminal=terminal.go(label);
+                CHECK(counts[terminal.id()]==wanted);sum+=counts[terminal.id()];
+            }
+            CHECK(sum==current.count(text));
             auto state=current.root();long long total=0;
             for(int i=0;i<(int)codes.size();i++){
                 state=state.go(codes[i]);int matched=0,terminal=0;set<int,greater<int>> lengths;map<int,int,greater<int>> ending;
@@ -1619,6 +1659,7 @@ void check_alphabets(){
     check_trie_state_handles();check_trie_children();check_trie_subtree();
     check_ac_state_api<automata::_ac<>,automata::alphabet::lowercase>();
     check_ac_state_api<automata::_sparse_ac<>,automata::alphabet::bytes>();
+    check_ac_count_each<automata::_ac<>>();check_ac_count_each<automata::_sparse_ac<>>();
     using namespace automata;
     static_assert(alphabet::lowercase::encode('a')==0&&alphabet::lowercase::encode('z')==25);
     static_assert(alphabet::uppercase::encode('A')==0&&alphabet::uppercase::encode('Z')==25);
@@ -1646,6 +1687,7 @@ void check_alphabets(){
     for(int label:word){dense_state=dense_state.go(label);sparse_state=sparse_state.go(label);}
     CHECK(dense_state.terminal_count()==1);CHECK(dense_state.match_count()==1);
     CHECK(sparse_state.terminal_count()==1);CHECK(sparse_state.match_count()==1);
+    CHECK(d.count_each(span<const int>(word))[dense_state.id()]==1);CHECK(s.count_each(span<const int>(word))[sparse_state.id()]==1);
     vector<int> arbitrary{-200,1000,-7};_sparse_ac<int,sparse_span_only_alphabet> arbitrary_sparse;
     arbitrary_sparse.insert(span<const int>(arbitrary));arbitrary_sparse.build();CHECK(arbitrary_sparse.count(span<const int>(arbitrary))==1);
     _sparse_ac<> raw;raw.insert("a");raw.build();CHECK(raw.count("aA0")==1);
