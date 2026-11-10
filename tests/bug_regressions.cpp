@@ -1526,6 +1526,7 @@ void check_ac_state_api(){
     auto chunk=view.root();long long total=0;
     for(const string& part:vector<string>{"us","h","ershe"})for(unsigned char c:part){chunk=chunk.go(A::encode(c));total+=chunk.match_count();}
     CHECK(total==view.count("ushershe"));CHECK(chunk.id()==scan(view,"ushershe").id());
+    long long bulk_total=0;view.it_state("ushershe",[&](auto state){bulk_total+=state.match_count();});CHECK(bulk_total==total);
     int saved_id=he.id();auto copy=ac;auto copied=scan(copy,"he");
     ac.insert("he");ac.insert(string(1024,'x'));ac.build();
     CHECK(he.id()==saved_id);CHECK(he.terminal_count()==3);CHECK(he.match_count()==4);
@@ -1565,13 +1566,14 @@ void check_alphabet_ac(){
         CHECK(dense.count(span<const int>(codes))==expected);CHECK(sparse.count(span<const int>(codes))==expected);
         CHECK(dense_span.count(text)==expected);CHECK(sparse_span.count(text)==expected);
         vector<int> states,other;
-        dense.it_state(text,[&](int s){states.push_back(s);});dense.it_state(span<const int>(codes),[&](int s){other.push_back(s);});CHECK(states==other);
-        int cur=0;for(int i=0;i<(int)codes.size();i++){cur=dense.go(cur,codes[i]);CHECK(cur==states[i]);}
+        dense.it_state(text,[&](auto s){states.push_back(s.id());});dense.it_state(span<const int>(codes),[&](auto s){other.push_back(s.id());});CHECK(states==other);
+        auto cur=dense.root();
         for(int i=0;i<(int)text.size();i++){
+            cur=cur.go(codes[i]);CHECK(cur.id()==states[i]);
             set<int,greater<int>> lengths;
             for(const string& s:patterns)if(s.size()<=size_t(i+1)&&text.compare(i+1-s.size(),s.size(),s)==0)lengths.insert(s.size());
-            vector<int> actual;dense.it_match_lens(states[i],[&](int len){actual.push_back(len);});
-            CHECK(actual==vector<int>(lengths.begin(),lengths.end()));CHECK(dense.max_match_len(states[i])==*lengths.begin());
+            vector<int> actual;cur.it_match_lens([&](int len){actual.push_back(len);});
+            CHECK(actual==vector<int>(lengths.begin(),lengths.end()));CHECK(cur.max_match_len()==*lengths.begin());
         }
         auto verify_states=[&](const auto& current){
             auto state=current.root();long long total=0;
