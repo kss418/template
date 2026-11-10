@@ -1511,16 +1511,28 @@ void check_ac_state_api(){
     auto empty=view.root();CHECK(empty.id()==0);CHECK(empty.terminal_count()==0);CHECK(empty.match_count()==0);
     CHECK(empty.go(A::encode('x')).id()==0);CHECK(empty.max_match_len()==0);
     empty.it_match_lens([&](int){CHECK(false);});
-    for(const string& pattern:vector<string>{"he","he","she","e","hers"})ac.insert(pattern);
+    vector<typename AC::state> terminals;
+    for(const string& pattern:vector<string>{"he","he","she","e","hers"})terminals.push_back(ac.insert(pattern));
     ac.build();auto he=scan(view,"he"),she=scan(view,"she");
+    CHECK(terminals[0].id()==terminals[1].id());CHECK(terminals[0].id()==he.id());CHECK(terminals[2].id()==she.id());
     CHECK(he.terminal_count()==2);CHECK(he.match_count()==3);
     CHECK(she.terminal_count()==1);CHECK(she.match_count()==4);CHECK(she.max_match_len()==3);
     vector<int> lengths;she.it_match_lens([&](int len){lengths.push_back(len);});CHECK((lengths==vector<int>{3,2,1}));
+    vector<int> matched;vector<long long> multiplicities;
+    she.it_match([&](auto hit){matched.push_back(hit.id());multiplicities.push_back(hit.terminal_count());});
+    CHECK((matched==vector<int>{terminals[2].id(),terminals[0].id(),terminals[3].id()}));
+    CHECK((multiplicities==vector<long long>{1,2,1}));
+    vector<vector<int>> pattern_ids(ac.size());for(int i=0;i<(int)terminals.size();i++)pattern_ids[terminals[i].id()].push_back(i);
+    vector<int> ids;she.it_match([&](auto hit){for(int id:pattern_ids[hit.id()])ids.push_back(id);});
+    CHECK((ids==vector<int>{2,0,1,3}));
     for(int k:{-1,0,1,2,5}){
         lengths.clear();she.it_match_lens(k,[&](int len){lengths.push_back(len);});
         vector<int> expected{3,2,1};expected.resize(min(3,max(0,k)));CHECK(lengths==expected);
+        matched.clear();she.it_match(k,[&](auto hit){matched.push_back(hit.id());});
+        vector<int> wanted{terminals[2].id(),terminals[0].id(),terminals[3].id()};wanted.resize(min(3,max(0,k)));CHECK(matched==wanted);
     }
     auto her=she.go(A::encode('r'));CHECK(her.terminal_count()==0);CHECK(her.match_count()==0);
+    her.it_match([&](auto){CHECK(false);});
     CHECK(her.go(A::encode('s')).id()==scan(view,"hers").id());
     CHECK(she.go(A::encode('x')).id()==0);
     auto chunk=view.root();long long total=0;
@@ -1528,13 +1540,17 @@ void check_ac_state_api(){
     CHECK(total==view.count("ushershe"));CHECK(chunk.id()==scan(view,"ushershe").id());
     long long bulk_total=0;view.it_state("ushershe",[&](auto state){bulk_total+=state.match_count();});CHECK(bulk_total==total);
     int saved_id=he.id();auto copy=ac;auto copied=scan(copy,"he");
-    ac.insert("he");ac.insert(string(1024,'x'));ac.build();
+    CHECK(ac.insert("he").id()==terminals[0].id());auto long_pattern=ac.insert(string(1024,'x'));ac.build();
+    CHECK(long_pattern.terminal_count()==1);CHECK(terminals[0].terminal_count()==3);
     CHECK(he.id()==saved_id);CHECK(he.terminal_count()==3);CHECK(he.match_count()==4);
     CHECK(copied.terminal_count()==2);CHECK(copied.match_count()==3);
+    multiplicities.clear();scan(copy,"she").it_match([&](auto hit){multiplicities.push_back(hit.terminal_count());});
+    CHECK((multiplicities==vector<long long>{1,2,1}));
     ac.build();CHECK(he.match_count()==4);CHECK(she.match_count()==5);
-    ac.clear();ac.insert("");ac.insert("");ac.build();
+    ac.clear();CHECK(ac.insert("").id()==0);CHECK(ac.insert("").id()==0);ac.build();
     auto root=view.root();CHECK(root.id()==0);CHECK(root.terminal_count()==2);CHECK(root.match_count()==2);
     lengths.clear();root.it_match_lens([&](int len){lengths.push_back(len);});CHECK(lengths==vector<int>{0});
+    matched.clear();root.it_match([&](auto hit){CHECK(hit.terminal_count()==2);matched.push_back(hit.id());});CHECK(matched==vector<int>{0});
     total=0;auto state=root;for(unsigned char c:string("xyz")){state=state.go(A::encode(c));total+=state.match_count();}
     CHECK(total==view.count("xyz"));CHECK(view.count("")==0);
 }
@@ -1554,8 +1570,8 @@ void check_alphabet_ac(){
     patterns.push_back(patterns[0]);
     for(int i=0;i<100;i++)text+=char(A::decode(rng()%A::size));
     auto insert=[&](const string& s){
-        auto codes=encoded<A>(s);dense.insert(s);sparse.insert(s);
-        dense_span.insert(span<const int>(codes));sparse_span.insert(span<const int>(codes));
+        auto codes=encoded<A>(s);auto d=dense.insert(s);auto p=sparse.insert(s);
+        CHECK(dense_span.insert(span<const int>(codes)).id()==d.id());CHECK(sparse_span.insert(span<const int>(codes)).id()==p.id());
     };
     for(const string& s:patterns)insert(s);
     auto verify=[&]{
@@ -1578,13 +1594,18 @@ void check_alphabet_ac(){
         auto verify_states=[&](const auto& current){
             auto state=current.root();long long total=0;
             for(int i=0;i<(int)codes.size();i++){
-                state=state.go(codes[i]);int matched=0,terminal=0;set<int,greater<int>> lengths;
+                state=state.go(codes[i]);int matched=0,terminal=0;set<int,greater<int>> lengths;map<int,int,greater<int>> ending;
                 for(const auto& pattern:patterns)if(pattern.size()<=size_t(i+1)&&text.compare(i+1-pattern.size(),pattern.size(),pattern)==0){
                     matched++;lengths.insert(pattern.size());if((int)pattern.size()==current.depth()[state.id()])terminal++;
+                    auto end=current.root();for(int label:encoded<A>(pattern))end=end.go(label);ending[pattern.size()]=end.id();
                 }
                 CHECK(state.match_count()==matched);CHECK(state.terminal_count()==terminal);total+=state.match_count();
                 vector<int> actual;state.it_match_lens([&](int len){actual.push_back(len);});
                 CHECK(actual==vector<int>(lengths.begin(),lengths.end()));CHECK(state.max_match_len()==*lengths.begin());
+                vector<int> expected_ids,matched_ids;long long multiplicity=0;
+                for(auto [length,id]:ending)expected_ids.push_back(id);
+                state.it_match([&](auto hit){CHECK(hit.terminal_count()>0);matched_ids.push_back(hit.id());multiplicity+=hit.terminal_count();});
+                CHECK(matched_ids==expected_ids);CHECK(multiplicity==matched);
             }
             CHECK(total==current.count(text));
         };

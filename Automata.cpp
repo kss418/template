@@ -370,15 +370,23 @@ public:
         }
 
         template<class F>
+        void it_match(const F& f) const{ it_match(0x3f3f3f3f, f); } // O(matches)
+
+        template<class F>
+        void it_match(int k, const F& f) const{ // O(min(k, matches))
+            if(k <= 0) return; int cnt = 0;
+            if(owner->end[idx]){
+                f(state(owner, idx)); if(++cnt >= k) return;
+            }
+            for(int cur = owner->dict[idx];cur > 0 && cnt < k;cur = owner->dict[cur]) f(state(owner, cur)), ++cnt;
+        }
+
+        template<class F>
         void it_match_lens(const F& f) const{ it_match_lens(0x3f3f3f3f, f); } // O(matches)
 
         template<class F>
         void it_match_lens(int k, const F& f) const{ // O(min(k, matches))
-            if(k <= 0) return; int cnt = 0;
-            if(owner->end[idx]){
-                f(owner->dep[idx]); if(++cnt >= k) return;
-            }
-            for(int cur = owner->dict[idx];cur > 0 && cnt < k;cur = owner->dict[cur]) f(owner->dep[cur]), ++cnt;
+            it_match(k, [&](const state& matched){ f(owner->dep[matched.id()]); });
         }
     };
 
@@ -397,8 +405,8 @@ public:
     const vector<int>& depth() const{ return dep; }
     const vector<bool>& terminal() const{ return end; }
     int size() const{ return (int)adj.size(); } // O(1)
-    void insert(const string& s){ auto v = tf(s); insert(v); } // O(|s|)
-    void insert(span<const int> v){ // O(|v|)
+    state insert(const string& s){ auto v = tf(s); return insert(v); } // O(|s|)
+    state insert(span<const int> v){ // O(|v|)
         int cur = 0;
         for(auto &c : v){
             int nxt = adj[cur][c];
@@ -409,7 +417,7 @@ public:
             }
             cur = adj[cur][c];
         }
-        end[cur] = 1; terminal_count[cur]++;
+        end[cur] = 1; terminal_count[cur]++; return {this, cur};
     }
     
     void build(){ // O(max_node * Alphabet::size)
@@ -509,15 +517,23 @@ public:
         }
 
         template<class F>
+        void it_match(const F& f) const{ it_match(0x3f3f3f3f, f); } // O(matches)
+
+        template<class F>
+        void it_match(int k, const F& f) const{ // O(min(k, matches))
+            if(k <= 0) return; int cnt = 0;
+            if(owner->end[idx]){
+                f(state(owner, idx)); if(++cnt >= k) return;
+            }
+            for(int cur = owner->dict[idx];cur > 0 && cnt < k;cur = owner->dict[cur]) f(state(owner, cur)), ++cnt;
+        }
+
+        template<class F>
         void it_match_lens(const F& f) const{ it_match_lens(0x3f3f3f3f, f); } // O(matches)
 
         template<class F>
         void it_match_lens(int k, const F& f) const{ // O(min(k, matches))
-            if(k <= 0) return; int cnt = 0;
-            if(owner->end[idx]){
-                f(owner->dep[idx]); if(++cnt >= k) return;
-            }
-            for(int cur = owner->dict[idx];cur > 0 && cnt < k;cur = owner->dict[cur]) f(owner->dep[cur]), ++cnt;
+            it_match(k, [&](const state& matched){ f(owner->dep[matched.id()]); });
         }
     };
 
@@ -547,8 +563,8 @@ public:
     const vector<int>& depth() const{ return dep; } // O(1)
     const vector<bool>& terminal() const{ return end; } // O(1)
     int size() const{ return (int)head.size(); } // O(1)
-    void insert(const string& s){ auto v = tf(s); insert(v); } // O(|s|)
-    void insert(span<const T> v){ // O(|v|)
+    state insert(const string& s){ auto v = tf(s); return insert(v); } // O(|s|)
+    state insert(span<const T> v){ // O(|v|)
         int cur = 0;
         for(auto &c : v){
             int nxt = child(cur, c);
@@ -558,7 +574,7 @@ public:
             }
             cur = nxt;
         }
-        end[cur] = 1; terminal_count[cur]++;
+        end[cur] = 1; terminal_count[cur]++; return {this, cur};
     }
     
     void build(){ 
