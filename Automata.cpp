@@ -9,7 +9,7 @@ using pll = pair<ll, ll>; using tll = tuple<ll, ll, ll>;
 constexpr ll INF = 0x3f3f3f3f3f3f3f3f;
 constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 
-namespace alphabet {
+namespace alphabet{
     class lowercase{
     public:
         static constexpr int size = 26;

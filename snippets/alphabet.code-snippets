@@ -2,7 +2,7 @@
   "alphabet": {
     "prefix": ">>alphabet",
     "body": [
-      "namespace alphabet {",
+      "namespace alphabet{",
       "    class lowercase{",
       "    public:",
       "        static constexpr int size = 26;",
