@@ -1334,10 +1334,6 @@ public:
     static constexpr int size=3;
     static int encode(unsigned char)=delete;
 };
-class sparse_span_only_alphabet {
-public:
-    static int encode(unsigned char)=delete;
-};
 template<class A>
 vector<int> encoded(const string& s){
     vector<int> result;for(unsigned char c:s)result.push_back(A::encode(c));return result;
@@ -1589,7 +1585,7 @@ void check_ac_count_each(){
 template<class A>
 void check_alphabet_ac(){
     automata::_ac<A> dense,dense_span;
-    automata::_sparse_ac<int,A> sparse,sparse_span;
+    automata::_sparse_ac<int> sparse,sparse_span;
     vector<string> patterns;string text;
     for(int i=0;i<A::size;i++){
         string s(1,char(A::decode(i)));patterns.push_back(s);text+=s;
@@ -1602,7 +1598,8 @@ void check_alphabet_ac(){
     for(int i=0;i<100;i++)text+=char(A::decode(rng()%A::size));
     auto insert=[&](const string& s){
         auto codes=encoded<A>(s);auto d=dense.insert(s);auto p=sparse.insert(s);
-        CHECK(dense_span.insert(span<const int>(codes)).id()==d.id());CHECK(sparse_span.insert(span<const int>(codes)).id()==p.id());
+        auto raw_codes=encoded<automata::alphabet::bytes>(s);
+        CHECK(dense_span.insert(span<const int>(codes)).id()==d.id());CHECK(sparse_span.insert(span<const int>(raw_codes)).id()==p.id());
     };
     for(const string& s:patterns)insert(s);
     auto verify=[&]{
@@ -1610,7 +1607,8 @@ void check_alphabet_ac(){
         long long expected=0;for(const string& s:patterns)for(size_t i=0;i+s.size()<=text.size();i++)expected+=text.compare(i,s.size(),s)==0;
         auto codes=encoded<A>(text);
         CHECK(dense.count(text)==expected);CHECK(sparse.count(text)==expected);
-        CHECK(dense.count(span<const int>(codes))==expected);CHECK(sparse.count(span<const int>(codes))==expected);
+        auto raw_codes=encoded<automata::alphabet::bytes>(text);
+        CHECK(dense.count(span<const int>(codes))==expected);CHECK(sparse.count(span<const int>(raw_codes))==expected);
         CHECK(dense_span.count(text)==expected);CHECK(sparse_span.count(text)==expected);
         vector<int> states,other;
         dense.it_state(text,[&](auto s){states.push_back(s.id());});dense.it_state(span<const int>(codes),[&](auto s){other.push_back(s.id());});CHECK(states==other);
@@ -1622,13 +1620,14 @@ void check_alphabet_ac(){
             vector<int> actual;cur.it_match_lens([&](int len){actual.push_back(len);});
             CHECK(actual==vector<int>(lengths.begin(),lengths.end()));CHECK(cur.max_match_len()==*lengths.begin());
         }
-        auto verify_states=[&](const auto& current){
+        auto verify_states=[&](const auto& current,const auto& encode){
+            auto codes=encode(text);
             auto counts=current.count_each(text);CHECK(counts==current.count_each(span<const int>(codes)));
             CHECK(counts.size()==size_t(current.size()));CHECK(counts[0]==(long long)text.size());
             long long sum=0;
             for(const auto& pattern:patterns){
                 long long wanted=0;for(size_t i=0;i+pattern.size()<=text.size();i++)wanted+=text.compare(i,pattern.size(),pattern)==0;
-                auto terminal=current.root();for(int label:encoded<A>(pattern))terminal=terminal.go(label);
+                auto terminal=current.root();for(int label:encode(pattern))terminal=terminal.go(label);
                 CHECK(counts[terminal.id()]==wanted);sum+=counts[terminal.id()];
             }
             CHECK(sum==current.count(text));
@@ -1637,7 +1636,7 @@ void check_alphabet_ac(){
                 state=state.go(codes[i]);int matched=0,terminal=0;set<int,greater<int>> lengths;map<int,int,greater<int>> ending;
                 for(const auto& pattern:patterns)if(pattern.size()<=size_t(i+1)&&text.compare(i+1-pattern.size(),pattern.size(),pattern)==0){
                     matched++;lengths.insert(pattern.size());if((int)pattern.size()==current.depth()[state.id()])terminal++;
-                    auto end=current.root();for(int label:encoded<A>(pattern))end=end.go(label);ending[pattern.size()]=end.id();
+                    auto end=current.root();for(int label:encode(pattern))end=end.go(label);ending[pattern.size()]=end.id();
                 }
                 CHECK(state.match_count()==matched);CHECK(state.terminal_count()==terminal);total+=state.match_count();
                 vector<int> actual;state.it_match_lens([&](int len){actual.push_back(len);});
@@ -1649,7 +1648,8 @@ void check_alphabet_ac(){
             }
             CHECK(total==current.count(text));
         };
-        verify_states(dense);verify_states(sparse);verify_states(dense_span);verify_states(sparse_span);
+        verify_states(dense,encoded<A>);verify_states(sparse,encoded<automata::alphabet::bytes>);
+        verify_states(dense_span,encoded<A>);verify_states(sparse_span,encoded<automata::alphabet::bytes>);
     };
     verify();verify();patterns.push_back(text.substr(0,3));insert(patterns.back());verify();
     dense.clear();sparse.clear();dense.build();sparse.build();CHECK(dense.count(text)==0);CHECK(sparse.count(text)==0);
@@ -1685,7 +1685,7 @@ void check_alphabets(){
     int states=0;
     auto numeric_root=numeric.get_state(span<const int>());CHECK(numeric_root.go(2).go(0).go(1).count()==1);
     states=0;numeric_root.it_subtree([&](auto node){CHECK(node.prefix_count()==1);states++;});CHECK(states==4);
-    _ac<span_only_alphabet> d;_sparse_ac<int,span_only_alphabet> s;
+    _ac<span_only_alphabet> d;_sparse_ac<int> s;
     d.insert(span<const int>(word));s.insert(span<const int>(word));d.build();s.build();
     CHECK(d.count(span<const int>(word))==1);CHECK(s.count(span<const int>(word))==1);
     auto dense_state=d.root();auto sparse_state=s.root();
@@ -1693,7 +1693,7 @@ void check_alphabets(){
     CHECK(dense_state.terminal_count()==1);CHECK(dense_state.match_count()==1);
     CHECK(sparse_state.terminal_count()==1);CHECK(sparse_state.match_count()==1);
     CHECK(d.count_each(span<const int>(word))[dense_state.id()]==1);CHECK(s.count_each(span<const int>(word))[sparse_state.id()]==1);
-    vector<int> arbitrary{-200,1000,-7};_sparse_ac<int,sparse_span_only_alphabet> arbitrary_sparse;
+    vector<int> arbitrary{-200,1000,-7};_sparse_ac<int> arbitrary_sparse;
     arbitrary_sparse.insert(span<const int>(arbitrary));arbitrary_sparse.build();CHECK(arbitrary_sparse.count(span<const int>(arbitrary))==1);
     _sparse_ac<> raw;raw.insert("a");raw.build();CHECK(raw.count("aA0")==1);
     _trie<> legacy;legacy.insert("ab");CHECK(legacy.get_state("ab").count()==1);
