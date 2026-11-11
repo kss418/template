@@ -32,6 +32,13 @@ public:
     static void merge(node& a, node& b){ a.v += b.v; }
 };
 static_assert(!is_default_constructible_v<uf_leaf_policy::node>);
+static_assert(!is_convertible_v<sets::_uf_value<uf_leaf_policy>&,sets::_uf&>);
+class uf_consuming_policy{
+public:
+    using node=uf_leaf_policy::node;
+    static node leaf(){return {7};}
+    static void merge(node& a,node& b){a.v+=b.v;b.v=0;}
+};
 class sum_mo {
 public:
     class node {
@@ -337,6 +344,53 @@ void check_uf_split(bool base){
     CHECK(as_const(plain).root(0));CHECK((plain.groups()==vector<vector<int>>{{0}}));
     vector<int> singleton;as_const(plain).it_root([&](int root){singleton.push_back(root);});CHECK(singleton==vector<int>{0});
 }
+void check_uf_value_api(bool base){
+    using uf=sets::_uf_value<uf_leaf_policy>;
+    using node=uf::node;
+    uf values(0,base);const auto& read=values;
+    for(int length:{8,3,0,1,6}){
+        vector<node> input;for(int i=0;i<length;i++)input.push_back({100+i*13});
+        values.make(span<const node>(input));int count=max(0,length-int(base));
+        CHECK(values.count()==count);
+        vector<vector<int>> singletons;for(int i=base;i<length;i++)singletons.push_back({i});
+        CHECK(values.groups()==singletons);
+        vector<int> roots;
+        read.it_component([&](int root,const auto& value){
+            static_assert(is_const_v<remove_reference_t<decltype(value)>>);
+            CHECK(base<=root&&root<length);CHECK(read.root(root));CHECK(values.size(root)==1);
+            CHECK(value.v==input[root].v);CHECK(&value==&values.get(root));roots.push_back(root);
+        });
+        vector<int> wanted;for(int i=base;i<length;i++)wanted.push_back(i);CHECK(roots==wanted);
+        long long sum=0;
+        values.it_component([&](int root,node& value){value.v+=root+1;sum+=value.v;});
+        for(int i=base;i<length;i++)CHECK(values.get(i).v==input[i].v+i+1);
+        if(count){
+            int winner=length-1;for(int i=base;i<winner;i++)CHECK(values.merge(winner,i));
+            CHECK(values.get(base).v==sum);int calls=0;
+            read.it_component([&](int root,const node& value){CHECK(root==winner);CHECK(value.v==sum);calls++;});
+            CHECK(calls==1);values.set(base,{55});
+            for(int i=base;i<length;i++)CHECK(values.get(i).v==55);
+            CHECK(values.size(base)==count);
+        }
+    }
+    vector<node> reset{{900},{11},{13},{17}};values.make(span<const node>(reset));
+    CHECK(values.count()==4-int(base));for(int i=base;i<4;i++)CHECK(values.get(i).v==reset[i].v);
+    values.clear(1,!base);values.make(span<const node>(reset));
+    CHECK(values.count()==4-int(!base));for(int i=!base;i<4;i++)CHECK(values.get(i).v==reset[i].v);
+    values.clear(base+2,base);auto& previous=values.get(base);
+    values.merge(base+1,base+2);values.merge(base+1,base);
+    CHECK(previous.v==7);CHECK(values.get(base).v==21);previous.v=99;CHECK(values.get(base).v==21);
+    values.set(base,{31});CHECK(values.get(base+1).v==31);CHECK(values.size(base)==3);
+    auto copied=values;values.make(span<const node>(reset));CHECK(copied.get(base).v==31);
+    sets::_uf_value<uf_consuming_policy> consuming(0,base);consuming.make(span<const node>(reset));
+    long long sum=0;for(int i=base;i<4;i++)sum+=reset[i].v;
+    for(int i=base+1;i<4;i++)CHECK(consuming.merge(base,i));
+    CHECK(consuming.get(3).v==sum);CHECK(!consuming.merge(base,3));CHECK(consuming.get(base).v==sum);
+    consuming.it_component([&](int root,node& value){CHECK(root==base);CHECK(value.v==sum);value.v=42;});
+    CHECK(consuming.get(3).v==42);
+    uf alias(0,0);alias.set(0,{81});alias.make(span<const node>(&alias.get(0),1));CHECK(alias.get(0).v==81);
+}
+
 void check_weighted_uf(bool base){
     using state=sets::_wuf::state;
     const int first=base,n=base+7;
@@ -506,6 +560,6 @@ void check_oracles(bool base){
     }
 }
 int main(){
-    try {for(bool base:{false,true}){check_ranges(base);check_mos_factories(base);check_sets(base);check_uf_split(base);check_weighted_uf(base);check_graphs(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();check_pbs();cout<<"PASS "<<checks<<" base-index checks\n";return 0;}
+    try {for(bool base:{false,true}){check_ranges(base);check_mos_factories(base);check_sets(base);check_uf_split(base);check_uf_value_api(base);check_weighted_uf(base);check_graphs(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();check_pbs();cout<<"PASS "<<checks<<" base-index checks\n";return 0;}
     catch(const exception& e){cerr<<"FAIL "<<e.what()<<'\n';return 1;}
 }
