@@ -341,24 +341,48 @@ void check_gf2(){
 
 template<uint64_t mod>
 void check_fixed_comb_mod(){
-    combinatorics::_comb<mod> table((int)min<uint64_t>(mod-1,60));
-    vector<vector<uint64_t>> pascal(table.n+1,vector<uint64_t>(table.n+1));
-    for(int n=0;n<=table.n;++n){
+    int limit=min<uint64_t>(mod-1,70);
+    combinatorics::_comb<mod> table(limit);const auto& read=table;
+    vector<vector<uint64_t>> pascal(limit+1,vector<uint64_t>(limit+1));
+    uint64_t fact=1;
+    for(int n=0;n<=limit;++n){
         pascal[n][0]=pascal[n][n]=1;
-        for(int r=1;r<n;++r)pascal[n][r]=(pascal[n-1][r-1]+pascal[n-1][r])%mod;
-        for(int r=0;r<=n;++r)CHECK(table.ret(n,r)==(long long)pascal[n][r]);
-        CHECK(table.ret(n,-1)==0 && table.ret(n,n+1)==0);
+        for(int r=1;r<n;++r)pascal[n][r]=((__uint128_t)pascal[n-1][r-1]+pascal[n-1][r])%mod;
+        if(n)fact=(__uint128_t)fact*n%mod;
+        CHECK(read.factorial(n)==fact);CHECK((__uint128_t)read.inv_factorial(n)*fact%mod==1);
+        uint64_t perm=1;
+        for(int r=0;r<=n;++r){
+            if(r)perm=(__uint128_t)perm*(n-r+1)%mod;
+            CHECK(read.ret(n,r)==pascal[n][r]);CHECK(read.perm(n,r)==perm);
+        }
+        CHECK(read.ret(n,-1)==0 && read.ret(n,n+1)==0);
+        CHECK(read.perm(n,-1)==0 && read.perm(n,n+1)==0);
     }
-    CHECK(table.ret(-1,0)==0);
+    CHECK(read.ret(-1,0)==0);CHECK(read.perm(-1,0)==0);
+    CHECK(read.multicomb(-1,0)==0);CHECK(read.multicomb(0,-1)==0);
+    for(int n=0;n<=limit+1;n++)for(int r=0;r<=limit;r++){
+        if(!n)CHECK(read.multicomb(n,r)==(r==0));
+        else if(n+r-1<=limit)CHECK(read.multicomb(n,r)==pascal[n+r-1][r]);
+    }
 }
 
 void check_fixed_comb(){
     check_fixed_comb_mod<2>();check_fixed_comb_mod<7>();check_fixed_comb_mod<61>();
     check_fixed_comb_mod<998244353>();check_fixed_comb_mod<1000000007>();
+    check_fixed_comb_mod<18446744073709551557ull>();
     combinatorics::_comb table(5);CHECK(table.ret(5,2)==10);
     combinatorics::_comb<> zero(0);CHECK(zero.ret(0,0)==1 && zero.ret(0,1)==0);
-    static_assert(same_as<decltype(table.fac)::value_type,numeric_templates::_mint<998244353>>);
+    static_assert(same_as<decltype(table)::mint,numeric_templates::_mint<998244353>>);
+    static_assert(same_as<decltype(as_const(table).ret(0,0)),uint64_t>);
     static_assert(!is_constructible_v<combinatorics::_comb<7>,int,int>);
+    combinatorics::_comb<> reusable;const auto& read=reusable;
+    CHECK(read.ret(0,0)==1);CHECK(read.factorial(0)==1);CHECK(read.inv_factorial(0)==1);
+    reusable.build(8);CHECK(read.ret(8,4)==70);CHECK(read.perm(8,3)==336);CHECK(read.multicomb(4,5)==56);
+    reusable.build(2);CHECK(read.ret(2,1)==2);CHECK(read.factorial(2)==2);CHECK(read.multicomb(2,1)==2);
+    reusable.build(0);CHECK(read.ret(0,0)==1);CHECK(read.multicomb(0,0)==1);CHECK(read.multicomb(0,7)==0);
+    CHECK(read.multicomb(1,0)==1);reusable.build(8);CHECK(read.ret(8,4)==70);CHECK(read.inv_factorial(8)==421456191);
+    combinatorics::_comb<18446744073709551557ull> wide(67);const auto& wide_read=wide;
+    CHECK(wide_read.ret(67,33)==14226520737620288370ull);
 }
 
 template<class A,class B>

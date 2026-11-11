@@ -10,22 +10,42 @@ constexpr ll INF = 0x3f3f3f3f3f3f3f3f;
 constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 
 template <u64 mod = 998244353>
-class _comb{
+class _comb{ // mod == prime
 public:
     using mint = _mint<mod>;
-    vector <mint> fac, inv; int n;
-    _comb(int n) : n(n), fac(n + 1), inv(n + 1){
-        assert(n < mod);
+private:
+    vector <mint> fac, ifac; int n;
+public:
+    _comb(int n = 0){ build(n); } // O(n + log mod)
+
+    void build(int n){ // O(n + log mod)
+        assert(n >= 0 && (u64)n < mod);
+        this->n = n; fac.resize(n + 1); ifac.resize(n + 1);
         fac[0] = 1;
         for(int i = 1;i <= n;i++) fac[i] = fac[i - 1] * i;
-        inv[n] = fac[n].pow(mod - 2);
-        for(int i = n - 1;i >= 0;i--) inv[i] = inv[i + 1] * (i + 1);
+        ifac[n] = fac[n].pow(mod - 2);
+        for(int i = n - 1;i >= 0;i--) ifac[i] = ifac[i + 1] * (i + 1);
     }
 
-    ll ret(ll n, ll r){
+    u64 ret(ll n, ll r) const{ // O(1)
         if(n < 0 || r < 0 || n < r) return 0;
-        return (fac[n] * inv[r] * inv[n - r]).v;
+        return (fac[n] * ifac[r] * ifac[n - r]).v;
     }
+
+    u64 perm(ll n, ll r) const{ // O(1)
+        if(n < 0 || r < 0 || n < r) return 0;
+        return (fac[n] * ifac[n - r]).v;
+    }
+
+    u64 multicomb(ll n, ll r) const{ // O(1)
+        if(n < 0 || r < 0) return 0;
+        if(!n) return !r;
+        assert((i128)n + r - 1 <= this->n);
+        return ret(n + r - 1, r);
+    }
+
+    u64 factorial(ll n) const{ return fac[n].v; } // O(1)
+    u64 inv_factorial(ll n) const{ return ifac[n].v; } // O(1)
 };
 
 class _lucas{ // mod == prime
