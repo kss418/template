@@ -282,6 +282,8 @@ void check_ufset(bool base){
         set<int> components;for(int i=base;i<=n;i++)components.insert(component[i]);
         CHECK(uf.count()==(int)components.size());
         CHECK(uf.find(base-1)==int(base)-1);CHECK(uf.find(n+1)==n+1);
+        CHECK(uf.left(base-1)==int(base)-1);CHECK(uf.right(base-1)==int(base)-1);
+        CHECK(uf.left(n+1)==n+1);CHECK(uf.right(n+1)==n+1);
         vector<int> roots;as_const(uf).it_root([&](int root){CHECK(as_const(uf).root(root));roots.push_back(root);});
         CHECK(roots.size()==components.size());CHECK(is_sorted(roots.begin(),roots.end()));
         CHECK(adjacent_find(roots.begin(),roots.end())==roots.end());
@@ -298,6 +300,7 @@ void check_ufset(bool base){
             int left=n+1,right=base-1,size=0;
             for(int j=base;j<=n;j++)if(component[i]==component[j]){left=min(left,j);right=max(right,j);size++;}
             CHECK(seen[i]==1);CHECK(uf.size(i)==size);CHECK(as_const(uf).root(i)==(uf.find(i)==i));
+            CHECK(uf.left(i)==left);CHECK(uf.right(i)==right);
             CHECK(uf.prv(i)==uf.find(left-1));CHECK(uf.nxt(i)==uf.find(right+1));
             for(int j=base;j<=n;j++)CHECK(uf.same(i,j)==(component[i]==component[j]));
         }

@@ -205,6 +205,8 @@ public:
     int size(int x){ return -p[find_internal(x + 1)]; } // O(alpha(n)) amortized
     bool root(int x) const{ return p[x + 1] < 0; } // O(1)
     bool same(int a, int b) { return find(a) == find(b); } // O(alpha(n)) amortized
+    int left(int x){ return l[find_internal(x + 1)] - 1; } // O(alpha(n)) amortized
+    int right(int x){ return r[find_internal(x + 1)] - 1; } // O(alpha(n)) amortized
     int prv(int x){ return find_internal(l[find_internal(x + 1)] - 1) - 1; } // O(alpha(n)) amortized
     int nxt(int x){ return find_internal(r[find_internal(x + 1)] + 1) - 1; } // O(alpha(n)) amortized
 
