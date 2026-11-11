@@ -171,42 +171,56 @@ public:
 };
 
 class _ufset{
-    bool base;
 private:
-    vector <int> p, sz, l, r; int n, cc;
-    int find_internal(int num){
-        if(p[num] == -1) return num;
+    bool base;
+    vector <int> p, l, r; int n, cc;
+    int find_internal(int num){ // O(alpha(n)) amortized
+        if(p[num] < 0) return num;
         return p[num] = find_internal(p[num]);
     }
 public:
     _ufset(int n = 0, bool base = 1){ clear(n, base); } // O(n)
     void clear(int n, bool base = 1){ // O(n)
         this->n = n; this->base = base; cc = n - base + 1;
-        p.assign(n + 3, -1); sz.assign(n + 3, 1);
+        p.assign(n + 3, -1);
         l.resize(n + 3); r.resize(n + 3);
         iota(all(l), 0); iota(all(r), 0);
     }
 
-    int find(int num){ // O(1)
-        assert(base - 1 <= num && num <= n + 1);
+    int find(int num){ // O(alpha(n)) amortized
         return find_internal(num + 1) - 1;
     }
 
-    bool merge(int a, int b){ // O(1)
-        assert(base <= a && a <= n && base <= b && b <= n);
+    bool merge(int a, int b){ // O(alpha(n)) amortized
         a = find_internal(a + 1); b = find_internal(b + 1);
         if (a == b) return false; 
-        if (sz[a] < sz[b]) swap(a, b);
-        p[b] = a; sz[a] += sz[b]; cc--;
+        if (p[a] > p[b]) swap(a, b);
+        p[a] += p[b]; p[b] = a; cc--;
         l[a] = min(l[a], l[b]);
         r[a] = max(r[a], r[b]);
         return true;
     }
 
     int count() const{ return cc; } // O(1)
-    int size(int x){ return sz[find_internal(x + 1)]; } // O(1)
-    bool root(int x){ return find(x) == x; } // O(1)
-    bool same(int a, int b) { return find(a) == find(b); } // O(1)
-    int prv(int x){ return find_internal(l[find_internal(x + 1)] - 1) - 1; } // O(1)
-    int nxt(int x){ return find_internal(r[find_internal(x + 1)] + 1) - 1; } // O(1)
+    int size(int x){ return -p[find_internal(x + 1)]; } // O(alpha(n)) amortized
+    bool root(int x) const{ return p[x + 1] < 0; } // O(1)
+    bool same(int a, int b) { return find(a) == find(b); } // O(alpha(n)) amortized
+    int prv(int x){ return find_internal(l[find_internal(x + 1)] - 1) - 1; } // O(alpha(n)) amortized
+    int nxt(int x){ return find_internal(r[find_internal(x + 1)] + 1) - 1; } // O(alpha(n)) amortized
+
+    template<class F>
+    void it_root(const F& f) const{ // O(n)
+        for(int i = base;i <= n;i++) if(root(i)) f(i);
+    }
+
+    vector<vector<int>> groups(){ // O(n * alpha(n))
+        vector<int> id(n + 1, -1);
+        vector<vector<int>> ret; ret.reserve(cc);
+        it_root([&](int root){
+            id[root] = (int)ret.size(); ret.emplace_back();
+            ret.back().reserve(-p[root + 1]);
+        });
+        for(int i = base;i <= n;i++) ret[id[find(i)]].push_back(i);
+        return ret;
+    }
 };

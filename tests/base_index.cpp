@@ -277,6 +277,63 @@ void check_sets(bool base){
     sets::_ufset intervals(n,base);CHECK(intervals.count()==count);CHECK(intervals.prv(first)==first-1);CHECK(intervals.nxt(n)==n+1);
     intervals.merge(first,first+1);CHECK(intervals.same(first,first+1));CHECK(intervals.prv(first+1)==first-1);CHECK(intervals.nxt(first)==first+2);
 }
+void check_ufset(bool base){
+    auto verify=[&](sets::_ufset& uf,int n,const vector<int>& component){
+        set<int> components;for(int i=base;i<=n;i++)components.insert(component[i]);
+        CHECK(uf.count()==(int)components.size());
+        CHECK(uf.find(base-1)==int(base)-1);CHECK(uf.find(n+1)==n+1);
+        vector<int> roots;as_const(uf).it_root([&](int root){CHECK(as_const(uf).root(root));roots.push_back(root);});
+        CHECK(roots.size()==components.size());CHECK(is_sorted(roots.begin(),roots.end()));
+        CHECK(adjacent_find(roots.begin(),roots.end())==roots.end());
+        auto groups=uf.groups();CHECK(groups.size()==roots.size());vector<int> seen(n+1,0);
+        for(int g=0;g<(int)groups.size();g++){
+            CHECK(!groups[g].empty());CHECK(is_sorted(groups[g].begin(),groups[g].end()));
+            CHECK((int)groups[g].size()==uf.size(roots[g]));
+            for(int vertex:groups[g]){
+                CHECK(base<=vertex&&vertex<=n);CHECK(component[vertex]==component[roots[g]]);
+                CHECK(uf.find(vertex)==roots[g]);seen[vertex]++;
+            }
+        }
+        for(int i=base;i<=n;i++){
+            int left=n+1,right=base-1,size=0;
+            for(int j=base;j<=n;j++)if(component[i]==component[j]){left=min(left,j);right=max(right,j);size++;}
+            CHECK(seen[i]==1);CHECK(uf.size(i)==size);CHECK(as_const(uf).root(i)==(uf.find(i)==i));
+            CHECK(uf.prv(i)==uf.find(left-1));CHECK(uf.nxt(i)==uf.find(right+1));
+            for(int j=base;j<=n;j++)CHECK(uf.same(i,j)==(component[i]==component[j]));
+        }
+        CHECK(uf.nxt(base-1)==(components.empty()?n+1:uf.find(base)));
+        CHECK(uf.prv(n+1)==(components.empty()?int(base)-1:uf.find(n)));
+    };
+    mt19937 rng(415+base);
+    for(int length=0;length<=10;length++){
+        int n=int(base)+length-1;sets::_ufset uf(n,base);vector<int> component(n+1);
+        iota(component.begin(),component.end(),0);verify(uf,n,component);
+        for(int step=0;step<80&&length;step++){
+            int a=base+rng()%length,b=base+rng()%length,from=component[b],to=component[a];
+            CHECK(uf.merge(a,b)==(from!=to));
+            if(from!=to)for(int i=base;i<=n;i++)if(component[i]==from)component[i]=to;
+            if(step%5==0)verify(uf,n,component);
+            if(step==39){uf.clear(n,base);iota(component.begin(),component.end(),0);verify(uf,n,component);}
+        }
+        verify(uf,n,component);
+    }
+    sets::_ufset ordered(base+4,base);
+    CHECK(ordered.merge(base+3,base+4));CHECK(ordered.merge(base+3,base));CHECK(ordered.find(base)==base+3);
+    CHECK((ordered.groups()==vector<vector<int>>{{base+1},{base+2},{base,base+3,base+4}}));
+    CHECK(ordered.prv(base)==int(base)-1);CHECK(ordered.nxt(base)==base+5);CHECK(!ordered.same(base,base+1));
+    CHECK(ordered.merge(base+1,base));CHECK(ordered.find(base+1)==base+3);CHECK(ordered.size(base)==4);
+    sets::_ufset blocks(base+3,base);blocks.merge(base,base+1);blocks.merge(base+2,base+3);
+    CHECK(blocks.prv(base+3)==int(base));CHECK(blocks.nxt(base)==base+2);
+    vector<int> forward,backward;
+    for(int cur=blocks.nxt(base-1);cur<=base+3;cur=blocks.nxt(cur))forward.push_back(cur);
+    for(int cur=blocks.prv(base+4);cur>=base;cur=blocks.prv(cur))backward.push_back(cur);
+    CHECK((forward==vector<int>{base,base+2}));CHECK((backward==vector<int>{base+2,base}));
+    ordered.clear(0,1);CHECK(ordered.groups().empty());CHECK(ordered.count()==0);
+    as_const(ordered).it_root([&](int){CHECK(false);});
+    ordered.clear(0,0);CHECK((ordered.groups()==vector<vector<int>>{{0}}));CHECK(as_const(ordered).root(0));
+    CHECK(ordered.prv(0)==-1);CHECK(ordered.nxt(0)==1);
+}
+
 void check_uf_split(bool base){
     sets::_uf basic;sets::_uf_value<> empty;
     CHECK(basic.count()==0);CHECK(empty.count()==0);
@@ -597,6 +654,6 @@ void check_oracles(bool base){
     }
 }
 int main(){
-    try {for(bool base:{false,true}){check_ranges(base);check_mos_factories(base);check_sets(base);check_uf_split(base);check_uf_value_api(base);check_weighted_uf(base);check_weighted_uf_large(base);check_graphs(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();check_pbs();cout<<"PASS "<<checks<<" base-index checks\n";return 0;}
+    try {for(bool base:{false,true}){check_ranges(base);check_mos_factories(base);check_sets(base);check_ufset(base);check_uf_split(base);check_uf_value_api(base);check_weighted_uf(base);check_weighted_uf_large(base);check_graphs(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();check_pbs();cout<<"PASS "<<checks<<" base-index checks\n";return 0;}
     catch(const exception& e){cerr<<"FAIL "<<e.what()<<'\n';return 1;}
 }
