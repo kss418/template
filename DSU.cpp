@@ -10,34 +10,50 @@ constexpr ll INF = 0x3f3f3f3f3f3f3f3f;
 constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 
 class _uf{
-    bool base;
 private:
-    vector<int> p, sz; int n, cc;
+    bool base;
+    vector<int> p; int n, cc;
 protected:
-    bool merge_internal(int& a, int& b){ // O(1)
+    bool merge_internal(int& a, int& b){ // O(alpha(n)) amortized
         a = find(a); b = find(b);
         if(a == b) return false;
-        if(sz[a] < sz[b]) swap(a, b);
-        p[b] = a; sz[a] += sz[b]; cc--;
+        if(p[a] > p[b]) swap(a, b);
+        p[a] += p[b]; p[b] = a; cc--;
         return true;
     }
 public:
     _uf(int n = 0, bool base = 1){ clear(n, base); } // O(n)
     void clear(int n, bool base = 1){ // O(n)
         this->n = n; this->base = base; cc = n - base + 1;
-        p.assign(n + 1, -1); sz.assign(n + 1, 1);
+        p.assign(n + 1, -1);
     }
 
-    int find(int x){ // O(1)
-        if(p[x] == -1) return x;
+    int find(int x){ // O(alpha(n)) amortized
+        if(p[x] < 0) return x;
         return p[x] = find(p[x]);
     }
 
-    bool merge(int a, int b){ return merge_internal(a, b); } // O(1)
+    bool merge(int a, int b){ return merge_internal(a, b); } // O(alpha(n)) amortized
     int count() const{ return cc; } // O(1)
-    int size(int x){ return sz[find(x)]; } // O(1)
-    bool root(int x){ return find(x) == x; } // O(1)
-    bool same(int a, int b){ return find(a) == find(b); } // O(1)
+    int size(int x){ return -p[find(x)]; } // O(alpha(n)) amortized
+    bool root(int x) const{ return p[x] < 0; } // O(1)
+    bool same(int a, int b){ return find(a) == find(b); } // O(alpha(n)) amortized
+
+    template<class F>
+    void it_root(const F& f) const{ // O(n)
+        for(int i = base;i <= n;i++) if(root(i)) f(i);
+    }
+
+    vector<vector<int>> groups(){ // O(n * alpha(n))
+        vector<int> id(n + 1, -1);
+        vector<vector<int>> ret; ret.reserve(cc);
+        it_root([&](int r){
+            id[r] = (int)ret.size(); ret.emplace_back();
+            ret.back().reserve(-p[r]);
+        });
+        for(int i = base;i <= n;i++) ret[id[find(i)]].push_back(i);
+        return ret;
+    }
 };
 
 class uf_policy{
@@ -61,14 +77,14 @@ public:
         arr.assign(n + 1, leaf());
     }
 
-    bool merge(int a, int b){ // O(1) + policy::merge
+    bool merge(int a, int b){ // O(alpha(n)) amortized + policy::merge
         if(!merge_internal(a, b)) return false;
         policy::merge(arr[a], arr[b]);
         return true;
     }
 
-    node& get(int x){ return arr[find(x)]; } // O(1)
-    void set(int x, const node& v){ arr[find(x)] = v; } // O(1)
+    node& get(int x){ return arr[find(x)]; } // O(alpha(n)) amortized
+    void set(int x, const node& v){ arr[find(x)] = v; } // O(alpha(n)) amortized
 };
 
 // WEIGHTED UNION FIND

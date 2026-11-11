@@ -273,7 +273,16 @@ void check_sets(bool base){
 void check_uf_split(bool base){
     sets::_uf basic;sets::_uf_value<> empty;
     CHECK(basic.count()==0);CHECK(empty.count()==0);
+    CHECK(basic.groups().empty());CHECK(empty.groups().empty());
+    as_const(basic).it_root([&](int){CHECK(false);});as_const(empty).it_root([&](int){CHECK(false);});
     empty.clear(0,0);CHECK(empty.count()==1);CHECK(!empty.merge(0,0));
+    CHECK(as_const(empty).root(0));CHECK((empty.groups()==vector<vector<int>>{{0}}));
+    sets::_uf ordered(base+4,base);
+    CHECK(ordered.merge(base+3,base+4));CHECK(ordered.merge(base+3,base));CHECK(ordered.find(base)==base+3);
+    CHECK((ordered.groups()==vector<vector<int>>{{base+1},{base+2},{base,base+3,base+4}}));
+    vector<int> ordered_roots;as_const(ordered).it_root([&](int root){ordered_roots.push_back(root);});
+    CHECK((ordered_roots==vector<int>{base+1,base+2,base+3}));
+    CHECK(ordered.merge(base+1,base));CHECK(ordered.find(base+1)==base+3);CHECK(ordered.size(base)==4);
     const int n=base+8;
     sets::_uf plain(n,base);sets::_uf_value<uf_leaf_policy> values(n,base);
     vector<int> component(n+1);iota(component.begin(),component.end(),0);
@@ -298,12 +307,35 @@ void check_uf_split(bool base){
             CHECK(plain.same(i,a)==(component[i]==component[a]));
         }
         CHECK(plain.count()==(int)groups.size());CHECK(values.count()==plain.count());
+        const auto& read=plain;const auto& value_read=values;
+        vector<int> roots,value_roots;
+        read.it_root([&](int root){CHECK(read.root(root));roots.push_back(root);});
+        value_read.it_root([&](int root){CHECK(value_read.root(root));value_roots.push_back(root);});
+        CHECK(roots==value_roots);CHECK((int)roots.size()==plain.count());CHECK(is_sorted(roots.begin(),roots.end()));
+        CHECK(adjacent_find(roots.begin(),roots.end())==roots.end());
+        auto listed=plain.groups();CHECK(listed==values.groups());CHECK(listed.size()==roots.size());
+        vector<int> seen(n+1,0);
+        for(int g=0;g<(int)listed.size();g++){
+            CHECK(!listed[g].empty());CHECK(is_sorted(listed[g].begin(),listed[g].end()));
+            CHECK((int)listed[g].size()==plain.size(roots[g]));
+            for(int vertex:listed[g]){
+                CHECK(base<=vertex&&vertex<=n);CHECK(component[vertex]==component[roots[g]]);
+                CHECK(plain.find(vertex)==roots[g]);seen[vertex]++;
+            }
+        }
+        for(int vertex=base;vertex<=n;vertex++){
+            CHECK(seen[vertex]==1);CHECK(read.root(vertex)==(plain.find(vertex)==vertex));
+        }
         if(step==99){
             plain.clear(n,base);values.clear(n,base);iota(component.begin(),component.end(),0);fill(weight.begin(),weight.end(),7);
         }
     }
     plain.clear(0,1);values.clear(0,1);CHECK(plain.count()==0);CHECK(values.count()==0);
+    CHECK(plain.groups().empty());CHECK(values.groups().empty());
+    as_const(plain).it_root([&](int){CHECK(false);});as_const(values).it_root([&](int){CHECK(false);});
     plain.clear(0,0);values.clear(0,0);CHECK(plain.size(0)==1);CHECK(values.get(0).v==7);
+    CHECK(as_const(plain).root(0));CHECK((plain.groups()==vector<vector<int>>{{0}}));
+    vector<int> singleton;as_const(plain).it_root([&](int root){singleton.push_back(root);});CHECK(singleton==vector<int>{0});
 }
 void check_weighted_uf(bool base){
     using state=sets::_wuf::state;

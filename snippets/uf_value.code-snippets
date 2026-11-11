@@ -23,14 +23,14 @@
       "        arr.assign(n + 1, leaf());",
       "    }",
       "",
-      "    bool merge(int a, int b){ // O(1) + policy::merge",
+      "    bool merge(int a, int b){ // O(alpha(n)) amortized + policy::merge",
       "        if(!merge_internal(a, b)) return false;",
       "        policy::merge(arr[a], arr[b]);",
       "        return true;",
       "    }",
       "",
-      "    node& get(int x){ return arr[find(x)]; } // O(1)",
-      "    void set(int x, const node& v){ arr[find(x)] = v; } // O(1)",
+      "    node& get(int x){ return arr[find(x)]; } // O(alpha(n)) amortized",
+      "    void set(int x, const node& v){ arr[find(x)] = v; } // O(alpha(n)) amortized",
       "};"
     ],
     "description": "Component values for Union-Find; requires >>uf."
