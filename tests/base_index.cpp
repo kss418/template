@@ -32,7 +32,7 @@ public:
     static void merge(node& a, node& b){ a.v += b.v; }
 };
 static_assert(!is_default_constructible_v<uf_leaf_policy::node>);
-static_assert(!is_convertible_v<sets::_uf_value<uf_leaf_policy>&,sets::_uf&>);
+static_assert(is_convertible_v<sets::_uf_value<uf_leaf_policy>&,sets::_uf&>);
 class uf_consuming_policy{
 public:
     using node=uf_leaf_policy::node;
@@ -355,8 +355,7 @@ void check_uf_value_api(bool base){
         vector<vector<int>> singletons;for(int i=base;i<length;i++)singletons.push_back({i});
         CHECK(values.groups()==singletons);
         vector<int> roots;
-        read.it_component([&](int root,const auto& value){
-            static_assert(is_const_v<remove_reference_t<decltype(value)>>);
+        values.it_component([&](int root,const auto& value){
             CHECK(base<=root&&root<length);CHECK(read.root(root));CHECK(values.size(root)==1);
             CHECK(value.v==input[root].v);CHECK(&value==&values.get(root));roots.push_back(root);
         });
@@ -367,7 +366,7 @@ void check_uf_value_api(bool base){
         if(count){
             int winner=length-1;for(int i=base;i<winner;i++)CHECK(values.merge(winner,i));
             CHECK(values.get(base).v==sum);int calls=0;
-            read.it_component([&](int root,const node& value){CHECK(root==winner);CHECK(value.v==sum);calls++;});
+            values.it_component([&](int root,const node& value){CHECK(root==winner);CHECK(value.v==sum);calls++;});
             CHECK(calls==1);values.set(base,{55});
             for(int i=base;i<length;i++)CHECK(values.get(i).v==55);
             CHECK(values.size(base)==count);

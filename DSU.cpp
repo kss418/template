@@ -64,16 +64,9 @@ public:
 };
 
 template <class policy = uf_policy>
-class _uf_value : private _uf{
+class _uf_value : public _uf{
 public:
     using node = typename policy::node;
-    using _uf::find;
-    using _uf::count;
-    using _uf::size;
-    using _uf::root;
-    using _uf::same;
-    using _uf::it_root;
-    using _uf::groups;
 private:
     bool base; vector<node> arr;
     node leaf() const{ return policy::leaf(); }
@@ -102,11 +95,6 @@ public:
 
     template<class F>
     void it_component(const F& f){ // O(n)
-        it_root([&](int root){ f(root, arr[root]); });
-    }
-
-    template<class F>
-    void it_component(const F& f) const{ // O(n)
         it_root([&](int root){ f(root, arr[root]); });
     }
 };
