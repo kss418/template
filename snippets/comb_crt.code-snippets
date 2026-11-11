@@ -52,7 +52,7 @@
     "    result ret(ll n, ll r){ // O(log n + log p)",
     "        crt.clear();",
     "        for(auto& i : c) crt.add(i.ret(n, r), i.mod);",
-    "        for(auto& i : l) crt.add(i.ret(n, r), i.mod);",
+    "        for(auto& i : l) crt.add(i.comb(n, r), i.get_mod());",
     "        crt.build();",
     "        return crt.ret();",
     "    }",

@@ -385,6 +385,53 @@ void check_fixed_comb(){
     CHECK(wide_read.comb(67,33)==14226520737620288370ull);
 }
 
+void check_lucas(){
+    for(int mod:{2,3,5,7,11,97,257}){
+        combinatorics::_lucas table(mod);const auto& read=table;CHECK(read.get_mod()==mod);
+        vector<vector<int>> pascal(161,vector<int>(161));
+        for(int n=0;n<=160;n++){
+            pascal[n][0]=pascal[n][n]=1;
+            for(int r=1;r<n;r++)pascal[n][r]=(pascal[n-1][r-1]+pascal[n-1][r])%mod;
+            int perm=1;
+            for(int r=0;r<=n;r++){
+                if(r)perm=(long long)perm*(n-r+1)%mod;
+                CHECK(read.comb(n,r)==pascal[n][r]);CHECK(read.perm(n,r)==perm);
+            }
+            CHECK(read.comb(n,-1)==0);CHECK(read.comb(n,n+1)==0);
+            CHECK(read.perm(n,-1)==0);CHECK(read.perm(n,n+1)==0);
+        }
+        for(int n=0;n<=80;n++)for(int r=0;r<=80;r++){
+            if(!n)CHECK(read.multicomb(n,r)==(r==0));
+            else CHECK(read.multicomb(n,r)==pascal[n+r-1][r]);
+        }
+        CHECK(read.comb(LLONG_MIN,0)==0);CHECK(read.perm(LLONG_MIN,0)==0);
+        CHECK(read.multicomb(LLONG_MIN,0)==0);CHECK(read.multicomb(0,LLONG_MIN)==0);
+        CHECK(read.multicomb(LLONG_MAX,1)==LLONG_MAX%mod);CHECK(read.multicomb(1,LLONG_MAX)==1);
+        CHECK(read.multicomb(LLONG_MAX,0)==1);CHECK(read.perm(LLONG_MAX,LLONG_MAX)==0);
+        for(long long n:{1000000000000000000ll,LLONG_MAX-1,LLONG_MAX}){
+            int wanted=1;
+            for(int r=0;r<=mod+2;r++){
+                if(r)wanted=(long long)wanted*((n-r+1)%mod)%mod;
+                CHECK(read.perm(n,r)==wanted);
+            }
+        }
+    }
+    const vector<pair<int,vector<int>>> large_cases{{2,{1,1,1,1,1,1,1}},{3,{1,1,0,2,2,0,1}},
+        {7,{1,0,0,0,0,0,0}},{97,{1,78,93,28,40,10,57}}};
+    for(const auto& [mod,wanted]:large_cases){
+        combinatorics::_lucas table(mod);const auto& read=table;
+        for(int r=0;r<(int)wanted.size();r++){
+            CHECK(read.comb(LLONG_MAX,r)==wanted[r]);CHECK(read.comb(LLONG_MAX,LLONG_MAX-r)==wanted[r]);
+        }
+    }
+    combinatorics::_lucas reusable;const auto& read=reusable;
+    for(int mod:{7,2,97,5,7}){
+        reusable.build(mod);CHECK(read.get_mod()==mod);CHECK(read.comb(10,3)==120%mod);
+        CHECK(read.perm(10,3)==720%mod);CHECK(read.multicomb(4,3)==20%mod);
+    }
+    auto copy=reusable;reusable.build(2);CHECK(copy.get_mod()==7);CHECK(copy.comb(10,3)==1);CHECK(read.comb(10,3)==0);
+}
+
 template<class A,class B>
 concept matrix_arithmetic=requires(const A& a,const B& b){a+b;a*b;};
 
@@ -639,6 +686,10 @@ void check_crt_dependents(){
     comb.clear();comb.add(2,1);comb.add(2,2);auto repeated=comb.ret(10,4);
     CHECK(repeated.status==crt::state::known && repeated.get_mod()==4 && repeated.get_value()==2);
     comb.clear();comb.add(7,1);CHECK(comb.ret(4,2).get_value()==6);
+    combinatorics::_comb_crt mixed;mixed.add(2,3);mixed.add(3,1);mixed.add(5,1);
+    for(int n=0;n<=20;n++)for(int r=0;r<=n;r++){
+        auto result=mixed.ret(n,r);CHECK(result.get_mod()==120);CHECK(result.get_value()==pascal[n][r]%120);
+    }
     numeric_templates::_pt tower;tower.add(2);tower.add(3);tower.add(2);tower.add_mod(72);tower.build();
     const auto& read=tower;static_assert(same_as<decltype(read.ret()),const crt::result&>);
     CHECK(read.ret().status==crt::state::known && read.ret().get_value()==8 && read.ret().get_mod()==72);
@@ -1983,7 +2034,7 @@ int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
         {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
-        {"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},{"sparse_trie",check_sparse_trie},
+        {"lucas",check_lucas},{"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},{"sparse_trie",check_sparse_trie},
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
         {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"ccw_large_coordinates",check_ccw_large_coordinates},
         {"dlog_phi",check_dlog_phi},{"dlog_large_arithmetic",check_dlog_large_arithmetic},
