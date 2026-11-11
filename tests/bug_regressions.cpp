@@ -671,24 +671,77 @@ void check_crt(){
     g.clear();g.add(0,1LL<<62);g.add(1,6);g.build();CHECK(read.ret().inconsistent());
 }
 
+void check_comb_crt(){
+    using factor=pair<long long,long long>;
+    vector<vector<factor>> cases{{{2,1}},{{2,2}},{{2,3}},{{2,5}},{{2,8}},{{3,1}},{{3,2}},{{3,3}},{{3,5}},
+        {{5,2}},{{5,3}},{{7,2}},{{11,2}},{{2,3},{3,2}},{{2,4},{3,3},{5,1}},{{2,1},{2,2},{2,3}}, {}};
+    auto verify=[](const combinatorics::_comb_crt::result& result,long long wanted,long long mod){
+        CHECK(result.status==numeric_templates::_crt::state::known);CHECK(result.get_mod()==mod);CHECK(result.get_value()==wanted);
+    };
+    for(const auto& factors:cases){
+        combinatorics::_comb_crt table;long long mod=1;
+        for(auto [p,e]:factors){
+            table.add(p,e);long long power=1;while(e--)power*=p;mod=lcm(mod,power);
+        }
+        table.add(0,0);table.add(1,-1);table.build();const auto& read=table;
+        vector<vector<long long>> pascal(121,vector<long long>(121));
+        for(int n=0;n<=120;n++){
+            pascal[n][0]=pascal[n][n]=1%mod;
+            for(int r=1;r<n;r++)pascal[n][r]=(pascal[n-1][r-1]+pascal[n-1][r])%mod;
+            long long perm=1%mod;
+            for(int r=0;r<=n;r++){
+                if(r)perm=(__int128_t)perm*(n-r+1)%mod;
+                verify(read.comb(n,r),pascal[n][r],mod);verify(read.perm(n,r),perm,mod);
+            }
+            verify(read.comb(n,-1),0,mod);verify(read.comb(n,n+1),0,mod);
+            verify(read.perm(n,-1),0,mod);verify(read.perm(n,n+1),0,mod);
+        }
+        for(int n=0;n<=60;n++)for(int r=0;r<=60;r++){
+            long long wanted=!n?(r==0)%mod:pascal[n+r-1][r];
+            verify(read.multicomb(n,r),wanted,mod);
+        }
+        verify(read.comb(LLONG_MIN,0),0,mod);verify(read.perm(LLONG_MIN,0),0,mod);
+        verify(read.multicomb(LLONG_MIN,0),0,mod);verify(read.multicomb(0,LLONG_MIN),0,mod);
+        for(long long n:{1000000000000000000ll,LLONG_MAX-1,LLONG_MAX}){
+            long long wanted=1%mod;
+            long long choose2=(__int128_t)n*(n-1)/2%mod;
+            verify(read.comb(n,2),choose2,mod);verify(read.comb(n,n-2),choose2,mod);
+            verify(read.multicomb(n-1,2),choose2,mod);
+            for(int r=0;r<=12;r++){
+                if(r)wanted=(__int128_t)wanted*((n-r+1)%mod)%mod;
+                verify(read.perm(n,r),wanted,mod);
+            }
+        }
+        verify(read.multicomb(1,LLONG_MAX),1%mod,mod);verify(read.multicomb(LLONG_MAX,1),LLONG_MAX%mod,mod);
+        verify(read.perm(LLONG_MAX,LLONG_MAX),0,mod);verify(read.comb(LLONG_MAX,LLONG_MAX),1%mod,mod);
+        table.build();verify(read.comb(120,60),pascal[120][60],mod);
+        auto saved=read.comb(10,4);auto copy=table;table.clear();table.build();
+        verify(table.comb(10,4),0,1);verify(copy.comb(10,4),pascal[10][4],mod);verify(saved,pascal[10][4],mod);
+        table.add(7,1);table.build();verify(read.comb(10,4),0,7);verify(read.perm(10,3),6,7);
+    }
+    combinatorics::_comb_crt reused;reused.add(2,3);reused.add(3,2);reused.build();
+    const auto& read=reused;auto snapshot=read.comb(10,4);verify(snapshot,66,72);
+    reused.add(5,1);reused.build();verify(read.comb(10,4),210,360);verify(snapshot,66,72);
+}
+
 void check_crt_dependents(){
     using crt=numeric_templates::_crt;
-    combinatorics::_comb_crt comb;comb.add(2,3);comb.add(3,2);
+    combinatorics::_comb_crt comb;comb.add(2,3);comb.add(3,2);comb.build();
     vector<vector<long long>> pascal(21,vector<long long>(21));pascal[0][0]=1;
     for(int n=1;n<=20;++n){pascal[n][0]=1;for(int r=1;r<=n;++r)pascal[n][r]=pascal[n-1][r-1]+pascal[n-1][r];}
     for(int n=0;n<=20;++n)for(int r=-1;r<=n+1;++r){
-        auto result=comb.ret(n,r);static_assert(same_as<decltype(result),crt::result>);
+        auto result=comb.comb(n,r);static_assert(same_as<decltype(result),crt::result>);
         long long want=r<0 || r>n ? 0 : pascal[n][r]%72;
         CHECK(result.status==crt::state::known && result.get_value()==want && result.get_mod()==72);
     }
-    auto saved=comb.ret(10,4);comb.add(5,1);auto changed=comb.ret(10,4);
+    auto saved=comb.comb(10,4);comb.add(5,1);comb.build();auto changed=comb.comb(10,4);
     CHECK(saved.get_mod()==72 && changed.get_mod()==360 && changed.get_value()==210);
-    comb.clear();comb.add(2,1);comb.add(2,2);auto repeated=comb.ret(10,4);
+    comb.clear();comb.add(2,1);comb.add(2,2);comb.build();auto repeated=comb.comb(10,4);
     CHECK(repeated.status==crt::state::known && repeated.get_mod()==4 && repeated.get_value()==2);
-    comb.clear();comb.add(7,1);CHECK(comb.ret(4,2).get_value()==6);
-    combinatorics::_comb_crt mixed;mixed.add(2,3);mixed.add(3,1);mixed.add(5,1);
+    comb.clear();comb.add(7,1);comb.build();CHECK(comb.comb(4,2).get_value()==6);
+    combinatorics::_comb_crt mixed;mixed.add(2,3);mixed.add(3,1);mixed.add(5,1);mixed.build();
     for(int n=0;n<=20;n++)for(int r=0;r<=n;r++){
-        auto result=mixed.ret(n,r);CHECK(result.get_mod()==120);CHECK(result.get_value()==pascal[n][r]%120);
+        auto result=mixed.comb(n,r);CHECK(result.get_mod()==120);CHECK(result.get_value()==pascal[n][r]%120);
     }
     numeric_templates::_pt tower;tower.add(2);tower.add(3);tower.add(2);tower.add_mod(72);tower.build();
     const auto& read=tower;static_assert(same_as<decltype(read.ret()),const crt::result&>);
@@ -2034,7 +2087,7 @@ int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
         {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
-        {"lucas",check_lucas},{"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},{"sparse_trie",check_sparse_trie},
+        {"lucas",check_lucas},{"comb_crt",check_comb_crt},{"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},{"sparse_trie",check_sparse_trie},
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
         {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"ccw_large_coordinates",check_ccw_large_coordinates},
         {"dlog_phi",check_dlog_phi},{"dlog_large_arithmetic",check_dlog_large_arithmetic},

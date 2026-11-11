@@ -94,61 +94,101 @@ public:
     }
 };
 
-// comb mod (p1^e1 + p2^e2...)
+// comb mod lcm(p1^e1, p2^e2, ...)
 class _comb_crt{ // Require dynamic_mint, crt
 public:
     using result = _crt::result;
-    class _comb{ // O(p1^e1 + p2^e2 ...)
-    public:
-        vector <_dynamic_mint> pre; ll p, e, mod = 1;
-        _comb(ll prime, ll exp) : p(prime), e(exp){
-            for(int i = 1;i <= e;i++) mod *= p;
-            pre.assign(mod + 1, _dynamic_mint(1, mod));
-            for(ll i = 1;i <= mod;i++){
-                pre[i] = pre[i - 1];
-                if(i % p) pre[i] *= i;
-            }
-        }   
-        
-        ll vp(ll n) const{
+private:
+    class prime_power{
+    private:
+        vector <ll> pre; ll p, e, mod = 1;
+
+        ll mul(ll a, ll b) const{ return (i128)a * b % mod; } // O(1)
+
+        ll vp(ll n) const{ // O(log_p(n))
             ll ret = 0;
             while(n){ n /= p; ret += n; }
             return ret;
         }
 
-        _dynamic_mint f(ll n) const{ // p^e = p^k * f(n)
-            if(!n) return _dynamic_mint(1, mod);
-            ll div = n / mod, rem = n % mod; _dynamic_mint ret(1, mod);
-            if(p % 2) ret = div & 1 ? ret *= _dynamic_mint(mod - 1, mod) : _dynamic_mint(1, mod);
-            else ret *= pre[mod].pow(div);
-            ret *= pre[rem]; ret *= f(n / p);
-            return ret;
+        ll f(ll n) const{ // O(log_p(n))
+            if(!n) return 1;
+            ll div = n / mod, rem = n % mod, ret = pre[rem];
+            if(div & 1) ret = mul(ret, pre[mod]);
+            return mul(ret, f(n / p));
         }
 
-        ll ret(ll n, ll r) const{ // O(log n + log p)
-            if(r < 0 || r > n) return 0;
+        ll cal(ll numerator, ll denominator, ll power) const{ // O(log mod + log power)
+            ll inv = _dynamic_mint(denominator, mod).inv().v;
+            ll factor = _dynamic_mint(p, mod).pow(power).v;
+            return mul(mul(numerator, inv), factor);
+        }
+    public:
+        prime_power(ll p, ll e) : p(p), e(e){ // O(p^e)
+            for(ll i = 0;i < e;i++) mod *= p;
+            pre.assign(mod + 1, 1);
+            for(ll i = 1;i <= mod;i++){
+                pre[i] = pre[i - 1];
+                if(i % p) pre[i] = mul(pre[i], i);
+            }
+        }
+
+        ll get_mod() const{ return mod; } // O(1)
+
+        ll comb(ll n, ll r) const{ // O(log_p(n) + log mod)
+            if(n < 0 || r < 0 || r > n) return 0;
             ll now = vp(n) - vp(r) - vp(n - r);
             if(now >= e) return 0;
-
-            _dynamic_mint div = f(r) * f(n - r), inv = div.inv();
-            return (f(n) * inv * _dynamic_mint(p, mod).pow(now)).v;
+            return cal(f(n), mul(f(r), f(n - r)), now);
         }
-    }; 
 
-    vector <_comb> c; vector <_lucas> l; _crt crt;
-    void add(ll p, ll e){ // O(1) 
+        ll perm(ll n, ll r) const{ // O(log_p(n) + log mod)
+            if(n < 0 || r < 0 || r > n) return 0;
+            ll now = vp(n) - vp(n - r);
+            if(now >= e) return 0;
+            return cal(f(n), f(n - r), now);
+        }
+    };
+
+    vector <pll> factors;
+    vector <prime_power> c; vector <_lucas> l;
+
+    template<class F>
+    result query(const F& f) const{ // O(k * (log n + log M))
+        _crt crt;
+        for(const auto& i : c) crt.add(f(i), i.get_mod());
+        for(const auto& i : l) crt.add(f(i), i.get_mod());
+        crt.build(); return crt.ret();
+    }
+public:
+    void add(ll p, ll e){ // O(1) amortized
         if(e <= 0) return;
-        if(e == 1) l.emplace_back(p);
-        else c.emplace_back(p, e);
+        factors.emplace_back(p, e);
     }
 
-    result ret(ll n, ll r){ // O(log n + log p)
-        crt.clear();
-        for(auto& i : c) crt.add(i.ret(n, r), i.mod);
-        for(auto& i : l) crt.add(i.comb(n, r), i.get_mod());
-        crt.build();
-        return crt.ret();
+    void build(){ // O(sum(p^e))
+        c.clear(); l.clear();
+        for(const auto& [p, e] : factors){
+            if(e == 1) l.emplace_back(p);
+            else c.emplace_back(p, e);
+        }
     }
 
-    void clear(){ l.clear(); c.clear(); crt.clear(); }
+    result comb(ll n, ll r) const{ // O(k * (log n + log M))
+        return query([&](const auto& table){ return table.comb(n, r); });
+    }
+
+    result perm(ll n, ll r) const{ // O(k * (log n + log M))
+        return query([&](const auto& table){ return table.perm(n, r); });
+    }
+
+    result multicomb(ll n, ll r) const{ // O(k * (log(n + r) + log M))
+        if(n < 0 || r < 0) return comb(-1, 0);
+        if(!n) return comb(0, r ? 1 : 0);
+        i128 total = (i128)n + r - 1;
+        assert(total <= LLONG_MAX);
+        return comb((ll)total, r);
+    }
+
+    void clear(){ factors.clear(); c.clear(); l.clear(); } // O(sum(p^e))
 };
