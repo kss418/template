@@ -408,6 +408,24 @@ void check_weighted_uf(bool base){
                 }
             }
         }
+        set<int> components;for(int i=first;i<=n;i++)components.insert(component[i]);
+        CHECK(w.count()==(int)components.size());
+        vector<int> roots;as_const(w).it_root([&](int root){CHECK(as_const(w).root(root));roots.push_back(root);});
+        CHECK(roots.size()==components.size());CHECK(is_sorted(roots.begin(),roots.end()));
+        CHECK(adjacent_find(roots.begin(),roots.end())==roots.end());
+        auto groups=w.groups();CHECK(groups.size()==roots.size());vector<int> seen(n+1,0);
+        for(int g=0;g<(int)groups.size();g++){
+            CHECK(!groups[g].empty());CHECK(is_sorted(groups[g].begin(),groups[g].end()));
+            CHECK((int)groups[g].size()==w.size(roots[g]));
+            for(int vertex:groups[g]){
+                CHECK(first<=vertex&&vertex<=n);CHECK(component[vertex]==component[roots[g]]);
+                CHECK(w.find(vertex).first==roots[g]);seen[vertex]++;
+            }
+        }
+        for(int i=first;i<=n;i++){
+            int size=0;for(int j=first;j<=n;j++)size+=component[i]==component[j];
+            CHECK(seen[i]==1);CHECK(w.size(i)==size);CHECK(as_const(w).root(i)==(w.find(i).first==i));
+        }
         for(int a=first;a<=n;++a)for(int b=first;b<=n;++b){
             const auto result=w.diff(a,b);bool same=component[a]==component[b];
             CHECK(w.same(a,b)==same);
@@ -433,13 +451,33 @@ void check_weighted_uf(bool base){
             add(a,b,c);verify();
         }
     }
-    w.clear(0,1);w.clear(0,0);CHECK(w.diff(0,0).status==state::known);CHECK(w.diff(0,0).get_value()==0);
+    w.clear(0,1);CHECK(w.count()==0);CHECK(w.groups().empty());as_const(w).it_root([&](int){CHECK(false);});
+    w.clear(0,0);CHECK(w.count()==1);CHECK(as_const(w).root(0));CHECK((w.groups()==vector<vector<int>>{{0}}));
+    CHECK(w.diff(0,0).status==state::known);CHECK(w.diff(0,0).get_value()==0);
     w.merge(0,0,-1);CHECK(w.diff(0,0).status==state::inconsistent);
     w.clear(0,0);CHECK(w.diff(0,0).status==state::known);
     const int last=100000;sets::_wuf chain(last,base);
     for(int i=first;i<last;++i)chain.merge(i,i+1,1);
     CHECK(chain.diff(first,last).status==state::known);CHECK(chain.diff(first,last).get_value()==last-first);
     CHECK(chain.diff(last,first).get_value()==first-last);
+}
+void check_weighted_uf_large(bool base){
+    const long long big=8000000000000000000ll;
+    sets::_wuf w(base+3,base);w.merge(base,base+1,big);w.merge(base+2,base+3,-big);
+    w.merge(base,base+2,big);array<long long,4> potential{0,big,big,0};
+    CHECK(w.count()==1);CHECK(w.size(base)==4);
+    for(int a=0;a<4;a++)for(int b=0;b<4;b++){
+        auto result=w.diff(base+a,base+b);CHECK(result.status==sets::_wuf::state::known);
+        CHECK(result.get_value()==potential[b]-potential[a]);
+    }
+    auto copy=w;w.clear(base+3,base);CHECK(copy.diff(base,base+2).get_value()==big);CHECK(w.count()==4);
+    w.clear(base+2,base);w.merge(base,base+1,big);w.merge(base+2,base+1,-big);
+    w.merge(base,base+2,0);CHECK(w.diff(base,base+2).inconsistent());CHECK(w.same(base,base+2));
+    CHECK(w.count()==1);CHECK(w.size(base)==3);
+    w.clear(base+2,base);w.merge(base,base+1,0);w.merge(base+1,base+2,LLONG_MIN);
+    CHECK(w.diff(base+1,base+2).status==sets::_wuf::state::known);CHECK(w.diff(base+1,base+2).get_value()==LLONG_MIN);
+    w.merge(base+1,base+2,LLONG_MIN);CHECK(!w.diff(base+1,base+2).inconsistent());
+    w.merge(base+2,base+1,LLONG_MAX);CHECK(w.diff(base+2,base+1).inconsistent());
 }
 void check_graphs(bool base){
     int n=4, first=base, count=n-first+1;
@@ -559,6 +597,6 @@ void check_oracles(bool base){
     }
 }
 int main(){
-    try {for(bool base:{false,true}){check_ranges(base);check_mos_factories(base);check_sets(base);check_uf_split(base);check_uf_value_api(base);check_weighted_uf(base);check_graphs(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();check_pbs();cout<<"PASS "<<checks<<" base-index checks\n";return 0;}
+    try {for(bool base:{false,true}){check_ranges(base);check_mos_factories(base);check_sets(base);check_uf_split(base);check_uf_value_api(base);check_weighted_uf(base);check_weighted_uf_large(base);check_graphs(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();check_pbs();cout<<"PASS "<<checks<<" base-index checks\n";return 0;}
     catch(const exception& e){cerr<<"FAIL "<<e.what()<<'\n';return 1;}
 }

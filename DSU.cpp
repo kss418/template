@@ -101,9 +101,11 @@ public:
 
 // WEIGHTED UNION FIND
 class _wuf{
-    bool base;
 private:
-    vector<ll> sz;
+    bool base;
+    vector<int> p;
+    vector<ll> d;
+    vector<char> dis; int n, cc;
 public:
     enum class state{ disconnected, inconsistent, known };
     class result{
@@ -115,31 +117,30 @@ public:
         ll get_value() const{ return value; } // O(1)
     };
 
-    vector<ll> p, d, dis; ll n;
-    _wuf(ll n = 0, bool base = 1){ clear(n, base); } // O(n)
-    void clear(ll n, bool base = 1){ // O(n)
-        this->n = n; this->base = base; dis.assign(n + 1, 0);
-        p.assign(n + 1, -1); d.assign(n + 1, 0); sz.assign(n + 1, 1);
+    _wuf(int n = 0, bool base = 1){ clear(n, base); } // O(n)
+    void clear(int n, bool base = 1){ // O(n)
+        this->n = n; this->base = base; cc = n - base + 1;
+        p.assign(n + 1, -1); d.assign(n + 1, 0); dis.assign(n + 1, 0);
     }
 
-    pll find(ll num){ // O(alpha(n))
-        if(p[num] == -1) return {num, 0ll};
+    pair<int, ll> find(int num){ // O(alpha(n)) amortized
+        if(p[num] < 0) return {num, 0ll};
         auto [pa, diff] = find(p[num]);
         p[num] = pa; d[num] += diff;
         return {p[num], d[num]};
     }
 
-    void merge(ll a, ll b, ll c){ // O(alpha(n))
+    void merge(int a, int b, ll c){ // O(alpha(n)) amortized
         auto [pa, da] = find(a);
         auto [pb, db] = find(b);
-        if(pa == pb){ dis[pb] |= (db - da != c); return; }
-        ll delta = db - da - c;
-        if(sz[pa] > sz[pb]){ swap(pa, pb); delta = -delta; }
-        p[pa] = pb; d[pa] = delta;
-        sz[pb] += sz[pa]; dis[pb] |= dis[pa];
+        if(pa == pb){ dis[pb] |= ((i128)db - da != c); return; }
+        i128 delta = (i128)db - da - c;
+        if(p[pa] < p[pb]){ swap(pa, pb); delta = -delta; }
+        p[pb] += p[pa]; p[pa] = pb; d[pa] = (ll)delta;
+        dis[pb] |= dis[pa]; cc--;
     }
 
-    result diff(ll a, ll b){ // O(alpha(n))
+    result diff(int a, int b){ // O(alpha(n)) amortized
         auto [pa, da] = find(a);
         auto [pb, db] = find(b);
         if(pa != pb) return {state::disconnected, 0};
@@ -147,7 +148,26 @@ public:
         return {state::known, db - da};
     }
 
-    bool same(ll a, ll b){ return find(a).x == find(b).x; } // O(alpha(n))
+    bool same(int a, int b){ return find(a).x == find(b).x; } // O(alpha(n)) amortized
+    int count() const{ return cc; } // O(1)
+    int size(int x){ return -p[find(x).x]; } // O(alpha(n)) amortized
+    bool root(int x) const{ return p[x] < 0; } // O(1)
+
+    template<class F>
+    void it_root(const F& f) const{ // O(n)
+        for(int i = base;i <= n;i++) if(root(i)) f(i);
+    }
+
+    vector<vector<int>> groups(){ // O(n * alpha(n))
+        vector<int> id(n + 1, -1);
+        vector<vector<int>> ret; ret.reserve(cc);
+        it_root([&](int r){
+            id[r] = (int)ret.size(); ret.emplace_back();
+            ret.back().reserve(-p[r]);
+        });
+        for(int i = base;i <= n;i++) ret[id[find(i).x]].push_back(i);
+        return ret;
+    }
 };
 
 class _ufset{
