@@ -161,7 +161,8 @@ public:
 };
 
 template <signed_integral F = ll, signed_integral C = ll>
-class _mcmf {
+class _mcmf{
+private:
     bool base;
 public:
     template <class T>
@@ -172,13 +173,49 @@ public:
     }
     static constexpr F FINF = make_inf<F>();
     static constexpr C CINF = make_inf<C>();
-    struct edge{
-        int nxt, rev; F cap, initial_cap; C cost;
-        edge(int nxt, int rev, F cap, C cost) : nxt(nxt), rev(rev), cap(cap), initial_cap(cap), cost(cost) {}
+    class edge{
+    public:
+        int nxt, rev; F c, cap; C cost;
+        edge(int nxt, int rev, F c, C cost) : nxt(nxt), rev(rev), c(c), cap(c), cost(cost) {}
+    };
+
+    class state{
+    private:
+        friend class _mcmf;
+        _mcmf* owner;
+        int cur, idx;
+        state(_mcmf* owner, int cur, int idx) : owner(owner), cur(cur), idx(idx){}
+    public:
+        int from() const{ return cur; } // O(1)
+        int to() const{ return owner->adj[cur][idx].nxt; } // O(1)
+        bool operator==(const state& a) const = default; // O(1)
+
+        F get_flow() const{ auto& e = owner->adj[cur][idx]; return e.cap - e.c; } // O(1)
+        void add_flow(F delta){ set_flow(get_flow() + delta); } // O(1)
+        void set_flow(F f){ // O(1)
+            auto& e = owner->adj[cur][idx], &re = owner->adj[e.nxt][e.rev];
+            e.c = e.cap - f; re.c = f;
+        }
+
+        F get_cap() const{ return owner->adj[cur][idx].cap; } // O(1)
+        void add_cap(F delta){ set_cap(get_cap() + delta); } // O(1)
+        void set_cap(F cap){ // O(1)
+            auto& e = owner->adj[cur][idx], &re = owner->adj[e.nxt][e.rev];
+            F f = e.cap - e.c; e.cap = cap;
+            e.c = cap - f; re.c = f;
+        }
+
+        C get_cost() const{ return owner->adj[cur][idx].cost; } // O(1)
+        void add_cost(C delta){ set_cost(get_cost() + delta); } // O(1)
+        void set_cost(C cost){ // O(1)
+            auto& e = owner->adj[cur][idx], &re = owner->adj[e.nxt][e.rev];
+            e.cost = cost; re.cost = -cost;
+        }
     };
 private:
     vector<vector<edge>> adj; vector<C> dist, pot; 
     vector<int> work, lv; int n; bool use_spfa;
+    vector<vector<int>> ids; pair<F, C> result;
     void spfa(int st) {
         fill(all(pot), CINF);
         vector <bool> in(n + 1, 0); queue <int> q;
@@ -186,7 +223,7 @@ private:
         while (!q.empty()) {
             int cur = q.front(); q.pop(); in[cur] = 0;
             for(auto &e : adj[cur]){
-                if (e.cap <= 0) continue; int nxt = e.nxt;
+                if (e.c <= 0) continue; int nxt = e.nxt;
                 if (pot[nxt] <= pot[cur] + e.cost) continue;
                 pot[nxt] = pot[cur] + e.cost;
                 if (!in[nxt]) q.push(nxt), in[nxt] = 1;
@@ -205,7 +242,7 @@ private:
             if (cd != dist[cur]) continue;
             for (int i = 0;i < (int)adj[cur].size();i++) {
                 auto &e = adj[cur][i];
-                if(e.cap <= 0) continue; int nxt = e.nxt;
+                if(e.c <= 0) continue; int nxt = e.nxt;
                 C nd = cd + e.cost + pot[cur] - pot[nxt];
                 if(nd >= dist[nxt]) continue;
                 dist[nxt] = nd; pq.push({nd, nxt});
@@ -224,10 +261,12 @@ private:
         while(!q.empty()){
             int cur = q.front(); q.pop();
             for(auto& e : adj[cur]){
+                if(e.c <= 0) continue;
                 int nxt = e.nxt;
-                if(e.cost + pot[cur] - pot[nxt] != 0) continue;
-                if(lv[nxt] != -1 || e.cap <= 0) continue;
-                lv[nxt] = lv[cur] + 1; q.push(nxt);
+                if(lv[nxt] != -1 || e.cost + pot[cur] - pot[nxt] != 0) continue;
+                lv[nxt] = lv[cur] + 1;
+                if(nxt == en) return true;
+                q.push(nxt);
             }
         }
         return lv[en] != -1;
@@ -237,38 +276,21 @@ private:
         if(cur == en) return f;
         for(int &i = work[cur]; i < (int)adj[cur].size(); i++){
             auto &e = adj[cur][i];
-            if(e.cap <= 0) continue; int nxt = e.nxt;
+            if(e.c <= 0) continue; int nxt = e.nxt;
             if(e.cost + pot[cur] - pot[nxt] != 0) continue;
             if(lv[nxt] != lv[cur] + 1) continue; 
-            F now = dfs(nxt, en, min(f, e.cap));
+            F now = dfs(nxt, en, min(f, e.c));
             if(now <= 0) continue;
-            e.cap -= now; adj[nxt][e.rev].cap += now;
+            e.c -= now; adj[nxt][e.rev].c += now;
             return now;
         }
         return 0;
-    }
-public:
-    _mcmf(int n = 0, bool use_spfa = true, bool base = 1){ clear(n, use_spfa, base); } // O(n)
-    void clear(int n, bool use_spfa = true, bool base = 1){ // O(n)
-        this->n = n; this->base = base; this->use_spfa = use_spfa; adj.assign(n + 1, {});
-        dist.assign(n + 1, CINF); pot.assign(n + 1, 0);
-        work.assign(n + 1, 0); lv.assign(n + 1, -1);
-    }
-
-    void add(int st, int en, F cap, C cost){ // O(1)
-        addsol(st, en, cap, cost); addsol(en, st, cap, cost);
-    }
-    void addsol(int st, int en, F cap, C cost){ // O(1)
-        assert(base <= st && st <= n && base <= en && en <= n);
-        int a = (int)adj[st].size(), b = (int)adj[en].size() + (st == en);
-        adj[st].push_back({en, b, cap, cost});
-        adj[en].push_back({st, a, 0, -cost});
     }
 
     pair<F, C> augment(int st, int en, F limit = FINF){
         assert(base <= st && st <= n && base <= en && en <= n && st != en);
         F flow = 0; C cost = 0;
-        if(use_spfa) spfa(st);
+        if(limit && use_spfa) spfa(st);
         while(flow < limit && dijkstra(st, en)) {
             while(flow < limit && bfs(st, en)){
                 fill(all(work), 0);
@@ -281,13 +303,46 @@ public:
         }
         return {flow, cost};
     }
+public:
+    _mcmf(int n = 0, bool use_spfa = true, bool base = 1){ clear(n, use_spfa, base); } // O(n)
+    void clear(int n, bool use_spfa = true, bool base = 1){ // O(n)
+        this->n = n; this->base = base; this->use_spfa = use_spfa; adj.assign(n + 1, {}); ids.assign(n + 1, {});
+        dist.assign(n + 1, CINF); pot.assign(n + 1, 0);
+        work.assign(n + 1, 0); lv.assign(n + 1, -1); result = {0, 0};
+    }
 
-    void reset(){
-        for(auto& row : adj) for(auto& e : row) e.cap = e.initial_cap;
+    void reset(){ // O(n + m)
+        result = {0, 0};
+        for(auto& row : adj) for(auto& e : row) e.c = e.cap;
         fill(all(pot), 0); fill(all(dist), CINF); fill(all(work), 0); fill(all(lv), -1);
     }
 
-    pair<F, C> build(int st, int en, F limit = FINF){
-        reset(); return augment(st, en, limit);
+    pair<state, state> add(int st, int en, F cap, C cost){ // O(1)
+        auto h1 = addsol(st, en, cap, cost), h2 = addsol(en, st, cap, cost);
+        return {h1, h2};
     }
+
+    state addsol(int st, int en, F cap, C cost){ // O(1)
+        assert(base <= st && st <= n && base <= en && en <= n);
+        int a = (int)adj[st].size(), b = (int)adj[en].size() + (st == en);
+        adj[st].push_back({en, b, cap, cost});
+        adj[en].push_back({st, a, 0, -cost});
+        ids[st].push_back(a);
+        return {this, st, a};
+    }
+
+    template<class T>
+    void it_idx(int idx, const T& f){ // O(|ids[idx]|)
+        for(auto i : ids[idx]) f(state(this, idx, i));
+    }
+
+    template<class T>
+    void it_all(const T& f){ // O(n + m)
+        for(int i = base;i <= n;i++) it_idx(i, f);
+    }
+
+    const edge& get_edge(const state& h) const{ return adj[h.cur][h.idx]; } // O(1)
+    const edge& get_rev(const state& h) const{ auto& e = get_edge(h); return adj[e.nxt][e.rev]; } // O(1)
+    void build(int st, int en, F limit = FINF){ reset(); result = augment(st, en, limit); }
+    pair<F, C> ret() const{ return result; } // O(1)
 };

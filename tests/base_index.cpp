@@ -750,6 +750,104 @@ void check_flow_edge_access(bool base){
     both.reset();CHECK(forward.get_flow()==0 && backward.get_flow()==0);
 }
 
+void check_mcmf_api(bool base){
+    using mcmf=flows::_mcmf<>;using state=mcmf::state;using answer=pair<long long,long long>;
+    static_assert(!flow_public_augment<mcmf> && !flow_outer_edge_api<mcmf> && !flow_const_iteration<mcmf>);
+    static_assert(same_as<decltype(declval<mcmf&>().build(1,2)),void>);
+    static_assert(same_as<decltype(declval<const mcmf&>().ret()),answer>);
+    static_assert(same_as<decltype(declval<const flows::_mcmf<int,__int128_t>&>().ret()),pair<int,__int128_t>>);
+    static_assert(same_as<decltype(declval<mcmf&>().addsol(1,2,3,4)),state>);
+    static_assert(same_as<decltype(declval<mcmf&>().add(1,2,3,4)),pair<state,state>>);
+    static_assert(same_as<decltype(declval<const state&>().get_cost()),long long>);
+    static_assert(same_as<decltype(declval<mcmf&>().get_edge(declval<const state&>())),const mcmf::edge&>);
+    static_assert(same_as<decltype(declval<mcmf&>().get_rev(declval<const state&>())),const mcmf::edge&>);
+    int first=base,n=first+2;
+    mcmf f(n,1,base);const auto& read=f;auto h=f.addsol(first,n,5,3);
+    CHECK(h.from()==first && h.to()==n && h.get_cap()==5 && h.get_flow()==0 && h.get_cost()==3);
+    CHECK(read.get_edge(h).cap==5 && read.get_edge(h).c==5 && read.get_rev(h).cost==-3);
+    h.set_flow(2);h.add_flow(1);CHECK(h.get_flow()==3 && read.get_edge(h).c==2 && read.get_rev(h).c==3);
+    h.set_cap(8);h.add_cap(2);CHECK(h.get_cap()==10 && read.get_edge(h).c==7 && read.get_rev(h).c==3);
+    h.set_cost(5);h.add_cost(-1);CHECK(h.get_cost()==4 && read.get_rev(h).cost==-4);
+    auto copy=h;copy.set_cost(2);CHECK(copy==h && h.get_cost()==2 && read.get_rev(h).cost==-2);
+    for(int i=0;i<30;++i)f.addsol(first,first+1,1,1);
+    CHECK(h.from()==first && h.to()==n && h.get_cap()==10 && h.get_flow()==3);
+    for(int i=0;i<2;++i){f.build(first,n,2);CHECK((read.ret()==answer{2,4}));}
+    f.build(first,n);CHECK((read.ret()==answer{10,20}));CHECK(h.get_flow()==10 && read.get_rev(h).c==10);
+    f.reset();CHECK(h.get_flow()==0 && h.get_cap()==10 && h.get_cost()==2);
+    h.set_cap(0);f.build(first,n);CHECK((read.ret()==answer{0,0}));
+    h.set_cost(-2);h.add_cap(3);f.build(first,n);CHECK((read.ret()==answer{3,-6}));
+    f.build(n,first);CHECK((read.ret()==answer{0,0}));
+    auto self=f.addsol(first,first,5,7);self.set_flow(2);self.set_cap(8);self.add_flow(1);self.set_cost(4);
+    CHECK(self.from()==first && self.to()==first && self!=h && self.get_flow()==3);
+    CHECK(read.get_edge(self).c==5 && read.get_rev(self).c==3 && read.get_rev(self).cost==-4);
+    mcmf other(n,1,base);auto independent=other.addsol(first,n,5,9);
+    independent.set_cost(8);CHECK(independent!=h && h.get_cost()==-2 && independent.get_cost()==8);
+    mcmf g(n,1,base);auto zero=g.addsol(first+1,n,0,7),a=g.addsol(first,first+1,2,1);
+    auto loop=g.addsol(first+1,first+1,0,3);auto [forward,backward]=g.add(first,first+1,2,4);
+    vector<state> all,local;g.it_all([&](state e){all.push_back(e);e.set_cap(3);});
+    CHECK(all==vector<state>({a,forward,zero,loop,backward}));
+    g.it_idx(first+1,[&](state e){local.push_back(e);});CHECK(local==vector<state>({zero,loop,backward}));
+    CHECK(g.get_rev(zero).cost==-7 && g.get_rev(backward).cost==-4);
+    g.build(first,n);CHECK((g.ret()==answer{3,24}));
+    CHECK(a.get_flow()==3 && zero.get_flow()==3 && forward.get_flow()==0 && backward.get_flow()==0);
+    g.reset();a.set_cap(0);g.build(first,n);CHECK((g.ret()==answer{3,33}));
+    all.clear();g.it_all([&](state e){all.push_back(e);});CHECK(all.size()==5 && all[0]==a);
+    g.clear(n,1,base);all.clear();g.it_all([&](state e){all.push_back(e);});CHECK(all.empty());
+    auto fresh=g.addsol(first,n,0,1);g.it_all([&](state e){CHECK(e==fresh);e.set_cap(2);});
+    g.build(first,n);CHECK((g.ret()==answer{2,2}));
+    flows::_mcmf<__int128_t,__int128_t> wide(n,1,base);__int128_t big=(__int128_t)1<<70;
+    auto big_edge=wide.addsol(first,n,big,2);wide.build(first,n);
+    CHECK(wide.ret().first==big && wide.ret().second==2*big && big_edge.get_flow()==big);
+    big_edge.set_cost(3);wide.build(first,n);CHECK(wide.ret().second==3*big);
+    for(bool mode:{false,true}){mcmf empty(0,1,mode);int count=0;empty.it_all([&](state){++count;});CHECK(count==0);}
+}
+
+void check_mcmf_oracle(bool base){
+    using mcmf=flows::_mcmf<>;using answer=pair<long long,long long>;
+    mt19937 rng(19731+base);
+    for(bool spfa:{false,true})for(int count=2;count<=5;++count)for(int trial=0;trial<40;++trial){
+        mcmf f(count-1+base,spfa,base);vector<tuple<int,int,int,long long>> edges;
+        vector<int> potential(count,0);if(spfa)for(auto&v:potential)v=(int)(rng()%9)-4;
+        for(int i=0,m=rng()%9;i<m;++i){
+            int u=rng()%count,v=rng()%count,cap=rng()%3;
+            long long cost=(int)(rng()%5)+potential[v]-potential[u];
+            f.addsol(u+base,v+base,cap,cost);edges.push_back({u,v,cap,cost});
+        }
+        vector<long long> best(20,LLONG_MAX),balance(count,0);
+        auto enumerate=[&](auto&& self,int idx,long long cost)->void{
+            if(idx==(int)edges.size()){
+                for(int i=1;i<count-1;++i)if(balance[i])return;
+                if(balance[0]+balance.back() || balance.back()<0)return;
+                best[balance.back()]=min(best[balance.back()],cost);return;
+            }
+            auto[u,v,cap,c]=edges[idx];
+            for(int amount=0;amount<=cap;++amount){balance[u]-=amount;balance[v]+=amount;self(self,idx+1,cost+amount*c);balance[u]+=amount;balance[v]-=amount;}
+        };
+        enumerate(enumerate,0,0);int maximum=0;
+        for(int i=0;i<(int)best.size();++i)if(best[i]!=LLONG_MAX)maximum=i;
+        for(long long limit:{0,1,3,100}){
+            long long value=min<long long>(maximum,limit);f.build(base,count-1+base,limit);
+            CHECK((f.ret()==answer{value,best[value]}));
+            fill(balance.begin(),balance.end(),0);long long actual_cost=0;
+            f.it_all([&](mcmf::state e){
+                auto flow=e.get_flow();CHECK(0<=flow && flow<=e.get_cap());
+                balance[e.from()-base]-=flow;balance[e.to()-base]+=flow;actual_cost+=flow*e.get_cost();
+            });
+            for(int i=1;i<count-1;++i)CHECK(balance[i]==0);
+            CHECK(balance[0]==-value && balance.back()==value && actual_cost==best[value]);
+        }
+        f.build(base,count-1+base);CHECK((f.ret()==answer{maximum,best[maximum]}));
+    }
+    for(bool spfa:{false,true}){
+        mcmf f(base+5,spfa,base);
+        f.addsol(base,base+1,1,0);f.addsol(base,base+2,1,0);
+        auto ac=f.addsol(base+1,base+3,1,0),ad=f.addsol(base+1,base+4,1,1);
+        auto bc=f.addsol(base+2,base+3,1,1);f.addsol(base+2,base+4,1,100);
+        f.addsol(base+3,base+5,1,0);f.addsol(base+4,base+5,1,0);f.build(base,base+5);
+        CHECK((f.ret()==answer{2,2}));CHECK(ac.get_flow()==0 && ad.get_flow()==1 && bc.get_flow()==1);
+    }
+}
+
 void check_paths_and_flow(bool base){
     int n=4, first=base, count=n-first+1;
     paths::_dij<> dij(n,base);paths::_floyd<> floyd(n,base);paths::_spfa<> spfa(n,base);
@@ -758,7 +856,7 @@ void check_paths_and_flow(bool base){
     dij.build(first);floyd.build();CHECK(spfa.build(first));
     CHECK(dij.ret(n)==count-1);CHECK(floyd.ret(first,n)==count-1);CHECK(floyd.ret(first,first)==0);CHECK(spfa.ret(n)==count-1);
     flow.build(first,n);CHECK(flow.ret()==3);flow.reset();flow.build(first,n);CHECK(flow.ret()==3);
-    CHECK((mincost.build(first,n)==pair<long long,long long>{2,2*(count-1)}));
+    mincost.build(first,n);CHECK((mincost.ret()==pair<long long,long long>{2,2*(count-1)}));
     paths::_spfa<> parallel(n,base);for(long long w:{5,4,3,2,1})parallel.addsol(first,n,w);CHECK(parallel.build(first));CHECK(parallel.ret(n)==1);
     paths::_spfa<> negative(n,base);negative.addsol(first,n,-1);negative.addsol(n,first,0);CHECK(!negative.build(first));CHECK(negative.is_cycle(first));
     paths::_floyd<> via(n,base);via.addsol(n,first,1);via.addsol(first,first+1,1);via.build();CHECK(via.ret(n,first+1)==2);
@@ -837,6 +935,6 @@ void check_oracles(bool base){
     }
 }
 int main(){
-    try {for(bool base:{false,true}){check_ranges(base);check_mos_factories(base);check_sets(base);check_ufset(base);check_uf_split(base);check_uf_value_api(base);check_weighted_uf(base);check_weighted_uf_large(base);check_graphs(base);check_flow_build_api(base);check_flow_min_cut(base);check_flow_iteration(base);check_flow_edge_access(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();check_pbs();cout<<"PASS "<<checks<<" base-index checks\n";return 0;}
+    try {for(bool base:{false,true}){check_ranges(base);check_mos_factories(base);check_sets(base);check_ufset(base);check_uf_split(base);check_uf_value_api(base);check_weighted_uf(base);check_weighted_uf_large(base);check_graphs(base);check_flow_build_api(base);check_flow_min_cut(base);check_flow_iteration(base);check_flow_edge_access(base);check_mcmf_api(base);check_mcmf_oracle(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();check_pbs();cout<<"PASS "<<checks<<" base-index checks\n";return 0;}
     catch(const exception& e){cerr<<"FAIL "<<e.what()<<'\n';return 1;}
 }
