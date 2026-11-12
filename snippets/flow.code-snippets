@@ -2,7 +2,7 @@
 "flow": {
   "prefix": ">>flow",
   "body": [
-    "template <class T = ll> requires (is_integral_v<T> && is_signed_v<T>)",
+    "template <signed_integral T = ll>",
     "class _flow{",
     "private:",
     "    bool base;",

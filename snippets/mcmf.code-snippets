@@ -2,9 +2,7 @@
 	"mcmf": {
   "prefix": ">>mcmf",
   "body": [
-    "template <class F = ll, class C = ll> requires (",
-    "    is_integral_v<F> && is_signed_v<F> && is_integral_v<C> && is_signed_v<C>",
-    ")",
+    "template <signed_integral F = ll, signed_integral C = ll>",
     "class _mcmf {",
     "    bool base;",
     "public:",

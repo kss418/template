@@ -9,7 +9,7 @@ using pll = pair<ll, ll>; using tll = tuple<ll, ll, ll>;
 constexpr ll INF = 0x3f3f3f3f3f3f3f3f;
 constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 
-template <class T = ll> requires (is_integral_v<T> && is_signed_v<T>)
+template <signed_integral T = ll>
 class _flow{
 private:
     bool base;
@@ -160,9 +160,7 @@ public:
     T ret() const{ return result; } // O(1)
 };
 
-template <class F = ll, class C = ll> requires (
-    is_integral_v<F> && is_signed_v<F> && is_integral_v<C> && is_signed_v<C>
-)
+template <signed_integral F = ll, signed_integral C = ll>
 class _mcmf {
     bool base;
 public:

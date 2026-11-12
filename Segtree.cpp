@@ -434,16 +434,14 @@ public:
         requires requires(backend s, int i, const node& nv){ s.update(i, nv); }
     { seg.update(in[x], v); }
 
-    template<class P = backend>
+    template<is_action P = backend>
     void update(int st, int en, const typename P::lazy& lz)
-        requires is_action<P>
     {
         it_path(st, en, [&](int l, int r, bool){ seg.update(l, r, lz); });
     }
 
-    template<class P = backend>
+    template<is_action P = backend>
     void update_sub(int x, const typename P::lazy& lz)
-        requires is_action<P>
     { auto [l, r] = subtree(x); seg.update(l, r, lz); }
 };
 
@@ -648,7 +646,7 @@ public:
     }
 };
 
-template<class policy = group> requires has_inv<policy>
+template<has_inv policy = group>
 class _pst_diff : public _pst<policy> {
 private:
     using tree = _pst<policy>;

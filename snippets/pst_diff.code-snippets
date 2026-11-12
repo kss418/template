@@ -22,7 +22,7 @@
       "    }",
       "};",
       "",
-      "template<class policy = group> requires has_inv<policy>",
+      "template<has_inv policy = group>",
       "class _pst_diff : public _pst<policy> {",
       "private:",
       "    using tree = _pst<policy>;",
