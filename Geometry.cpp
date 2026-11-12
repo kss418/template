@@ -76,13 +76,13 @@ namespace _angle_sort{
 namespace _li{
     inline int ccw(const pll& v1, const pll& v2, const pll& v3){ return _ccw::ret(v1, v2, v3); } // O(1)
 
+    inline bool on_segment(pair<pll, pll> a, pll p){ return on_segment(a.x, a.y, p); } // O(1)
     inline bool on_segment(pll a, pll b, pll p){ // O(1)
         return !ccw(a, b, p) && min(a.x, b.x) <= p.x && p.x <= max(a.x, b.x)
             && min(a.y, b.y) <= p.y && p.y <= max(a.y, b.y);
     }
 
-    inline bool on_segment(pair<pll, pll> a, pll p){ return on_segment(a.x, a.y, p); } // O(1)
-
+        inline bool intersect(pair<pll, pll> a, pair<pll, pll> b){ return intersect(a.x, a.y, b.x, b.y); } // O(1)
     inline bool intersect(pll av1, pll av2, pll bv1, pll bv2){ // O(1)
         int ac = ccw(av1, av2, bv1) * ccw(av1, av2, bv2);
         int bc = ccw(bv1, bv2, av1) * ccw(bv1, bv2, av2);
@@ -94,15 +94,12 @@ namespace _li{
         return ac <= 0 && bc <= 0;
     }
 
-    inline bool intersect(pair<pll, pll> a, pair<pll, pll> b){ return intersect(a.x, a.y, b.x, b.y); } // O(1)
-
+    inline bool proper_intersect(pair<pll, pll> a, pair<pll, pll> b){ return proper_intersect(a.x, a.y, b.x, b.y); } // O(1)
     inline bool proper_intersect(pll av1, pll av2, pll bv1, pll bv2){ // O(1)
         int ac = ccw(av1, av2, bv1) * ccw(av1, av2, bv2);
         int bc = ccw(bv1, bv2, av1) * ccw(bv1, bv2, av2);
         return ac < 0 && bc < 0;
     }
-
-    inline bool proper_intersect(pair<pll, pll> a, pair<pll, pll> b){ return proper_intersect(a.x, a.y, b.x, b.y); } // O(1)
 }
 
 class _frac{
