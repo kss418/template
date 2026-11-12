@@ -660,6 +660,49 @@ void check_flow_min_cut(bool base){
     }
 }
 
+template<class F>
+concept flow_const_iteration=requires(const F& f){f.it_all([](auto){});} ||
+    requires(const F& f){f.it_idx(0,[](auto){});};
+
+void check_flow_iteration(bool base){
+    using flow=flows::_flow<>;using state=flow::state;
+    static_assert(!flow_const_iteration<flow>);
+    static_assert(same_as<decltype(declval<const state&>().from()),int>);
+    static_assert(same_as<decltype(declval<const state&>().to()),int>);
+    static_assert(same_as<decltype(declval<const state&>()==declval<const state&>()),bool>);
+    int first=base,n=first+2;
+    flow f(n,base);
+    auto a=f.addsol(first+1,n,0),b=f.addsol(first,first+1,3),c=f.addsol(first,first+1,0);
+    auto self=f.addsol(first+1,first+1,0);auto [forward,backward]=f.add(first,first+1,2);
+    auto d=f.addsol(n,first,0);auto copy=a;
+    CHECK(a.from()==first+1 && a.to()==n && copy==a);
+    CHECK(b.from()==first && b.to()==first+1 && b!=c && b!=forward);
+    CHECK(self.from()==first+1 && self.to()==first+1 && self!=a);
+    CHECK(forward.from()==first && forward.to()==first+1);
+    CHECK(backward.from()==first+1 && backward.to()==first && forward!=backward);
+    flow other(n,base);auto independent=other.addsol(first+1,n,0);
+    CHECK(a!=independent);
+    vector<state> all,local;
+    f.it_all([&](state e){all.push_back(e);e.set_cap(6);});
+    CHECK(all==vector<state>({b,c,forward,a,self,backward,d}));
+    for(auto e:all)CHECK(e.get_cap()==6 && e.get_flow()==0);
+    f.it_idx(first+1,[&](state e){local.push_back(e);});
+    CHECK(local==vector<state>({a,self,backward}));
+    b.set_cap(0);all.clear();f.it_idx(first,[&](state e){all.push_back(e);});
+    CHECK(all==vector<state>({b,c,forward}));
+    f.build(first,n);CHECK(f.ret()==6 && a.get_flow()==6);
+    int count=0;f.it_all([&](state e){++count;CHECK(e.get_flow()==f.get_edge(e).cap-f.get_edge(e).c);});
+    CHECK(count==7);
+    f.reset();count=0;f.it_all([&](state e){++count;CHECK(e.get_flow()==0);});CHECK(count==7);
+    f.clear(n,base);count=0;f.it_all([&](state){++count;});CHECK(count==0);
+    auto zero=f.addsol(first,n,0);all.clear();f.it_all([&](state e){all.push_back(e);e.set_cap(2);});
+    CHECK(all==vector<state>{zero});f.build(first,n);CHECK(f.ret()==2);
+    for(bool mode:{false,true}){
+        flow empty(0,mode);count=0;empty.it_all([&](state){++count;});CHECK(count==0);
+        if(!mode){empty.it_idx(0,[&](state){++count;});CHECK(count==0);}
+    }
+}
+
 void check_flow_edge_access(bool base){
     using flow=flows::_flow<>;using state=flow::state;
     static_assert(!flow_outer_edge_api<flow>);
@@ -794,6 +837,6 @@ void check_oracles(bool base){
     }
 }
 int main(){
-    try {for(bool base:{false,true}){check_ranges(base);check_mos_factories(base);check_sets(base);check_ufset(base);check_uf_split(base);check_uf_value_api(base);check_weighted_uf(base);check_weighted_uf_large(base);check_graphs(base);check_flow_build_api(base);check_flow_min_cut(base);check_flow_edge_access(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();check_pbs();cout<<"PASS "<<checks<<" base-index checks\n";return 0;}
+    try {for(bool base:{false,true}){check_ranges(base);check_mos_factories(base);check_sets(base);check_ufset(base);check_uf_split(base);check_uf_value_api(base);check_weighted_uf(base);check_weighted_uf_large(base);check_graphs(base);check_flow_build_api(base);check_flow_min_cut(base);check_flow_iteration(base);check_flow_edge_access(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();check_pbs();cout<<"PASS "<<checks<<" base-index checks\n";return 0;}
     catch(const exception& e){cerr<<"FAIL "<<e.what()<<'\n';return 1;}
 }

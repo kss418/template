@@ -33,6 +33,10 @@ public:
         int cur, idx;
         state(_flow* owner, int cur, int idx) : owner(owner), cur(cur), idx(idx){}
     public:
+        int from() const{ return cur; } // O(1)
+        int to() const{ return owner->adj[cur][idx].nxt; } // O(1)
+        bool operator==(const state& a) const = default; // O(1)
+
         T get_flow() const{ auto& e = owner->adj[cur][idx]; return e.cap - e.c; } // O(1)
         void add_flow(T delta){ set_flow(get_flow() + delta); } // O(1)
         void set_flow(T f){ // O(1)
@@ -51,6 +55,7 @@ public:
 private:
     vector <int> d, w; int n; T result;
     vector <vector<edge>> adj;
+    vector <vector<int>> ids;
     bool bfs(int st, int en) { 
         memset(d.data(), -1, sizeof(int) * (n + 1));
         queue <int> q; q.push(st); d[st] = 0;
@@ -60,7 +65,9 @@ private:
                 if(e.c <= 0) continue;
                 int nxt = e.nxt;
                 if (d[nxt] != -1) continue;
-                d[nxt] = d[cur] + 1; q.push(nxt);
+                d[nxt] = d[cur] + 1;
+                if(nxt == en) return true;
+                q.push(nxt);
             }
         }
         return d[en] != -1;
@@ -85,7 +92,7 @@ private:
     T augment(int st, int en, T f = INF){ // O(n^2 * m)
         assert(base <= st && st <= n && base <= en && en <= n && st != en);
         T r = 0;
-        while(bfs(st, en) && f){
+        while(f && bfs(st, en)){
             memset(w.data(), 0, sizeof(int) * (n + 1));
             while(f){
                 T now = dfs(st, en, f);
@@ -97,7 +104,7 @@ private:
 public:
     _flow(int n = 0, bool base = 1){ clear(n, base); } // O(n)
     void clear(int n, bool base = 1){ // O(n)
-        this->n = n; this->base = base; adj.assign(n + 1, {});
+        this->n = n; this->base = base; adj.assign(n + 1, {}); ids.assign(n + 1, {});
         d.assign(n + 1, -1); w.assign(n + 1, 0); result = 0;
     }
 
@@ -113,6 +120,7 @@ public:
         int re = (int)adj[en].size() + (st == en), rs = (int)adj[st].size();
         adj[st].push_back({en, re, c});
         adj[en].push_back({st, rs, 0});
+        ids[st].push_back(rs);
         return {this, st, rs};
     }
 
@@ -137,15 +145,12 @@ public:
     bool reachable(int st, int en) const{ return min_cut(st)[en]; } // O(n + m)
 
     template <class F>
-    void it_idx(int idx, const F& f) const{ // O(|adj[idx]|)
-        for(auto& [nxt, rev, c, cap] : adj[idx]){
-            if(!cap) continue;
-            f(idx, nxt, cap - c, c);
-        }
+    void it_idx(int idx, const F& f){ // O(|ids[idx]|)
+        for(auto i : ids[idx]) f(state(this, idx, i));
     }
 
     template <class F>
-    void it_all(const F& f) const{ // O(m)
+    void it_all(const F& f){ // O(n + m)
         for(int i = base;i <= n;i++) it_idx(i, f);
     }
 
