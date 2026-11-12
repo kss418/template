@@ -28,10 +28,6 @@ public:
 private:
     vector <int> d, w; int n; T result;
     vector <vector<edge>> adj;
-    edge& get_edge_internal(const handle& h){ return adj[h.cur][h.idx]; } // O(1)
-
-    edge& get_rev_internal(const handle& h){ auto& e = get_edge_internal(h); return adj[e.nxt][e.rev]; } // O(1)
-
     bool bfs(int st, int en) { 
         memset(d.data(), -1, sizeof(int) * (n + 1));
         queue <int> q; q.push(st); d[st] = 0;
@@ -140,14 +136,14 @@ public:
     T get_flow(const handle& h) const{ auto& e = get_edge(h); return e.cap - e.c; } // O(1)
     void add_flow(const handle& h, T delta){ set_flow(h, get_flow(h) + delta); } // O(1)
     void set_flow(const handle& h, T f){ // O(1)
-        auto& e = get_edge_internal(h), &re = get_rev_internal(h);
+        auto& e = adj[h.cur][h.idx], &re = adj[e.nxt][e.rev];
         e.c = e.cap - f; re.c = f;
     }
 
     T get_cap(const handle& h) const{ return get_edge(h).cap; } // O(1)
     void add_cap(const handle& h, T delta){ set_cap(h, get_cap(h) + delta); } // O(1)
     void set_cap(const handle& h, T cap){ // O(1)
-        auto& e = get_edge_internal(h), &re = get_rev_internal(h);
+        auto& e = adj[h.cur][h.idx], &re = adj[e.nxt][e.rev];
         T f = e.cap - e.c; e.cap = cap;
         e.c = cap - f; re.c = f;
     }
