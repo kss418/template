@@ -121,10 +121,6 @@ public:
         return {h1, h2};
     }
 
-    void build(int st, int en, T f = INF){ reset(); result = augment(st, en, f); } // O(n^2 * m)
-
-    T ret() const{ return result; } // O(1)
-
     bool reachable(int st, int en) const{ // O(m)
         vector <bool> v(n + 1, false); 
         queue <int> q; v[st] = 1; q.push(st);
@@ -153,8 +149,9 @@ public:
     }
 
     const edge& get_edge(const state& h) const{ return adj[h.cur][h.idx]; } // O(1)
-
     const edge& get_rev(const state& h) const{ auto& e = get_edge(h); return adj[e.nxt][e.rev]; } // O(1)
+    void build(int st, int en, T f = INF){ reset(); result = augment(st, en, f); } // O(n^2 * m)
+    T ret() const{ return result; } // O(1)
 };
 
 template <class F = ll, class C = ll> requires (
