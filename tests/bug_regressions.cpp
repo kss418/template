@@ -2103,22 +2103,21 @@ void check_frac_arithmetic(){
 template<signed_integral T>
 void check_frac_pow_type(){
     using frac=geometry::_frac<T>;using wide=__int128_t;
-    static_assert(same_as<decltype(declval<const frac&>().pow(0LL)),frac>);
+    static_assert(same_as<decltype(&frac::pow),frac(frac::*)(uint64_t)const>);
     const frac a(2,3);
-    CHECK(a.pow(3)==frac(8,27) && a.pow(-2)==frac(9,4));CHECK(a==frac(2,3));
+    CHECK(a.pow(3)==frac(8,27) && a.pow(2)==frac(4,9));CHECK(a==frac(2,3));
     CHECK(frac().pow(0)==1 && frac().pow(7)==0);
-    CHECK(frac(-2,3).pow(3)==frac(-8,27) && frac(-2,3).pow(-3)==frac(-27,8));
+    CHECK(frac(-2,3).pow(3)==frac(-8,27) && frac(-2,3).pow(2)==frac(4,9));
     T maximum=numeric_limits<T>::max();
     CHECK(frac(maximum).pow(1)==maximum && frac(maximum).pow(0)==1);
-    CHECK(frac(maximum).pow(-1)==frac(1,maximum) && frac(1,maximum).pow(-1)==maximum);
-    for(long long k:{LLONG_MIN,LLONG_MIN+1,LLONG_MAX-1,LLONG_MAX}){
+    CHECK(frac(1,maximum).pow(1)==frac(1,maximum));
+    for(uint64_t k:array<uint64_t,7>{0,1,2,LLONG_MAX,uint64_t(1)<<63,UINT64_MAX-1,UINT64_MAX}){
         CHECK(frac(1).pow(k)==1);CHECK(frac(-1).pow(k)==(k%2?-1:1));
-        if(k>0)CHECK(frac().pow(k)==0);
+        CHECK(frac().pow(k)==(k?0:1));
     }
-    for(int p=-4;p<=4;++p)for(int q=-4;q<=4;++q)if(q)for(int k=-6;k<=6;++k){
-        if(!p && k<0)continue;
+    for(int p=-4;p<=4;++p)for(int q=-4;q<=4;++q)if(q)for(int k=0;k<=6;++k){
         wide num=1,den=1;
-        for(int i=0;i<abs(k);++i){num*=k<0?q:p;den*=k<0?p:q;}
+        for(int i=0;i<k;++i){num*=p;den*=q;}
         if(den<0){num=-num;den=-den;}
         const frac v(p,q);auto result=v.pow(k);
         CHECK((wide)result.num()*den==num*result.den());

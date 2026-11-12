@@ -128,13 +128,12 @@ public:
     _frac operator-() const{ return _frac(-p, q); }
     _frac inv() const{ assert(p != 0); return _frac(q, p); }
 
-    _frac pow(ll k) const{ // O(log |k|)
-        _frac ret(1), a = k < 0 ? inv() : *this;
-        u64 n = k < 0 ? -(u64)k : (u64)k;
-        while(n){
-            if(n & 1) ret *= a;
-            n >>= 1;
-            if(n) a *= a;
+    _frac pow(u64 k) const{ // O(log k)
+        _frac ret(1), a = *this;
+        while(k){
+            if(k & 1) ret *= a;
+            k >>= 1;
+            if(k) a *= a;
         }
         return ret;
     }
