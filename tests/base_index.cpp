@@ -584,6 +584,14 @@ void check_graphs(bool base){
 template<class T>
 concept flow_public_augment=requires(T& f){f.augment(0,1);};
 
+template<class F>
+concept flow_outer_edge_api=requires(F& f,typename F::state s){f.get_flow(s);} ||
+    requires(F& f,typename F::state s){f.set_flow(s,0);} ||
+    requires(F& f,typename F::state s){f.add_flow(s,0);} ||
+    requires(F& f,typename F::state s){f.get_cap(s);} ||
+    requires(F& f,typename F::state s){f.set_cap(s,0);} ||
+    requires(F& f,typename F::state s){f.add_cap(s,0);};
+
 void check_flow_build_api(bool base){
     using flow=flows::_flow<>;
     static_assert(!flow_public_augment<flow>);
@@ -600,7 +608,7 @@ void check_flow_build_api(bool base){
     f.build(first,n);CHECK(read.ret()==5 && !f.reachable(first,n));
     f.build(first,n);CHECK(read.ret()==5);
     f.build(n,first);CHECK(read.ret()==0);
-    f.set_cap(h,7);f.build(first,n);CHECK(read.ret()==7);
+    h.set_cap(7);f.build(first,n);CHECK(read.ret()==7);
     f.addsol(first,n,4);f.build(first,n);CHECK(read.ret()==11);
     f.clear(n,base);f.addsol(first,n,9);f.build(first,n);CHECK(read.ret()==9);
     flows::_flow<__int128_t> wide(n,base);__int128_t big=(__int128_t)1<<80;
@@ -608,34 +616,50 @@ void check_flow_build_api(bool base){
 }
 
 void check_flow_edge_access(bool base){
-    using flow=flows::_flow<>;using handle=flow::handle;
-    static_assert(same_as<decltype(declval<flow&>().get_edge(declval<const handle&>())),const flow::edge&>);
-    static_assert(same_as<decltype(declval<flow&>().get_rev(declval<const handle&>())),const flow::edge&>);
+    using flow=flows::_flow<>;using state=flow::state;
+    static_assert(!flow_outer_edge_api<flow>);
+    static_assert(same_as<decltype(declval<flow&>().addsol(1,2)),state>);
+    static_assert(same_as<decltype(declval<flow&>().add(1,2)),pair<state,state>>);
+    static_assert(same_as<decltype(declval<const state&>().get_flow()),long long>);
+    static_assert(same_as<decltype(declval<const state&>().get_cap()),long long>);
+    static_assert(same_as<decltype(declval<flow&>().get_edge(declval<const state&>())),const flow::edge&>);
+    static_assert(same_as<decltype(declval<flow&>().get_rev(declval<const state&>())),const flow::edge&>);
     int first=base,n=first+2;
     flow f(n,base);const auto& read=f;
     auto h=f.addsol(first,n,5);
     CHECK(read.get_edge(h).nxt==n && read.get_edge(h).cap==5 && read.get_edge(h).c==5);
     CHECK(read.get_rev(h).nxt==first && read.get_rev(h).cap==0 && read.get_rev(h).c==0);
-    f.set_flow(h,2);
-    CHECK(read.get_flow(h)==2 && read.get_edge(h).c==3 && read.get_rev(h).c==2);
-    f.add_flow(h,1);
-    CHECK(read.get_flow(h)==3 && read.get_edge(h).c==2 && read.get_rev(h).c==3);
-    f.set_cap(h,8);f.add_cap(h,2);
-    CHECK(read.get_cap(h)==10 && read.get_flow(h)==3);
+    h.set_flow(2);
+    CHECK(h.get_flow()==2 && read.get_edge(h).c==3 && read.get_rev(h).c==2);
+    h.add_flow(1);
+    CHECK(h.get_flow()==3 && read.get_edge(h).c==2 && read.get_rev(h).c==3);
+    h.set_cap(8);h.add_cap(2);
+    CHECK(h.get_cap()==10 && h.get_flow()==3);
     CHECK(read.get_edge(h).c==7 && read.get_rev(h).c==3);
     for(int i=0;i<30;++i)f.addsol(first,first+1,1);
-    CHECK(read.get_cap(h)==10 && read.get_flow(h)==3);
+    CHECK(h.get_cap()==10 && h.get_flow()==3);
     f.build(first,n);CHECK(read.ret()==10);
     CHECK(read.get_edge(h).c==0 && read.get_rev(h).c==10);
     f.reset();
     CHECK(read.get_edge(h).c==10 && read.get_rev(h).c==0);
-    f.set_cap(h,0);f.build(first,n);CHECK(read.ret()==0);
-    f.add_cap(h,6);f.build(first,n);CHECK(read.ret()==6);
+    h.set_cap(0);f.build(first,n);CHECK(read.ret()==0);
+    h.add_cap(6);f.build(first,n);CHECK(read.ret()==6);
     auto self=f.addsol(first,first,5);
-    f.set_flow(self,2);f.set_cap(self,7);f.add_flow(self,1);
-    CHECK(read.get_flow(self)==3 && read.get_edge(self).c==4 && read.get_rev(self).c==3);
+    self.set_flow(2);self.set_cap(7);self.add_flow(1);
+    CHECK(self.get_flow()==3 && read.get_edge(self).c==4 && read.get_rev(self).c==3);
     CHECK(&read.get_edge(self)!=&read.get_rev(self));
     f.reset();CHECK(read.get_edge(self).c==7 && read.get_rev(self).c==0);
+    auto copy=h;copy.add_cap(1);CHECK(h.get_cap()==7);
+    auto parallel=f.addsol(first,n,1);f.build(first,n);
+    CHECK(read.ret()==8 && h.get_flow()==7 && parallel.get_flow()==1);
+    flow other(n,base);auto independent=other.addsol(first,n,4);
+    independent.set_cap(9);other.build(first,n);
+    CHECK(other.ret()==9 && independent.get_flow()==9 && h.get_cap()==7 && h.get_flow()==7);
+    flow both(n,base);auto [forward,backward]=both.add(first,n,4);
+    forward.set_cap(7);backward.add_cap(2);
+    both.build(first,n);CHECK(both.ret()==7 && forward.get_flow()==7 && backward.get_flow()==0);
+    both.build(n,first);CHECK(both.ret()==6 && forward.get_flow()==0 && backward.get_flow()==6);
+    both.reset();CHECK(forward.get_flow()==0 && backward.get_flow()==0);
 }
 
 void check_paths_and_flow(bool base){
@@ -650,7 +674,7 @@ void check_paths_and_flow(bool base){
     paths::_spfa<> parallel(n,base);for(long long w:{5,4,3,2,1})parallel.addsol(first,n,w);CHECK(parallel.build(first));CHECK(parallel.ret(n)==1);
     paths::_spfa<> negative(n,base);negative.addsol(first,n,-1);negative.addsol(n,first,0);CHECK(!negative.build(first));CHECK(negative.is_cycle(first));
     paths::_floyd<> via(n,base);via.addsol(n,first,1);via.addsol(first,first+1,1);via.build();CHECK(via.ret(n,first+1)==2);
-    flows::_flow<> self(n,base);auto handle=self.addsol(first,first,5);self.set_flow(handle,2);CHECK(self.get_flow(handle)==2);
+    flows::_flow<> self(n,base);auto handle=self.addsol(first,first,5);handle.set_flow(2);CHECK(handle.get_flow()==2);
 }
 void check_defaults(){
     CHECK(sets::_uf(0).count()==0);CHECK(sets::_ufset(0).count()==0);CHECK(graphs::_clist<int>(0).size()==0);

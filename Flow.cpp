@@ -20,10 +20,33 @@ public:
         return x;
     }
     static constexpr T INF = make_inf();
-    struct handle { int cur, idx; };
-    struct edge {
+    class edge{
+    public:
         int nxt, rev; T c, cap;
         edge(int nxt, int rev, T c) : nxt(nxt), rev(rev), c(c), cap(c) {}
+    };
+
+    class state{
+    private:
+        friend class _flow;
+        _flow* owner;
+        int cur, idx;
+        state(_flow* owner, int cur, int idx) : owner(owner), cur(cur), idx(idx){}
+    public:
+        T get_flow() const{ auto& e = owner->adj[cur][idx]; return e.cap - e.c; } // O(1)
+        void add_flow(T delta){ set_flow(get_flow() + delta); } // O(1)
+        void set_flow(T f){ // O(1)
+            auto& e = owner->adj[cur][idx], &re = owner->adj[e.nxt][e.rev];
+            e.c = e.cap - f; re.c = f;
+        }
+
+        T get_cap() const{ return owner->adj[cur][idx].cap; } // O(1)
+        void add_cap(T delta){ set_cap(get_cap() + delta); } // O(1)
+        void set_cap(T cap){ // O(1)
+            auto& e = owner->adj[cur][idx], &re = owner->adj[e.nxt][e.rev];
+            T f = e.cap - e.c; e.cap = cap;
+            e.c = cap - f; re.c = f;
+        }
     };
 private:
     vector <int> d, w; int n; T result;
@@ -85,15 +108,15 @@ public:
         }
     }
 
-    handle addsol(int st, int en, T c = INF){  // O(1)
+    state addsol(int st, int en, T c = INF){  // O(1)
         assert(base <= st && st <= n && base <= en && en <= n);
         int re = (int)adj[en].size() + (st == en), rs = (int)adj[st].size();
         adj[st].push_back({en, re, c});
         adj[en].push_back({st, rs, 0});
-        return {st, rs};
+        return {this, st, rs};
     }
 
-    pair <handle, handle> add(int st, int en, T c = INF){ // O(1)
+    pair <state, state> add(int st, int en, T c = INF){ // O(1)
         auto h1 = addsol(st, en, c); auto h2 = addsol(en, st, c);
         return {h1, h2};
     }
@@ -129,24 +152,9 @@ public:
         for(int i = base;i <= n;i++) it_idx(i, f);
     }
 
-    const edge& get_edge(const handle& h) const{ return adj[h.cur][h.idx]; } // O(1)
+    const edge& get_edge(const state& h) const{ return adj[h.cur][h.idx]; } // O(1)
 
-    const edge& get_rev(const handle& h) const{ auto& e = get_edge(h); return adj[e.nxt][e.rev]; } // O(1)
-    
-    T get_flow(const handle& h) const{ auto& e = get_edge(h); return e.cap - e.c; } // O(1)
-    void add_flow(const handle& h, T delta){ set_flow(h, get_flow(h) + delta); } // O(1)
-    void set_flow(const handle& h, T f){ // O(1)
-        auto& e = adj[h.cur][h.idx], &re = adj[e.nxt][e.rev];
-        e.c = e.cap - f; re.c = f;
-    }
-
-    T get_cap(const handle& h) const{ return get_edge(h).cap; } // O(1)
-    void add_cap(const handle& h, T delta){ set_cap(h, get_cap(h) + delta); } // O(1)
-    void set_cap(const handle& h, T cap){ // O(1)
-        auto& e = adj[h.cur][h.idx], &re = adj[e.nxt][e.rev];
-        T f = e.cap - e.c; e.cap = cap;
-        e.c = cap - f; re.c = f;
-    }
+    const edge& get_rev(const state& h) const{ auto& e = get_edge(h); return adj[e.nxt][e.rev]; } // O(1)
 };
 
 template <class F = ll, class C = ll> requires (
