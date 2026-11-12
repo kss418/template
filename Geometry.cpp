@@ -215,8 +215,8 @@ public:
         st.clear(); p.clear();
     }
 
-    void add(ll a, ll b){ add({a, b}); }
-    void add(pll a){ arr.push_back({a, cnt++}); }
+    ll add(ll a, ll b){ return add({a, b}); }
+    ll add(pll a){ arr.push_back({a, cnt}); return cnt++; }
 
     void build(){ // O(n log n)
         st.clear(); p.clear();

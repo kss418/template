@@ -246,7 +246,7 @@ void check_rc_split(){
         CHECK(input[i]==a && input[j]==b);CHECK(distance(a,b)==mx);
     };
     auto run=[&](const vector<point>& input){
-        hull_type hull;for(auto p:input)hull.add(p);
+        hull_type hull;long long id=0;for(auto p:input)CHECK(hull.add(p)==id++);
         hull.build();
         hull_type bulk;bulk.make(input);bulk.build();CHECK(bulk.ret()==hull.ret());
         for(size_t i=0;i<hull.idx().size();++i)CHECK(bulk.idx()[i].idx==hull.idx()[i].idx);
@@ -316,6 +316,8 @@ concept ch_public_storage=requires(T& v){v.arr;} || requires(T& v){v.st;} || req
 void check_ch_api(){
     using hull_type=geometry::_ch;using point=pair<long long,long long>;using wide=__int128_t;
     static_assert(!ch_public_storage<hull_type>);
+    static_assert(same_as<decltype(declval<hull_type&>().add(point{})),long long>);
+    static_assert(same_as<decltype(declval<hull_type&>().add(0LL,0LL)),long long>);
     static_assert(same_as<decltype(declval<const hull_type&>().dist2(point{},point{})),wide>);
     hull_type hull;hull.build();CHECK(hull.ret().empty() && hull.idx().empty());
     const auto& h=as_const(hull);
@@ -332,15 +334,15 @@ void check_ch_api(){
     vector<point> input{{1,1},{3,1},{1,3},{1,1},{2,2}};
     hull.make(input);hull.build();verify(input);CHECK(h.ret()==vector<point>({{1,1},{3,1},{1,3}}));
     auto saved=h.ret();hull.build();verify(input);CHECK(h.ret()==saved);
-    hull.add(4,4);input.push_back({4,4});hull.build();verify(input);
+    CHECK(hull.add(4,4)==5);input.push_back({4,4});hull.build();verify(input);
     CHECK(any_of(all(h.idx()),[&](const auto& v){return v.idx==5;}));
     saved=h.ret();hull.make(h.ret());hull.build();verify(saved);CHECK(h.ret()==saved);
     vector<point> subset(h.ret().begin()+1,h.ret().begin()+3);
     hull.make(span<const point>(h.ret()).subspan(1,2));hull.build();verify(subset);CHECK(h.ret().size()==2);
     hull.clear();hull.build();CHECK(h.ret().empty() && h.idx().empty());
-    hull.clear();hull.add(-2,7);hull.build();CHECK(h.ret()==vector<point>({{-2,7}}) && h.idx()[0].idx==0);
+    hull.clear();CHECK(hull.add(-2,7)==0);hull.build();CHECK(h.ret()==vector<point>({{-2,7}}) && h.idx()[0].idx==0);
     hull.make(span<const point>{});hull.build();CHECK(h.ret().empty() && h.idx().empty());
-    hull.add(9,8);hull.build();CHECK(h.ret()==vector<point>({{9,8}}) && h.idx()[0].idx==0);
+    CHECK(hull.add(point{9,8})==0);hull.build();CHECK(h.ret()==vector<point>({{9,8}}) && h.idx()[0].idx==0);
 }
 
 template<size_t m>

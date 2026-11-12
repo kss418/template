@@ -34,8 +34,8 @@
       "        st.clear(); p.clear();",
       "    }",
       "",
-      "    void add(ll a, ll b){ add({a, b}); }",
-      "    void add(pll a){ arr.push_back({a, cnt++}); }",
+      "    ll add(ll a, ll b){ return add({a, b}); }",
+      "    ll add(pll a){ arr.push_back({a, cnt}); return cnt++; }",
       "",
       "    void build(){ // O(n log n)",
       "        st.clear(); p.clear();",
@@ -64,6 +64,6 @@
       "    const vector <node>& idx() const{ return st; } // O(1)",
       "};"
     ],
-    "description": "Convex hull; requires >>ccw. make(span<const pll>) replaces input without building; clear() resets input and results. IDs restart at zero after make/clear. build() preserves input, removes duplicate coordinates (keeping the first ID), and returns strict CCW vertices from the lexicographic minimum through ret()/idx(). dist2(a,b) returns squared distance as i128; its intermediate arithmetic must fit i128."
+    "description": "Convex hull; requires >>ccw. make(span<const pll>) replaces input without building; clear() resets input and results. add() returns the insertion ID; duplicate coordinates still receive distinct IDs. IDs restart at zero after make/clear. build() preserves input, removes duplicate coordinates (keeping the first ID), and returns strict CCW vertices from the lexicographic minimum through ret()/idx(). dist2(a,b) returns squared distance as i128; its intermediate arithmetic must fit i128."
   }
 }
