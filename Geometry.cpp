@@ -82,7 +82,7 @@ namespace _li{
             && min(a.y, b.y) <= p.y && p.y <= max(a.y, b.y);
     }
 
-        inline bool intersect(pair<pll, pll> a, pair<pll, pll> b){ return intersect(a.x, a.y, b.x, b.y); } // O(1)
+    inline bool intersect(pair<pll, pll> a, pair<pll, pll> b){ return intersect(a.x, a.y, b.x, b.y); } // O(1)
     inline bool intersect(pll av1, pll av2, pll bv1, pll bv2){ // O(1)
         int ac = ccw(av1, av2, bv1) * ccw(av1, av2, bv2);
         int bc = ccw(bv1, bv2, av1) * ccw(bv1, bv2, av2);
