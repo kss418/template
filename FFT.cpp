@@ -12,7 +12,7 @@ constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 template <size_t sz>
 class _fft{
 private:
-    using cpd = complex <double>;
+    using cpd = complex <ld>;
     static constexpr size_t n = sz ? bit_ceil(sz) : 0;
     static void transform(vector <cpd>& v, bool inv){ // O(n log n)
         if(n < 2) return;
@@ -22,9 +22,9 @@ private:
             j ^= bit;
             if(i < j) swap(v[i], v[j]);
         }
-        const double PI = acos(-1.0);
+        const ld PI = acos(-1.0L);
         for(ll k = 1;k < n;k <<= 1){
-            double a = PI / k * (inv ? 1 : -1);
+            ld a = PI / k * (inv ? 1 : -1);
             cpd w(cos(a), sin(a));
             for(ll i = 0;i < n;i += 2 * k){
                 cpd wp(1, 0);
@@ -36,7 +36,7 @@ private:
                 }
             }
         }
-        if(inv) for(auto& i : v) i /= (double)n;
+        if(inv) for(auto& i : v) i /= (ld)n;
     }
 public:
     class node{
@@ -45,6 +45,9 @@ public:
         vector <cpd> v; ll len;
         node(ll len) : v(n), len(len){}
     public:
+        ll size() const{ return len; }
+        bool empty() const{ return !len; }
+
         node& operator+=(const node& a){ // O(n)
             for(ll i = 0;i < n;i++) v[i] += a.v[i];
             len = max(len, a.len);
@@ -67,12 +70,25 @@ public:
         }
     };
 
-    template <integral T>
-    node make(const vector <T>& arr) const{ // O(n log n)
+    static constexpr size_t capacity(){ return n; }
+
+    template <integral T, size_t Extent>
+    node make(span <T, Extent> arr) const{ // O(n log n)
         node ret(arr.size());
-        for(ll i = 0;i < (ll)arr.size();i++) ret.v[i] = (double)arr[i];
+        for(ll i = 0;i < (ll)arr.size();i++) ret.v[i] = (ld)arr[i];
         transform(ret.v, 0);
         return ret;
+    }
+
+    template <integral T>
+    node make(const vector <T>& arr) const{ // O(n log n)
+        if constexpr(!same_as<T, bool>) return make(span{arr});
+        else{
+            node ret(arr.size());
+            for(ll i = 0;i < (ll)arr.size();i++) ret.v[i] = (ld)arr[i];
+            transform(ret.v, 0);
+            return ret;
+        }
     }
 
     template <integral T = ll>
@@ -84,9 +100,9 @@ public:
         return ret;
     }
 
-    node carry(const node& a, ll radix = 10) const{ // O(n log n)
+    vector <ll> inverse_carry(const node& a, ll radix = 10) const{ // O(n log n)
         auto ret = inverse(a);
-        if(ret.empty()) return a;
+        if(ret.empty()) return ret;
         i128 c = 0;
         for(auto& i : ret){
             c += i;
@@ -98,6 +114,10 @@ public:
             c /= radix;
         }
         while(ret.size() > 1 && !ret.back()) ret.pop_back();
-        return make(ret);
+        return ret;
+    }
+
+    node carry(const node& a, ll radix = 10) const{ // O(n log n)
+        return make(inverse_carry(a, radix));
     }
 };

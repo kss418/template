@@ -121,6 +121,50 @@ void check_fft_arrays(){
     fft_templates::_fft<8> reader;CHECK(reader.inverse(detached*detached)==vector<value>({4,12,9}));
 }
 
+void check_fft_span(){
+    const fft_templates::_fft<7> plan;
+    static_assert(fft_templates::_fft<7>::capacity()==8);
+    static_assert(fft_templates::_fft<0>::capacity()==0);
+    int a[]={9,1,2,3,8};
+    const array<long long,3> b={4,5,6};
+    auto fa=plan.make(span{a}.subspan(1,3));
+    auto fb=plan.make(span{b});
+    CHECK(plan.inverse(fa*fb)==vector<long long>({4,13,28,27,18}));
+    CHECK((fa*fb).size()==5 && !(fa*fb).empty());
+    CHECK(plan.inverse(plan.make(span{a}))==vector<long long>({9,1,2,3,8}));
+    vector<int> v={7,2,3,9};
+    auto fv=plan.make(span{v}.subspan(1,2));
+    v[1]=100;
+    CHECK(plan.inverse(fv)==vector<long long>({2,3}));
+    CHECK(plan.inverse(fa)==vector<long long>({1,2,3}));
+    span<const int> blank;
+    auto zero=plan.make(blank);
+    CHECK(zero.empty() && zero.size()==0);
+    CHECK((zero*fa).empty() && (zero*fa).size()==0);
+    CHECK((zero+fa).size()==3 && !(zero+fa).empty());
+    CHECK(plan.inverse(zero+fa)==vector<long long>({1,2,3}));
+    CHECK(a[0]==9 && a[1]==1 && a[2]==2 && a[3]==3 && a[4]==8);
+    fft_templates::_fft<0> no_capacity;
+    CHECK(no_capacity.make(span<const int>{}).empty());
+    vector<int> full(plan.capacity(),1);
+    CHECK(plan.inverse(plan.make(span{full}))==vector<long long>(8,1));
+}
+
+void check_fft_precision(){
+    fft_templates::_fft<1> single;
+    const vector<long long> input={9007199254740993LL};
+    CHECK(single.inverse(single.make(input))==input);
+    const int length=32768;
+    fft_templates::_fft<65536> plan;
+    auto a=plan.make(vector<int>(length,100000));
+    auto product=plan.inverse(a*a);
+    CHECK(product.size()==2*length-1);
+    for(int i=0;i<(int)product.size();++i){
+        long long count=i<length?i+1:2*length-1-i;
+        CHECK(product[i]==count*10000000000LL);
+    }
+}
+
 void check_fft_output(){
     fft_templates::_fft<8> plan;
     const auto a=plan.make(vector<int>{3,2,1});
@@ -141,15 +185,21 @@ void check_fft_carry(){
     auto decimal=plan.carry(square);
     static_assert(same_as<decltype(decimal),fft_templates::_fft<8>::node>);
     CHECK(plan.inverse(decimal)==vector<value>({1,0,8,9}));
+    CHECK(plan.inverse_carry(square)==vector<value>({1,0,8,9}));
     ostringstream out;out<<decimal;CHECK(out.str()=="9801");
     CHECK(plan.inverse(plan.carry(decimal))==vector<value>({1,0,8,9}));
     CHECK(plan.inverse(square)==vector<value>({81,162,81}));
     CHECK(plan.inverse(plan.carry(decimal*plan.make(vector<int>{2})))==vector<value>({2,0,6,9,1}));
     CHECK(plan.inverse(plan.carry(plan.make(vector<int>{3,2,1}),2))==vector<value>({1,1,0,1}));
     CHECK(plan.inverse(plan.carry(plan.make(vector<int>{31,31}),16))==vector<value>({15,0,2}));
+    CHECK(plan.inverse_carry(plan.make(vector<int>{31,31}),16)==vector<value>({15,0,2}));
+    CHECK(plan.inverse_carry(plan.make(vector<int>{0,0,0}))==vector<value>{0});
+    CHECK(plan.inverse_carry(plan.make(vector<int>{})).empty());
     CHECK(plan.inverse(plan.carry(plan.make(vector<int>{0,0,0})))==vector<value>{0});
     CHECK(plan.inverse(plan.carry(plan.make(vector<int>{9,0,0})))==vector<value>{9});
     CHECK(plan.inverse(plan.carry(plan.make(vector<int>{81})))==vector<value>({1,8}));
+    fft_templates::_fft<1> single;
+    CHECK(single.inverse_carry(single.make(vector<int>{81}))==vector<value>({1,8}));
     auto empty=plan.carry(plan.make(vector<int>{}));CHECK(plan.inverse(empty).empty());
     ostringstream empty_out;empty_out<<empty;CHECK(empty_out.str()=="0");
     fft_templates::_fft<0> no_capacity;CHECK(no_capacity.inverse(no_capacity.carry(no_capacity.make(vector<int>{}))).empty());
@@ -160,7 +210,8 @@ void check_fft_carry(){
     for(value radix:{2,3,10,16,1000})for(int length=0;length<=8;++length)for(int trial=0;trial<5;++trial){
         vector<value> input(length);for(auto& coefficient:input)coefficient=rng()%1000;
         auto source=random_plan.make(input);auto normalized=random_plan.carry(source,radix);
-        auto digits=random_plan.inverse(normalized);
+        auto digits=random_plan.inverse_carry(source,radix);
+        CHECK(random_plan.inverse(normalized)==digits);
         CHECK(decode(digits,radix)==decode(input,radix));
         for(auto digit:digits)CHECK(0<=digit && digit<radix);
         CHECK(digits.empty() || digits.size()==1 || digits.back()!=0);
@@ -2086,7 +2137,7 @@ void check_suffix_array_bytes(){
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
-        {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
+        {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
         {"lucas",check_lucas},{"comb_crt",check_comb_crt},{"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},{"sparse_trie",check_sparse_trie},
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
         {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"ccw_large_coordinates",check_ccw_large_coordinates},
