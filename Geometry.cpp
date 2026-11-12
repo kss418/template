@@ -74,7 +74,6 @@ namespace _angle_sort{
 
 //LINE INTERSECTION
 namespace _li{
-    // 세 점의 방향 판정: 반시계 1, 시계 -1, 일직선 0
     inline int ccw(const pll& v1, const pll& v2, const pll& v3){ return _ccw::ret(v1, v2, v3); } // O(1)
 
     // 점이 선분 위에 있는지 판정 (끝점과 점 선분 포함)
@@ -82,7 +81,6 @@ namespace _li{
         return !ccw(a, b, p) && min(a.x, b.x) <= p.x && p.x <= max(a.x, b.x)
             && min(a.y, b.y) <= p.y && p.y <= max(a.y, b.y);
     }
-    // 점이 선분 위에 있는지 판정 (끝점과 점 선분 포함)
     inline bool on_segment(pair<pll, pll> a, pll p){ return on_segment(a.x, a.y, p); } // O(1)
 
     // 두 선분의 교차 판정 (끝점 접촉과 일직선 겹침 포함)
@@ -96,7 +94,6 @@ namespace _li{
         }
         return ac <= 0 && bc <= 0;
     }
-    // 두 선분의 교차 판정 (끝점 접촉과 일직선 겹침 포함)
     inline bool intersect(pair<pll, pll> a, pair<pll, pll> b){ return intersect(a.x, a.y, b.x, b.y); } // O(1)
 
     // 두 선분 내부의 비스듬한 교차 판정 (끝점 접촉과 일직선 겹침 제외)
@@ -105,7 +102,6 @@ namespace _li{
         int bc = ccw(bv1, bv2, av1) * ccw(bv1, bv2, av2);
         return ac < 0 && bc < 0;
     }
-    // 두 선분 내부의 비스듬한 교차 판정 (끝점 접촉과 일직선 겹침 제외)
     inline bool proper_intersect(pair<pll, pll> a, pair<pll, pll> b){ return proper_intersect(a.x, a.y, b.x, b.y); } // O(1)
 }
 
