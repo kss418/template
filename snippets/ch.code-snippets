@@ -4,9 +4,6 @@
     "body": [
       "class _ch{",
       "public:",
-      "    _ch() {}",
-      "    vector <ll> num; vector <pll> p; ll cnt = 0;",
-      "",
       "    class node{",
       "    public:",
       "        ll x, y, idx;",
@@ -14,14 +11,28 @@
       "        node(ll x, ll y, ll idx) : x(x), y(y), idx(idx){}",
       "        operator pll() const{ return { x, y }; }",
       "    };",
+      "private:",
       "    vector <node> arr, st;",
+      "    vector <pll> p; ll cnt = 0;",
+      "public:",
+      "    _ch() {}",
       "",
-      "    ll dist(pll v1, pll v2){",
-      "        ll dx = v1.x - v2.x, dy = v1.y - v2.y;",
+      "    i128 dist2(pll v1, pll v2) const{",
+      "        i128 dx = (i128)v1.x - v2.x, dy = (i128)v1.y - v2.y;",
       "        return dx * dx + dy * dy;",
       "    }",
       "",
       "    ll ccw(pll v1, pll v2, pll v3){ return _ccw::ret(v1, v2, v3); } // O(1)",
+      "",
+      "    void clear(){ // O(n)",
+      "        arr.clear(); st.clear(); p.clear(); cnt = 0;",
+      "    }",
+      "",
+      "    void make(span<const pll> v){ // O(n)",
+      "        arr.clear(); cnt = 0;",
+      "        for(const auto& i : v) add(i);",
+      "        st.clear(); p.clear();",
+      "    }",
       "",
       "    void add(ll a, ll b){ add({a, b}); }",
       "    void add(pll a){ arr.push_back({a, cnt++}); }",
@@ -53,6 +64,6 @@
       "    const vector <node>& idx() const{ return st; } // O(1)",
       "};"
     ],
-    "description": "Convex hull; requires >>ccw."
+    "description": "Convex hull; requires >>ccw. make(span<const pll>) replaces input without building; clear() resets input and results. IDs restart at zero after make/clear. build() preserves input, removes duplicate coordinates (keeping the first ID), and returns strict CCW vertices from the lexicographic minimum through ret()/idx(). dist2(a,b) returns squared distance as i128; its intermediate arithmetic must fit i128."
   }
 }

@@ -247,8 +247,9 @@ void check_rc_split(){
     };
     auto run=[&](const vector<point>& input){
         hull_type hull;for(auto p:input)hull.add(p);
-        auto original=hull.arr;hull.build();CHECK(hull.arr.size()==original.size());
-        for(size_t i=0;i<original.size();++i)CHECK(hull.arr[i].x==original[i].x && hull.arr[i].y==original[i].y && hull.arr[i].idx==original[i].idx);
+        hull.build();
+        hull_type bulk;bulk.make(input);bulk.build();CHECK(bulk.ret()==hull.ret());
+        for(size_t i=0;i<hull.idx().size();++i)CHECK(bulk.idx()[i].idx==hull.idx()[i].idx);
         const auto& h=as_const(hull);const auto saved_points=h.ret();vector<long long> saved_ids;
         CHECK(h.ret().size()==h.idx().size());
         set<point> seen;
@@ -305,7 +306,41 @@ void check_rc_split(){
     auto detached=[](){hull_type hull;hull.add(0,0);hull.add(4,3);hull.build();diameter_type d;d.build(hull.idx());return d;}();
     CHECK(detached.dist2()==25);detached.build();CHECK(detached.dist2()==25);
     hull_type edited;edited.add(0,0);edited.add(1,0);edited.add(0,1);edited.build();
-    edited.arr[1].x=10;edited.build();diameter_type d;d.build(edited.idx());verify(d,{{0,0},{10,0},{0,1}});
+    vector<point> replacement{{0,0},{10,0},{0,1}};edited.make(replacement);edited.build();
+    diameter_type d;d.build(edited.idx());verify(d,replacement);
+}
+
+template<class T>
+concept ch_public_storage=requires(T& v){v.arr;} || requires(T& v){v.st;} || requires(T& v){v.p;} || requires(T& v){v.cnt;} || requires(T& v){v.num;};
+
+void check_ch_api(){
+    using hull_type=geometry::_ch;using point=pair<long long,long long>;using wide=__int128_t;
+    static_assert(!ch_public_storage<hull_type>);
+    static_assert(same_as<decltype(declval<const hull_type&>().dist2(point{},point{})),wide>);
+    hull_type hull;hull.build();CHECK(hull.ret().empty() && hull.idx().empty());
+    const auto& h=as_const(hull);
+    CHECK(h.dist2({0,0},{4000000000LL,4000000000LL})==(wide)32*1000000000000000000LL);
+    wide delta=(wide)LLONG_MIN-1;CHECK(h.dist2({LLONG_MIN,0},{1,0})==delta*delta);
+    CHECK(h.dist2({1,0},{LLONG_MIN,0})==delta*delta && h.dist2({3,4},{3,4})==0);
+    auto verify=[&](const vector<point>& input){
+        CHECK(h.ret().size()==h.idx().size());
+        for(size_t i=0;i<h.idx().size();++i){
+            auto id=h.idx()[i].idx;CHECK(0<=id && id<(long long)input.size());
+            CHECK(h.ret()[i]==input[id]);CHECK(id==find(all(input),h.ret()[i])-input.begin());
+        }
+    };
+    vector<point> input{{1,1},{3,1},{1,3},{1,1},{2,2}};
+    hull.make(input);hull.build();verify(input);CHECK(h.ret()==vector<point>({{1,1},{3,1},{1,3}}));
+    auto saved=h.ret();hull.build();verify(input);CHECK(h.ret()==saved);
+    hull.add(4,4);input.push_back({4,4});hull.build();verify(input);
+    CHECK(any_of(all(h.idx()),[&](const auto& v){return v.idx==5;}));
+    saved=h.ret();hull.make(h.ret());hull.build();verify(saved);CHECK(h.ret()==saved);
+    vector<point> subset(h.ret().begin()+1,h.ret().begin()+3);
+    hull.make(span<const point>(h.ret()).subspan(1,2));hull.build();verify(subset);CHECK(h.ret().size()==2);
+    hull.clear();hull.build();CHECK(h.ret().empty() && h.idx().empty());
+    hull.clear();hull.add(-2,7);hull.build();CHECK(h.ret()==vector<point>({{-2,7}}) && h.idx()[0].idx==0);
+    hull.make(span<const point>{});hull.build();CHECK(h.ret().empty() && h.idx().empty());
+    hull.add(9,8);hull.build();CHECK(h.ret()==vector<point>({{9,8}}) && h.idx()[0].idx==0);
 }
 
 template<size_t m>
@@ -2424,7 +2459,7 @@ void check_suffix_array_bytes(){
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
-        {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
+        {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"ch_api",check_ch_api},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
         {"lucas",check_lucas},{"comb_crt",check_comb_crt},{"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},{"sparse_trie",check_sparse_trie},
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
         {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"frac_api",check_frac_api},{"frac_arithmetic",check_frac_arithmetic},{"frac_pow",check_frac_pow},{"angle_sort_api",check_angle_sort_api},{"angle_sort_order",check_angle_sort_order},{"li_api",check_li_api},{"ccw_api",check_ccw_api},{"ccw_large_coordinates",check_ccw_large_coordinates},
