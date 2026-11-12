@@ -10,27 +10,26 @@ constexpr ll INF = 0x3f3f3f3f3f3f3f3f;
 constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 
 //CCW
-class _ccw{
-public:
-    static i128 cross(ll x1, ll y1, ll x2, ll y2, ll x3, ll y3){ // O(1)
-        return cross({x1, y1}, {x2, y2}, {x3, y3});
-    }
-
-    static i128 cross(pll v1, pll v2, pll v3){ // O(1)
+namespace _ccw{
+    inline i128 cross(pll v1, pll v2, pll v3){ // O(1)
         i128 num = ((i128)v2.x - v1.x) * ((i128)v3.y - v1.y);
         num -= ((i128)v3.x - v1.x) * ((i128)v2.y - v1.y);
         return num;
     }
 
-    static int ret(ll x1, ll y1, ll x2, ll y2, ll x3, ll y3){ // O(1)
-        return ret({x1, y1}, {x2, y2}, {x3, y3});
+    inline i128 cross(ll x1, ll y1, ll x2, ll y2, ll x3, ll y3){ // O(1)
+        return cross({x1, y1}, {x2, y2}, {x3, y3});
     }
 
-    static int ret(pll v1, pll v2, pll v3){ // O(1)
+    inline int ret(pll v1, pll v2, pll v3){ // O(1)
         i128 num = cross(v1, v2, v3);
         return (num > 0) - (num < 0);
     }
-};
+
+    inline int ret(ll x1, ll y1, ll x2, ll y2, ll x3, ll y3){ // O(1)
+        return ret({x1, y1}, {x2, y2}, {x3, y3});
+    }
+}
 
 //ANGLE SORT
 template <typename T = pll>

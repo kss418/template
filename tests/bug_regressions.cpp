@@ -2000,19 +2000,19 @@ void check_ternary_search_large_bounds(){
 }
 
 void check_ccw_api(){
-    using ccw=geometry::_ccw;using point=pair<long long,long long>;using wide=__int128_t;
+    namespace ccw=geometry::_ccw;using point=pair<long long,long long>;using wide=__int128_t;
     static_assert(same_as<decltype(ccw::ret(point{},point{},point{})),int>);
     static_assert(same_as<decltype(ccw::ret(0,0,1,0,0,1)),int>);
     static_assert(same_as<decltype(ccw::cross(point{},point{},point{})),wide>);
     static_assert(same_as<decltype(ccw::cross(0,0,1,0,0,1)),wide>);
-    const ccw read;geometry::_ch hull;
+    geometry::_ch hull;
     auto verify=[&](point a,point b,point c){
         wide value=(wide)a.first*b.second+(wide)b.first*c.second+(wide)c.first*a.second;
         value-=(wide)a.second*b.first+(wide)b.second*c.first+(wide)c.second*a.first;
         int sign=(value>0)-(value<0);
         CHECK(ccw::cross(a,b,c)==value);
         CHECK(ccw::cross(a.first,a.second,b.first,b.second,c.first,c.second)==value);
-        CHECK(read.ret(a,b,c)==sign);
+        CHECK(ccw::ret(a,b,c)==sign);
         CHECK(ccw::ret(a.first,a.second,b.first,b.second,c.first,c.second)==sign);
         CHECK(ccw::cross(b,c,a)==value && ccw::cross(a,c,b)==-value);
         CHECK(geometry::_li::ccw(a,b,c)==sign && hull.ccw(a,b,c)==sign);
@@ -2036,11 +2036,11 @@ void check_ccw_api(){
 }
 
 void check_ccw_large_coordinates(){
-    geometry::_ccw ccw;
-    CHECK(ccw.ret(-2000000000LL,-2000000000LL,2000000000LL,-2000000000LL,-2000000000LL,2000000000LL)==1);
-    CHECK(ccw.ret(-2000000000LL,-2000000000LL,-2000000000LL,2000000000LL,2000000000LL,-2000000000LL)==-1);
-    CHECK(ccw.ret({-2000000000LL,-2000000000LL},{0,0},{2000000000LL,2000000000LL})==0);
-    CHECK(ccw.ret({LLONG_MIN,0},{LLONG_MAX,1},{0,2})==1);
+    namespace ccw=geometry::_ccw;
+    CHECK(ccw::ret(-2000000000LL,-2000000000LL,2000000000LL,-2000000000LL,-2000000000LL,2000000000LL)==1);
+    CHECK(ccw::ret(-2000000000LL,-2000000000LL,-2000000000LL,2000000000LL,2000000000LL,-2000000000LL)==-1);
+    CHECK(ccw::ret({-2000000000LL,-2000000000LL},{0,0},{2000000000LL,2000000000LL})==0);
+    CHECK(ccw::ret({LLONG_MIN,0},{LLONG_MAX,1},{0,2})==1);
 }
 
 void check_dlog_phi(){
