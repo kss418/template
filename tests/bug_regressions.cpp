@@ -521,11 +521,19 @@ void check_lucas(){
 }
 
 template<class A,class B>
-concept matrix_arithmetic=requires(const A& a,const B& b){a+b;a*b;};
+concept matrix_arithmetic=requires(const A& a,const B& b){a+b;a-b;a*b;a==b;};
+template<class T>
+concept matrix_public_storage=requires(T& v){v.n;} || requires(T& v){v.m;} || requires(T& v){v.arr;};
 
 template<uint64_t mod>
 void check_fixed_matrix_mod(){
     using matrix=geometry::_mod_matrix<mod>;using mint=numeric_templates::_mint<mod>;
+    static_assert(!matrix_public_storage<matrix>);
+    static_assert(same_as<decltype(&matrix::pow),matrix(matrix::*)(uint64_t)const>);
+    static_assert(same_as<decltype(declval<const matrix&>().rows()),int> && same_as<decltype(declval<const matrix&>().cols()),int>);
+    static_assert(same_as<decltype(declval<matrix&>()+=declval<const matrix&>()),matrix&>);
+    static_assert(same_as<decltype(declval<matrix&>()-=declval<const matrix&>()),matrix&>);
+    static_assert(same_as<decltype(declval<matrix&>()*=declval<const matrix&>()),matrix&>);
     auto norm=[](long long v){__int128_t x=v;x%=mod;if(x<0)x+=mod;return (uint64_t)x;};
     auto product=[](const vector<vector<long long>>& a,const vector<vector<long long>>& b){
         vector<vector<long long>> ret(a.size(),vector<long long>(b[0].size()));
@@ -535,13 +543,13 @@ void check_fixed_matrix_mod(){
     };
     auto make=[](const vector<vector<long long>>& a){
         matrix ret((int)a.size(),(int)a[0].size());
-        for(int i=0;i<ret.n;++i)for(int j=0;j<ret.m;++j)ret.set(i,j,a[i][j]);return ret;
+        for(int i=0;i<ret.rows();++i)for(int j=0;j<ret.cols();++j)ret.set(i,j,a[i][j]);return ret;
     };
     auto equal=[&](const matrix& got,const vector<vector<long long>>& want){
-        CHECK(got.n==(int)want.size() && got.m==(int)want[0].size());
-        for(int i=0;i<got.n;++i)for(int j=0;j<got.m;++j)CHECK(got.at(i,j).v==norm(want[i][j]));
+        CHECK(got.rows()==(int)want.size() && got.cols()==(int)want[0].size());
+        for(int i=0;i<got.rows();++i)for(int j=0;j<got.cols();++j)CHECK(got.at(i,j).v==norm(want[i][j]));
     };
-    matrix a(2,3);for(const auto& v:a.arr)CHECK(v==0);
+    matrix a(2,3);for(int i=0;i<a.rows();++i)for(int j=0;j<a.cols();++j)CHECK(a.at(i,j)==0);
     a.set(0,0,-1);a.add(0,0,3);CHECK(a.at(0,0)==2);a.at(1,2)=-3;CHECK(a.at(1,2).v==norm(-3));
     static_assert(same_as<decltype(a.at(0,0)),mint&>);
     static_assert(same_as<decltype(as_const(a).at(0,0)),const mint&>);
@@ -550,19 +558,40 @@ void check_fixed_matrix_mod(){
     equal(left+left,{{2,4,6},{-8,10,12}});equal(left.transpose(),{{1,-4},{2,5},{3,6}});
     equal(left*matrix::id(3),av);equal(matrix::id(2)*left,av);
     auto fib=make({{1,1},{1,0}});equal(fib.pow(0),{{1,0},{0,1}});equal(fib.pow(10),{{89,55},{55,34}});
+    auto value=left;CHECK(&(value+=left)==&value);equal(value,{{2,4,6},{-8,10,12}});
+    CHECK(&(value-=left)==&value);CHECK(value==left && !(value!=left));
+    equal(left-value,{{0,0,0},{0,0,0}});
+    value=left;value+=value;equal(value,{{2,4,6},{-8,10,12}});value-=value;equal(value,{{0,0,0},{0,0,0}});
+    value=left;CHECK(&(value*=right)==&value);equal(value,{{58,48},{83,154}});
+    auto square=make({{1,2},{3,4}});CHECK(&(square*=square)==&square);equal(square,{{7,10},{15,22}});
+    matrix cycle(3,3);for(int i=0;i<3;++i)cycle.set(i,(i+1)%3,1);
+    for(uint64_t k:array<uint64_t,7>{0,1,2,3,uint64_t(1)<<63,UINT64_MAX-1,UINT64_MAX}){
+        auto power=cycle.pow(k);
+        for(int i=0;i<3;++i)for(int j=0;j<3;++j)CHECK(power.at(i,j)==mint(j==(i+k%3)%3));
+    }
     equal(left,av);equal(right,bv);
-    matrix empty;CHECK(empty.n==0 && empty.m==0 && empty.arr.empty());
-    auto empty_pow=empty.pow(0);CHECK(empty_pow.n==0 && empty_pow.m==0 && empty_pow.arr.empty());
+    matrix empty;CHECK(empty.rows()==0 && empty.cols()==0);
+    auto empty_pow=empty.pow(0);CHECK(empty_pow.rows()==0 && empty_pow.cols()==0);
     matrix rows(0,3),cols(3,0);auto empty_product=rows*cols;
-    CHECK(empty_product.n==0 && empty_product.m==0 && empty_product.arr.empty());
-    auto transposed=rows.transpose();CHECK(transposed.n==3 && transposed.m==0 && transposed.arr.empty());
-    auto zeros=cols*rows;CHECK(zeros.n==3 && zeros.m==3);for(const auto& v:zeros.arr)CHECK(v==0);
+    CHECK(empty==matrix::id(0) && empty!=rows && rows!=cols);
+    auto empty_sum=rows;empty_sum+=rows;CHECK(empty_sum==rows);empty_sum-=empty_sum;CHECK(empty_sum==rows);
+    auto empty_mul=cols;empty_mul*=rows;CHECK(empty_mul==matrix(3,3));
+    empty_mul=rows;empty_mul*=cols;CHECK(empty_mul==empty);
+    CHECK(empty_product.rows()==0 && empty_product.cols()==0);
+    auto transposed=rows.transpose();CHECK(transposed.rows()==3 && transposed.cols()==0);
+    auto zeros=cols*rows;CHECK(zeros.rows()==3 && zeros.cols()==3);for(int i=0;i<zeros.rows();++i)for(int j=0;j<zeros.cols();++j)CHECK(zeros.at(i,j)==0);
     mt19937 rng(393);
     for(int n=1;n<=4;++n)for(int k=1;k<=4;++k)for(int m=1;m<=4;++m){
         vector<vector<long long>> av(n,vector<long long>(k)),bv(k,vector<long long>(m));
         for(auto& row:av)for(auto& v:row)v=(int)(rng()%21)-10;
         for(auto& row:bv)for(auto& v:row)v=(int)(rng()%21)-10;
-        equal(make(av)*make(bv),product(av,bv));
+        auto lhs=make(av),rhs=make(bv);auto actual=lhs;actual*=rhs;equal(actual,product(av,bv));
+        equal(lhs*rhs,product(av,bv));equal(lhs,av);equal(rhs,bv);
+        vector<vector<long long>> cv=av,sum=av,difference=av;
+        for(int i=0;i<n;++i)for(int j=0;j<k;++j){cv[i][j]=(int)(rng()%21)-10;sum[i][j]+=cv[i][j];difference[i][j]-=cv[i][j];}
+        auto other=make(cv);actual=lhs;actual+=other;equal(actual,sum);equal(lhs+other,sum);
+        actual=lhs;actual-=other;equal(actual,difference);equal(lhs-other,difference);
+        CHECK(actual==make(difference));
     }
 }
 

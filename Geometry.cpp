@@ -249,9 +249,14 @@ template <u64 mod = 998244353>
 class _mod_matrix{ // 0-based index, Require _mint
 public:
     using mint = _mint<mod>;
+private:
     int n, m; vector <mint> arr;
+public:
     _mod_matrix() : n(0), m(0){}
     _mod_matrix(int n, int m) : n(n), m(m), arr(1LL * n * m){}
+
+    int rows() const{ return n; } // O(1)
+    int cols() const{ return m; } // O(1)
 
     mint& at(int i, int j){ return arr[1LL * i * m + j]; }
     const mint& at(int i, int j) const{ return arr[1LL * i * m + j]; }
@@ -264,7 +269,19 @@ public:
         return ret;
     }
 
-    _mod_matrix operator*(const _mod_matrix& ot) const{
+    _mod_matrix& operator+=(const _mod_matrix& ot){
+        assert(n == ot.n && m == ot.m);
+        for(ll i = 0;i < arr.size();i++) arr[i] += ot.arr[i];
+        return *this;
+    }
+
+    _mod_matrix& operator-=(const _mod_matrix& ot){
+        assert(n == ot.n && m == ot.m);
+        for(ll i = 0;i < arr.size();i++) arr[i] -= ot.arr[i];
+        return *this;
+    }
+
+    _mod_matrix& operator*=(const _mod_matrix& ot){
         assert(m == ot.n);
         _mod_matrix ret(n, ot.m);
         for(int i = 0; i < n; i++){
@@ -274,23 +291,22 @@ public:
                 for(int j = 0; j < ot.m; j++) ret.at(i, j) += v * ot.at(k, j);
             }
         }
-        return ret;
+        m = ret.m; arr.swap(ret.arr);
+        return *this;
     }
 
-    _mod_matrix operator+(const _mod_matrix& ot) const{
-        assert(n == ot.n && m == ot.m);
-        _mod_matrix ret(n, m);
-        for(int i = 0; i < n * m; i++) ret.arr[i] = arr[i] + ot.arr[i];
-        return ret;
-    }
+    friend _mod_matrix operator+(_mod_matrix a, const _mod_matrix& b){ a += b; return a; }
+    friend _mod_matrix operator-(_mod_matrix a, const _mod_matrix& b){ a -= b; return a; }
+    friend _mod_matrix operator*(_mod_matrix a, const _mod_matrix& b){ a *= b; return a; }
+    friend bool operator==(const _mod_matrix& a, const _mod_matrix& b) = default;
 
-    _mod_matrix pow(ll k) const{ // n*n matrix
-        assert(n == m); assert(k >= 0);
+    _mod_matrix pow(u64 k) const{ // n*n matrix
+        assert(n == m);
         _mod_matrix base = *this, ret = id(n);
         while(k > 0){
-            if(k & 1) ret = ret * base;
-            base = base * base;
-            k >>= 1LL;
+            if(k & 1) ret *= base;
+            k >>= 1;
+            if(k) base *= base;
         }
         return ret;
     }
