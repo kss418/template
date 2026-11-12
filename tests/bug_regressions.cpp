@@ -2068,6 +2068,57 @@ void check_angle_sort_order(){
     }
 }
 
+namespace li_api=geometry::_li;
+void check_li_api(){
+    using point=pair<long long,long long>;using segment=pair<point,point>;using wide=__int128_t;
+    static_assert(same_as<decltype(li_api::on_segment(point{},point{},point{})),bool>);
+    static_assert(same_as<decltype(li_api::on_segment(segment{},point{})),bool>);
+    static_assert(same_as<decltype(li_api::proper_intersect(point{},point{},point{},point{})),bool>);
+    static_assert(same_as<decltype(li_api::proper_intersect(segment{},segment{})),bool>);
+    auto on=[](point a,point b,point p){
+        wide dx=(wide)b.first-a.first,dy=(wide)b.second-a.second;
+        if(!dx && !dy)return p==a;
+        wide px=(wide)p.first-a.first,py=(wide)p.second-a.second,dot=px*dx+py*dy;
+        return dx*py-dy*px==0 && 0<=dot && dot<=dx*dx+dy*dy;
+    };
+    auto intersection=[&](point a,point b,point c,point d)->pair<bool,bool>{
+        if(a==b)return {on(c,d,a),false};if(c==d)return {on(a,b,c),false};
+        wide rx=(wide)b.first-a.first,ry=(wide)b.second-a.second,sx=(wide)d.first-c.first,sy=(wide)d.second-c.second;
+        wide qx=(wide)c.first-a.first,qy=(wide)c.second-a.second,den=rx*sy-ry*sx;
+        if(den){
+            auto inside=[&](wide v,bool strict){return den>0?(strict?0<v&&v<den:0<=v&&v<=den):(strict?den<v&&v<0:den<=v&&v<=0);};
+            wide t=qx*sy-qy*sx,u=qx*ry-qy*rx;
+            return {inside(t,false)&&inside(u,false),inside(t,true)&&inside(u,true)};
+        }
+        if(qx*ry-qy*rx)return {false,false};
+        if(rx)return {max(min(a.first,b.first),min(c.first,d.first))<=min(max(a.first,b.first),max(c.first,d.first)),false};
+        return {max(min(a.second,b.second),min(c.second,d.second))<=min(max(a.second,b.second),max(c.second,d.second)),false};
+    };
+    vector<point> grid;for(int i=-1;i<=1;++i)for(int j=-1;j<=1;++j)grid.push_back({i,j});
+    for(auto a:grid)for(auto b:grid)for(auto p:grid){
+        bool expected=on(a,b,p);
+        CHECK(li_api::on_segment(a,b,p)==expected);CHECK(li_api::on_segment(segment{a,b},p)==expected);
+        CHECK(li_api::on_segment(b,a,p)==expected);
+        CHECK(li_api::on_segment(a,b,p)==li_api::intersect(a,b,p,p));
+    }
+    auto verify=[&](point a,point b,point c,point d){
+        auto [closed,proper]=intersection(a,b,c,d);
+        CHECK(li_api::intersect(a,b,c,d)==closed);CHECK(li_api::intersect(segment{a,b},segment{c,d})==closed);
+        CHECK(li_api::intersect(b,a,c,d)==closed);CHECK(li_api::intersect(c,d,a,b)==closed);
+        CHECK(li_api::proper_intersect(a,b,c,d)==proper);CHECK(li_api::proper_intersect(segment{a,b},segment{c,d})==proper);
+        CHECK(li_api::proper_intersect(b,a,c,d)==proper);CHECK(li_api::proper_intersect(c,d,a,b)==proper);
+    };
+    for(auto a:grid)for(auto b:grid)for(auto c:grid)for(auto d:grid)verify(a,b,c,d);
+    mt19937_64 rng(441);auto p=[&](){return point{(long long)(rng()%2000000000001ULL)-1000000000000LL,(long long)(rng()%2000000000001ULL)-1000000000000LL};};
+    for(int i=0;i<1000;++i)verify(p(),p(),p(),p());
+    verify({LLONG_MIN,0},{LLONG_MAX,0},{0,-1},{0,1});
+    CHECK(li_api::on_segment({LLONG_MIN,0},{LLONG_MAX,0},{0,0}));
+    CHECK(!li_api::on_segment({LLONG_MIN,0},{LLONG_MAX,0},{0,1}));
+    vector<point> polygon{{-2,-2},{2,-2},{2,2},{-2,2}};
+    for(auto v:vector<point>{{0,0},{-2,-2},{2,2},{0,-2},{2,0},{0,2},{-2,0}})CHECK(geometry::_inter::ret(polygon,v));
+    for(auto v:vector<point>{{-3,0},{3,0},{0,3},{0,-3}})CHECK(!geometry::_inter::ret(polygon,v));
+}
+
 void check_ccw_api(){
     namespace ccw=geometry::_ccw;using point=pair<long long,long long>;using wide=__int128_t;
     static_assert(same_as<decltype(ccw::ret(point{},point{},point{})),int>);
@@ -2245,7 +2296,7 @@ int main(){
         {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
         {"lucas",check_lucas},{"comb_crt",check_comb_crt},{"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},{"sparse_trie",check_sparse_trie},
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
-        {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"angle_sort_api",check_angle_sort_api},{"angle_sort_order",check_angle_sort_order},{"ccw_api",check_ccw_api},{"ccw_large_coordinates",check_ccw_large_coordinates},
+        {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"angle_sort_api",check_angle_sort_api},{"angle_sort_order",check_angle_sort_order},{"li_api",check_li_api},{"ccw_api",check_ccw_api},{"ccw_large_coordinates",check_ccw_large_coordinates},
         {"dlog_phi",check_dlog_phi},{"dlog_large_arithmetic",check_dlog_large_arithmetic},
         {"dlog_normalized_target",check_dlog_normalized_target},{"area_translated",check_area_translated},
         {"suffix_array_bytes",check_suffix_array_bytes},{"string_build_api",check_string_build_api},{"lcs_build_api",check_lcs_build_api}}){
