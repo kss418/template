@@ -615,6 +615,51 @@ void check_flow_build_api(bool base){
     wide.addsol(first,n,big);wide.build(first,n);CHECK(wide.ret()==big);
 }
 
+void check_flow_min_cut(bool base){
+    using flow=flows::_flow<>;
+    static_assert(same_as<decltype(declval<const flow&>().min_cut(0)),vector<bool>>);
+    int first=base,n=first+4;
+    flow f(n,base);const auto& read=f;
+    f.addsol(first,first+1,2);f.addsol(first+1,n,1);
+    f.addsol(first+1,first+2,1);f.addsol(first+2,n,2);
+    auto zero=f.addsol(first,first+3,0);
+    vector<bool> source(n+1,false),connected(n+1,true);
+    source[first]=true;connected[first+3]=false;if(base)connected[0]=false;
+    f.build(first,n,1);CHECK(read.ret()==1 && read.min_cut(first)==connected);
+    CHECK(read.reachable(first,n) && read.reachable(first,first));
+    f.build(first,n);CHECK(read.ret()==2 && read.min_cut(first)==source);
+    CHECK(read.min_cut(n)==connected && !read.reachable(first,n));
+    vector<bool> isolated(n+1,false);isolated[first+3]=true;
+    CHECK(read.min_cut(first+3)==isolated);
+    CHECK(read.ret()==2 && zero.get_flow()==0);
+    f.reset();CHECK(read.min_cut(first)==connected);
+    f.build(first,n);CHECK(read.min_cut(first)==source);
+    zero.set_cap(1);f.addsol(first+3,n,1);f.build(first,n);
+    CHECK(read.ret()==3 && read.min_cut(first)==source);
+    connected[first+3]=true;CHECK(read.min_cut(n)==connected);
+    f.clear(n,base);f.build(first,n);
+    CHECK(read.ret()==0 && read.min_cut(first)==source);
+    mt19937 rng(3791+base);
+    for(int count=2;count<=6;++count)for(int trial=0;trial<40;++trial){
+        flow g(count-1+base,base);vector<tuple<int,int,long long>> edges;
+        for(int i=0,m=rng()%25;i<m;++i){
+            int u=rng()%count,v=rng()%count;long long cap=rng()%8;
+            if(rng()%4){g.addsol(u+base,v+base,cap);edges.push_back({u,v,cap});}
+            else{g.add(u+base,v+base,cap);edges.push_back({u,v,cap});edges.push_back({v,u,cap});}
+        }
+        long long expected=LLONG_MAX;
+        for(int mask=0;mask<(1<<count);++mask)if((mask&1) && !(mask&(1<<(count-1)))){
+            long long cap=0;for(auto[u,v,c]:edges)if((mask&(1<<u)) && !(mask&(1<<v)))cap+=c;
+            expected=min(expected,cap);
+        }
+        g.build(base,count-1+base);auto cut=g.min_cut(base);
+        CHECK(cut.size()==count+base && cut[base] && !cut[count-1+base]);
+        if(base)CHECK(!cut[0]);
+        long long cap=0;for(auto[u,v,c]:edges)if(cut[u+base] && !cut[v+base])cap+=c;
+        CHECK(cap==expected && g.ret()==expected);
+    }
+}
+
 void check_flow_edge_access(bool base){
     using flow=flows::_flow<>;using state=flow::state;
     static_assert(!flow_outer_edge_api<flow>);
@@ -749,6 +794,6 @@ void check_oracles(bool base){
     }
 }
 int main(){
-    try {for(bool base:{false,true}){check_ranges(base);check_mos_factories(base);check_sets(base);check_ufset(base);check_uf_split(base);check_uf_value_api(base);check_weighted_uf(base);check_weighted_uf_large(base);check_graphs(base);check_flow_build_api(base);check_flow_edge_access(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();check_pbs();cout<<"PASS "<<checks<<" base-index checks\n";return 0;}
+    try {for(bool base:{false,true}){check_ranges(base);check_mos_factories(base);check_sets(base);check_ufset(base);check_uf_split(base);check_uf_value_api(base);check_weighted_uf(base);check_weighted_uf_large(base);check_graphs(base);check_flow_build_api(base);check_flow_min_cut(base);check_flow_edge_access(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();check_pbs();cout<<"PASS "<<checks<<" base-index checks\n";return 0;}
     catch(const exception& e){cerr<<"FAIL "<<e.what()<<'\n';return 1;}
 }

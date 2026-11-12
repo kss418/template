@@ -121,19 +121,20 @@ public:
         return {h1, h2};
     }
 
-    bool reachable(int st, int en) const{ // O(m)
+    vector <bool> min_cut(int st) const{ // O(n + m)
         vector <bool> v(n + 1, false); 
         queue <int> q; v[st] = 1; q.push(st);
         while(!q.empty()){
             int cur = q.front(); q.pop();
-            if(cur == en) return true;
             for(const auto& e : adj[cur]){
                 if(e.c <= 0 || v[e.nxt]) continue;
                 v[e.nxt] = 1; q.push(e.nxt);
             }
         }
-        return v[en];
+        return v;
     }
+
+    bool reachable(int st, int en) const{ return min_cut(st)[en]; } // O(n + m)
 
     template <class F>
     void it_idx(int idx, const F& f) const{ // O(|adj[idx]|)
