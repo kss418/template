@@ -24,11 +24,7 @@
       "        return dx * dx + dy * dy;",
       "    }",
       "",
-      "    ll ccw(pll v1, pll v2, pll v3){",
-      "        i128 ret = ((i128)v2.x - v1.x) * ((i128)v3.y - v1.y);",
-      "        ret -= ((i128)v3.x - v1.x) * ((i128)v2.y - v1.y);",
-      "        return (ret > 0) - (ret < 0);",
-      "    }",
+      "    ll ccw(pll v1, pll v2, pll v3){ return _ccw::ret(v1, v2, v3); } // O(1)",
       "",
       "    void add(ll a, ll b){ add({a, b}); }",
       "    void add(pll a){ arr.push_back({a, cnt++}); }",
@@ -60,6 +56,6 @@
       "    const vector <node>& idx() const{ return st; } // O(1)",
       "};"
     ],
-    "description": "ch"
+    "description": "Convex hull; requires >>ccw."
   }
 }

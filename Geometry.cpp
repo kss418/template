@@ -12,18 +12,23 @@ constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 //CCW
 class _ccw{
 public:
-    _ccw() {}
-
-    ll ret(ll x1, ll y1, ll x2, ll y2, ll x3, ll y3){
-        return ret({x1, y1}, {x2, y2}, {x3, y3});
+    static i128 cross(ll x1, ll y1, ll x2, ll y2, ll x3, ll y3){ // O(1)
+        return cross({x1, y1}, {x2, y2}, {x3, y3});
     }
-    ll ret(pll v1, pll v2, pll v3){
+
+    static i128 cross(pll v1, pll v2, pll v3){ // O(1)
         i128 num = ((i128)v2.x - v1.x) * ((i128)v3.y - v1.y);
         num -= ((i128)v3.x - v1.x) * ((i128)v2.y - v1.y);
+        return num;
+    }
 
-        if(num > 0) return 1;
-        else if(num < 0) return -1;
-        return 0;
+    static int ret(ll x1, ll y1, ll x2, ll y2, ll x3, ll y3){ // O(1)
+        return ret({x1, y1}, {x2, y2}, {x3, y3});
+    }
+
+    static int ret(pll v1, pll v2, pll v3){ // O(1)
+        i128 num = cross(v1, v2, v3);
+        return (num > 0) - (num < 0);
     }
 };
 
@@ -65,14 +70,7 @@ public:
 //LINE INTERSECTION
 class _li{
 public:
-    static int ccw(const pll& v1, const pll& v2, const pll& v3){ // O(1)
-        i128 x1 = (i128)v2.x - v1.x, y1 = (i128)v2.y - v1.y;
-        i128 x2 = (i128)v3.x - v1.x, y2 = (i128)v3.y - v1.y;
-        i128 cross = x1 * y2 - x2 * y1;
-        if(cross > 0) return 1; 
-        else if(cross < 0) return -1; 
-        return 0;
-    }
+    static int ccw(const pll& v1, const pll& v2, const pll& v3){ return _ccw::ret(v1, v2, v3); } // O(1)
 
     static bool intersect(pair<pll, pll> a, pair<pll, pll> b){ // O(1)
         return intersect(a.x, a.y, b.x, b.y); 
@@ -161,11 +159,7 @@ public:
         return dx * dx + dy * dy;
     }
 
-    ll ccw(pll v1, pll v2, pll v3){
-        i128 ret = ((i128)v2.x - v1.x) * ((i128)v3.y - v1.y);
-        ret -= ((i128)v3.x - v1.x) * ((i128)v2.y - v1.y);
-        return (ret > 0) - (ret < 0);
-    }
+    ll ccw(pll v1, pll v2, pll v3){ return _ccw::ret(v1, v2, v3); } // O(1)
 
     void add(ll a, ll b){ add({a, b}); }
     void add(pll a){ arr.push_back({a, cnt++}); }

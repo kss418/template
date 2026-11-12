@@ -1999,6 +1999,42 @@ void check_ternary_search_large_bounds(){
     CHECK(offline::_ts::max(LLONG_MIN,LLONG_MAX,[&](long long v){return -distance(v);})==0);
 }
 
+void check_ccw_api(){
+    using ccw=geometry::_ccw;using point=pair<long long,long long>;using wide=__int128_t;
+    static_assert(same_as<decltype(ccw::ret(point{},point{},point{})),int>);
+    static_assert(same_as<decltype(ccw::ret(0,0,1,0,0,1)),int>);
+    static_assert(same_as<decltype(ccw::cross(point{},point{},point{})),wide>);
+    static_assert(same_as<decltype(ccw::cross(0,0,1,0,0,1)),wide>);
+    const ccw read;geometry::_ch hull;
+    auto verify=[&](point a,point b,point c){
+        wide value=(wide)a.first*b.second+(wide)b.first*c.second+(wide)c.first*a.second;
+        value-=(wide)a.second*b.first+(wide)b.second*c.first+(wide)c.second*a.first;
+        int sign=(value>0)-(value<0);
+        CHECK(ccw::cross(a,b,c)==value);
+        CHECK(ccw::cross(a.first,a.second,b.first,b.second,c.first,c.second)==value);
+        CHECK(read.ret(a,b,c)==sign);
+        CHECK(ccw::ret(a.first,a.second,b.first,b.second,c.first,c.second)==sign);
+        CHECK(ccw::cross(b,c,a)==value && ccw::cross(a,c,b)==-value);
+        CHECK(geometry::_li::ccw(a,b,c)==sign && hull.ccw(a,b,c)==sign);
+    };
+    vector<point> grid;for(int i=-1;i<=1;++i)for(int j=-1;j<=1;++j)grid.push_back({i,j});
+    for(auto a:grid)for(auto b:grid)for(auto c:grid)verify(a,b,c);
+    mt19937_64 rng(381);
+    auto make_point=[&](){return point{(long long)(rng()%2000000000001ULL)-1000000000000LL,(long long)(rng()%2000000000001ULL)-1000000000000LL};};
+    for(int i=0;i<2000;++i)verify(make_point(),make_point(),make_point());
+    verify({LLONG_MIN,0},{LLONG_MAX,1},{0,2});
+    CHECK(ccw::cross(-2000000000LL,-2000000000LL,2000000000LL,-2000000000LL,-2000000000LL,2000000000LL)==(wide)16000000000000000000ULL);
+    CHECK(geometry::_li::intersect({-2,-2},{2,2},{-2,2},{2,-2}));
+    CHECK(geometry::_li::intersect({0,0},{2,0},{1,0},{3,0}));
+    CHECK(!geometry::_li::intersect({0,0},{2,0},{3,0},{4,0}));
+    CHECK(geometry::_li::intersect({0,0},{1,1},{1,1},{2,0}));
+    CHECK(geometry::_li::intersect({1,1},{1,1},{0,0},{2,2}));
+    CHECK(!geometry::_li::intersect({1,2},{1,2},{0,0},{2,2}));
+    for(point p:vector<point>{{-2,0},{0,-2},{2,0},{0,2},{0,0},{-2,0}})hull.add(p);
+    hull.build();CHECK(hull.ret()==vector<point>({{-2,0},{0,-2},{2,0},{0,2}}));
+    hull.build();CHECK(hull.ret()==vector<point>({{-2,0},{0,-2},{2,0},{0,2}}));
+}
+
 void check_ccw_large_coordinates(){
     geometry::_ccw ccw;
     CHECK(ccw.ret(-2000000000LL,-2000000000LL,2000000000LL,-2000000000LL,-2000000000LL,2000000000LL)==1);
@@ -2140,7 +2176,7 @@ int main(){
         {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
         {"lucas",check_lucas},{"comb_crt",check_comb_crt},{"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},{"sparse_trie",check_sparse_trie},
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
-        {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"ccw_large_coordinates",check_ccw_large_coordinates},
+        {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"ccw_api",check_ccw_api},{"ccw_large_coordinates",check_ccw_large_coordinates},
         {"dlog_phi",check_dlog_phi},{"dlog_large_arithmetic",check_dlog_large_arithmetic},
         {"dlog_normalized_target",check_dlog_normalized_target},{"area_translated",check_area_translated},
         {"suffix_array_bytes",check_suffix_array_bytes},{"string_build_api",check_string_build_api},{"lcs_build_api",check_lcs_build_api}}){
