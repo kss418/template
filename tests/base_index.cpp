@@ -581,6 +581,32 @@ void check_graphs(bool base){
     for(int i=first;i<=n;++i){expected+=i+1;for(int j=first;j<=n;++j)assignment.set(i,j,i==j?i+1:1000);}
     CHECK(assignment.build()==expected);
 }
+template<class T>
+concept flow_public_augment=requires(T& f){f.augment(0,1);};
+
+void check_flow_build_api(bool base){
+    using flow=flows::_flow<>;
+    static_assert(!flow_public_augment<flow>);
+    static_assert(same_as<decltype(declval<flow&>().build(1,2)),void>);
+    static_assert(same_as<decltype(declval<const flow&>().ret()),long long>);
+    static_assert(same_as<decltype(declval<const flows::_flow<int>&>().ret()),int>);
+    static_assert(same_as<decltype(declval<const flows::_flow<__int128_t>&>().ret()),__int128_t>);
+    int first=base,n=first+2;
+    flow f(n,base);const auto& read=f;
+    f.addsol(first,first+1,5);auto h=f.addsol(first+1,n,3);f.addsol(first,n,2);
+    f.build(first,n,1);CHECK(read.ret()==1 && read.ret()==1);
+    CHECK(f.reachable(first,n));
+    f.build(first,n,0);CHECK(read.ret()==0 && f.reachable(first,n));
+    f.build(first,n);CHECK(read.ret()==5 && !f.reachable(first,n));
+    f.build(first,n);CHECK(read.ret()==5);
+    f.build(n,first);CHECK(read.ret()==0);
+    f.set_cap(h,7);f.build(first,n);CHECK(read.ret()==7);
+    f.addsol(first,n,4);f.build(first,n);CHECK(read.ret()==11);
+    f.clear(n,base);f.addsol(first,n,9);f.build(first,n);CHECK(read.ret()==9);
+    flows::_flow<__int128_t> wide(n,base);__int128_t big=(__int128_t)1<<80;
+    wide.addsol(first,n,big);wide.build(first,n);CHECK(wide.ret()==big);
+}
+
 void check_flow_edge_access(bool base){
     using flow=flows::_flow<>;using handle=flow::handle;
     static_assert(same_as<decltype(declval<flow&>().get_edge(declval<const handle&>())),const flow::edge&>);
@@ -599,12 +625,12 @@ void check_flow_edge_access(bool base){
     CHECK(read.get_edge(h).c==7 && read.get_rev(h).c==3);
     for(int i=0;i<30;++i)f.addsol(first,first+1,1);
     CHECK(read.get_cap(h)==10 && read.get_flow(h)==3);
-    CHECK(f.build(first,n)==10);
+    f.build(first,n);CHECK(read.ret()==10);
     CHECK(read.get_edge(h).c==0 && read.get_rev(h).c==10);
     f.reset();
     CHECK(read.get_edge(h).c==10 && read.get_rev(h).c==0);
-    f.set_cap(h,0);CHECK(f.build(first,n)==0);
-    f.add_cap(h,6);CHECK(f.build(first,n)==6);
+    f.set_cap(h,0);f.build(first,n);CHECK(read.ret()==0);
+    f.add_cap(h,6);f.build(first,n);CHECK(read.ret()==6);
     auto self=f.addsol(first,first,5);
     f.set_flow(self,2);f.set_cap(self,7);f.add_flow(self,1);
     CHECK(read.get_flow(self)==3 && read.get_edge(self).c==4 && read.get_rev(self).c==3);
@@ -619,7 +645,7 @@ void check_paths_and_flow(bool base){
     for(int i=first;i<n;++i){dij.addsol(i,i+1,1);floyd.addsol(i,i+1,1);spfa.addsol(i,i+1,1);flow.addsol(i,i+1,3);mincost.addsol(i,i+1,2,1);}
     dij.build(first);floyd.build();CHECK(spfa.build(first));
     CHECK(dij.ret(n)==count-1);CHECK(floyd.ret(first,n)==count-1);CHECK(floyd.ret(first,first)==0);CHECK(spfa.ret(n)==count-1);
-    CHECK(flow.build(first,n)==3);flow.reset();CHECK(flow.build(first,n)==3);
+    flow.build(first,n);CHECK(flow.ret()==3);flow.reset();flow.build(first,n);CHECK(flow.ret()==3);
     CHECK((mincost.build(first,n)==pair<long long,long long>{2,2*(count-1)}));
     paths::_spfa<> parallel(n,base);for(long long w:{5,4,3,2,1})parallel.addsol(first,n,w);CHECK(parallel.build(first));CHECK(parallel.ret(n)==1);
     paths::_spfa<> negative(n,base);negative.addsol(first,n,-1);negative.addsol(n,first,0);CHECK(!negative.build(first));CHECK(negative.is_cycle(first));
@@ -699,6 +725,6 @@ void check_oracles(bool base){
     }
 }
 int main(){
-    try {for(bool base:{false,true}){check_ranges(base);check_mos_factories(base);check_sets(base);check_ufset(base);check_uf_split(base);check_uf_value_api(base);check_weighted_uf(base);check_weighted_uf_large(base);check_graphs(base);check_flow_edge_access(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();check_pbs();cout<<"PASS "<<checks<<" base-index checks\n";return 0;}
+    try {for(bool base:{false,true}){check_ranges(base);check_mos_factories(base);check_sets(base);check_ufset(base);check_uf_split(base);check_uf_value_api(base);check_weighted_uf(base);check_weighted_uf_large(base);check_graphs(base);check_flow_build_api(base);check_flow_edge_access(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();check_pbs();cout<<"PASS "<<checks<<" base-index checks\n";return 0;}
     catch(const exception& e){cerr<<"FAIL "<<e.what()<<'\n';return 1;}
 }

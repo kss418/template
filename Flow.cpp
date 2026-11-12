@@ -26,7 +26,7 @@ public:
         edge(int nxt, int rev, T c) : nxt(nxt), rev(rev), c(c), cap(c) {}
     };
 private:
-    vector <int> d, w; int n;
+    vector <int> d, w; int n; T result;
     vector <vector<edge>> adj;
     edge& get_edge_internal(const handle& h){ return adj[h.cur][h.idx]; } // O(1)
 
@@ -62,14 +62,28 @@ private:
         }
         return 0;
     }
+
+    T augment(int st, int en, T f = INF){ // O(n^2 * m)
+        assert(base <= st && st <= n && base <= en && en <= n && st != en);
+        T r = 0;
+        while(bfs(st, en) && f){
+            memset(w.data(), 0, sizeof(int) * (n + 1));
+            while(f){
+                T now = dfs(st, en, f);
+                if(!now) break; r += now; f -= now;
+            }
+        }
+        return r;
+    }
 public:
     _flow(int n = 0, bool base = 1){ clear(n, base); } // O(n)
     void clear(int n, bool base = 1){ // O(n)
         this->n = n; this->base = base; adj.assign(n + 1, {});
-        d.assign(n + 1, -1); w.assign(n + 1, 0);
+        d.assign(n + 1, -1); w.assign(n + 1, 0); result = 0;
     }
 
     void reset(){ // O(n + m)
+        result = 0;
         for(int i = base;i <= n;i++){
             for(auto& e : adj[i]) e.c = e.cap;
         }
@@ -88,20 +102,9 @@ public:
         return {h1, h2};
     }
 
-    T augment(int st, int en, T f = INF){ // O(n^2 * m)
-        assert(base <= st && st <= n && base <= en && en <= n && st != en);
-        T r = 0;
-        while(bfs(st, en) && f){
-            memset(w.data(), 0, sizeof(int) * (n + 1));
-            while(f){
-                T now = dfs(st, en, f);
-                if(!now) break; r += now; f -= now;
-            }
-        }
-        return r;
-    }
+    void build(int st, int en, T f = INF){ reset(); result = augment(st, en, f); } // O(n^2 * m)
 
-    T build(int st, int en, T f = INF){ reset(); return augment(st, en, f); }
+    T ret() const{ return result; } // O(1)
 
     bool reachable(int st, int en) const{ // O(m)
         vector <bool> v(n + 1, false); 
