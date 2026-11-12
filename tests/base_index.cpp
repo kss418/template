@@ -275,12 +275,15 @@ void check_sets(bool base){
     sets::_wuf w(n,base);w.merge(first,n,9);CHECK(w.diff(first,n).status==sets::_wuf::state::known);CHECK(w.diff(first,n).get_value()==9);
     w.clear(n,!base);CHECK(!w.same(!base,n));
     sets::_ufset intervals(n,base);CHECK(intervals.count()==count);CHECK(intervals.prv(first)==first-1);CHECK(intervals.nxt(n)==n+1);
-    intervals.merge(first,first+1);CHECK(intervals.same(first,first+1));CHECK(intervals.prv(first+1)==first-1);CHECK(intervals.nxt(first)==first+2);
+    CHECK(intervals.merge_nxt(first));CHECK(intervals.same(first,first+1));CHECK(intervals.prv(first+1)==first-1);CHECK(intervals.nxt(first)==first+2);
 }
 void check_ufset(bool base){
     auto verify=[&](sets::_ufset& uf,int n,const vector<int>& component){
         set<int> components;for(int i=base;i<=n;i++)components.insert(component[i]);
         CHECK(uf.count()==(int)components.size());
+        if(!components.empty()){
+            CHECK(!uf.merge_prv(base));CHECK(!uf.merge_nxt(n));CHECK(uf.count()==(int)components.size());
+        }
         CHECK(uf.find(base-1)==int(base)-1);CHECK(uf.find(n+1)==n+1);
         CHECK(uf.left(base-1)==int(base)-1);CHECK(uf.right(base-1)==int(base)-1);
         CHECK(uf.left(n+1)==n+1);CHECK(uf.right(n+1)==n+1);
@@ -299,7 +302,7 @@ void check_ufset(bool base){
         for(int i=base;i<=n;i++){
             int left=n+1,right=base-1,size=0;
             for(int j=base;j<=n;j++)if(component[i]==component[j]){left=min(left,j);right=max(right,j);size++;}
-            CHECK(seen[i]==1);CHECK(uf.size(i)==size);CHECK(as_const(uf).root(i)==(uf.find(i)==i));
+            CHECK(size==right-left+1);CHECK(seen[i]==1);CHECK(uf.size(i)==size);CHECK(as_const(uf).root(i)==(uf.find(i)==i));
             CHECK(uf.left(i)==left);CHECK(uf.right(i)==right);
             CHECK(uf.prv(i)==uf.find(left-1));CHECK(uf.nxt(i)==uf.find(right+1));
             for(int j=base;j<=n;j++)CHECK(uf.same(i,j)==(component[i]==component[j]));
@@ -312,20 +315,27 @@ void check_ufset(bool base){
         int n=int(base)+length-1;sets::_ufset uf(n,base);vector<int> component(n+1);
         iota(component.begin(),component.end(),0);verify(uf,n,component);
         for(int step=0;step<80&&length;step++){
-            int a=base+rng()%length,b=base+rng()%length,from=component[b],to=component[a];
-            CHECK(uf.merge(a,b)==(from!=to));
-            if(from!=to)for(int i=base;i<=n;i++)if(component[i]==from)component[i]=to;
+            int a=base+rng()%length,left=a,right=a;
+            for(int i=base;i<=n;i++)if(component[i]==component[a]){left=min(left,i);right=max(right,i);}
+            bool previous=rng()&1;int b=previous?left-1:right+1;bool joined=base<=b&&b<=n;
+            CHECK((previous?uf.merge_prv(a):uf.merge_nxt(a))==joined);
+            if(joined){
+                int from=component[b],to=component[a];
+                for(int i=base;i<=n;i++)if(component[i]==from)component[i]=to;
+            }
             if(step%5==0)verify(uf,n,component);
             if(step==39){uf.clear(n,base);iota(component.begin(),component.end(),0);verify(uf,n,component);}
         }
         verify(uf,n,component);
     }
     sets::_ufset ordered(base+4,base);
-    CHECK(ordered.merge(base+3,base+4));CHECK(ordered.merge(base+3,base));CHECK(ordered.find(base)==base+3);
-    CHECK((ordered.groups()==vector<vector<int>>{{base+1},{base+2},{base,base+3,base+4}}));
-    CHECK(ordered.prv(base)==int(base)-1);CHECK(ordered.nxt(base)==base+5);CHECK(!ordered.same(base,base+1));
-    CHECK(ordered.merge(base+1,base));CHECK(ordered.find(base+1)==base+3);CHECK(ordered.size(base)==4);
-    sets::_ufset blocks(base+3,base);blocks.merge(base,base+1);blocks.merge(base+2,base+3);
+    CHECK(ordered.merge_nxt(base+3));CHECK(ordered.merge_prv(base+3));CHECK(ordered.find(base+2)==base+3);
+    CHECK((ordered.groups()==vector<vector<int>>{{base},{base+1},{base+2,base+3,base+4}}));
+    CHECK(ordered.prv(base+2)==base+1);CHECK(ordered.nxt(base+2)==base+5);CHECK(!ordered.same(base+2,base+1));
+    CHECK(ordered.merge_prv(base+4));CHECK(ordered.find(base+1)==base+3);CHECK(ordered.size(base+1)==4);
+    CHECK(!ordered.merge_nxt(base+1));CHECK(ordered.merge_nxt(base));CHECK(ordered.find(base)==base+3);
+    CHECK(ordered.count()==1);CHECK(ordered.left(base)==int(base));CHECK(ordered.right(base)==base+4);
+    sets::_ufset blocks(base+3,base);blocks.merge_nxt(base);blocks.merge_nxt(base+2);
     CHECK(blocks.prv(base+3)==int(base));CHECK(blocks.nxt(base)==base+2);
     vector<int> forward,backward;
     for(int cur=blocks.nxt(base-1);cur<=base+3;cur=blocks.nxt(cur))forward.push_back(cur);
@@ -335,6 +345,7 @@ void check_ufset(bool base){
     as_const(ordered).it_root([&](int){CHECK(false);});
     ordered.clear(0,0);CHECK((ordered.groups()==vector<vector<int>>{{0}}));CHECK(as_const(ordered).root(0));
     CHECK(ordered.prv(0)==-1);CHECK(ordered.nxt(0)==1);
+    CHECK(!ordered.merge_prv(0));CHECK(!ordered.merge_nxt(0));CHECK(ordered.count()==1);
 }
 
 void check_uf_split(bool base){
