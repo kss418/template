@@ -581,6 +581,37 @@ void check_graphs(bool base){
     for(int i=first;i<=n;++i){expected+=i+1;for(int j=first;j<=n;++j)assignment.set(i,j,i==j?i+1:1000);}
     CHECK(assignment.build()==expected);
 }
+void check_flow_edge_access(bool base){
+    using flow=flows::_flow<>;using handle=flow::handle;
+    static_assert(same_as<decltype(declval<flow&>().get_edge(declval<const handle&>())),const flow::edge&>);
+    static_assert(same_as<decltype(declval<flow&>().get_rev(declval<const handle&>())),const flow::edge&>);
+    int first=base,n=first+2;
+    flow f(n,base);const auto& read=f;
+    auto h=f.addsol(first,n,5);
+    CHECK(read.get_edge(h).nxt==n && read.get_edge(h).cap==5 && read.get_edge(h).c==5);
+    CHECK(read.get_rev(h).nxt==first && read.get_rev(h).cap==0 && read.get_rev(h).c==0);
+    f.set_flow(h,2);
+    CHECK(read.get_flow(h)==2 && read.get_edge(h).c==3 && read.get_rev(h).c==2);
+    f.add_flow(h,1);
+    CHECK(read.get_flow(h)==3 && read.get_edge(h).c==2 && read.get_rev(h).c==3);
+    f.set_cap(h,8);f.add_cap(h,2);
+    CHECK(read.get_cap(h)==10 && read.get_flow(h)==3);
+    CHECK(read.get_edge(h).c==7 && read.get_rev(h).c==3);
+    for(int i=0;i<30;++i)f.addsol(first,first+1,1);
+    CHECK(read.get_cap(h)==10 && read.get_flow(h)==3);
+    CHECK(f.build(first,n)==10);
+    CHECK(read.get_edge(h).c==0 && read.get_rev(h).c==10);
+    f.reset();
+    CHECK(read.get_edge(h).c==10 && read.get_rev(h).c==0);
+    f.set_cap(h,0);CHECK(f.build(first,n)==0);
+    f.add_cap(h,6);CHECK(f.build(first,n)==6);
+    auto self=f.addsol(first,first,5);
+    f.set_flow(self,2);f.set_cap(self,7);f.add_flow(self,1);
+    CHECK(read.get_flow(self)==3 && read.get_edge(self).c==4 && read.get_rev(self).c==3);
+    CHECK(&read.get_edge(self)!=&read.get_rev(self));
+    f.reset();CHECK(read.get_edge(self).c==7 && read.get_rev(self).c==0);
+}
+
 void check_paths_and_flow(bool base){
     int n=4, first=base, count=n-first+1;
     paths::_dij<> dij(n,base);paths::_floyd<> floyd(n,base);paths::_spfa<> spfa(n,base);
@@ -668,6 +699,6 @@ void check_oracles(bool base){
     }
 }
 int main(){
-    try {for(bool base:{false,true}){check_ranges(base);check_mos_factories(base);check_sets(base);check_ufset(base);check_uf_split(base);check_uf_value_api(base);check_weighted_uf(base);check_weighted_uf_large(base);check_graphs(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();check_pbs();cout<<"PASS "<<checks<<" base-index checks\n";return 0;}
+    try {for(bool base:{false,true}){check_ranges(base);check_mos_factories(base);check_sets(base);check_ufset(base);check_uf_split(base);check_uf_value_api(base);check_weighted_uf(base);check_weighted_uf_large(base);check_graphs(base);check_flow_edge_access(base);check_paths_and_flow(base);check_oracles(base);}check_defaults();check_pbs();cout<<"PASS "<<checks<<" base-index checks\n";return 0;}
     catch(const exception& e){cerr<<"FAIL "<<e.what()<<'\n';return 1;}
 }
