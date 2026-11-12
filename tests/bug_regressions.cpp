@@ -1999,6 +1999,75 @@ void check_ternary_search_large_bounds(){
     CHECK(offline::_ts::max(LLONG_MIN,LLONG_MAX,[&](long long v){return -distance(v);})==0);
 }
 
+namespace angle_api=geometry::_angle_sort;
+template<class R>
+concept angle_sort_input=requires(R& r){angle_api::sort(r);};
+template<class P>
+concept angle_same_input=requires(const P& p){angle_api::is_same(p,p);};
+template<class A,class B>
+concept angle_cmp_input=requires(const A& a,const B& b){angle_api::cmp()(a,b);};
+class angle_record{
+public:
+    int first,second,id;
+};
+
+void check_angle_sort_api(){
+    using point=pair<long long,long long>;
+    static_assert(angle_api::point<point> && angle_api::point<pair<unsigned,short>> && angle_api::point<angle_record>);
+    static_assert(!angle_api::point<pair<double,double>> && !angle_api::point<pair<int,float>> && !angle_api::point<int>);
+    static_assert(angle_sort_input<vector<point>> && angle_sort_input<array<point,5>> && angle_sort_input<point[5]>);
+    static_assert(angle_sort_input<span<point>> && angle_sort_input<span<point,5>> && angle_sort_input<const span<point>>);
+    static_assert(!angle_sort_input<const vector<point>> && !angle_sort_input<span<const point>>);
+    static_assert(!angle_sort_input<vector<pair<double,double>>> && !angle_sort_input<array<pair<int,float>,2>>);
+    static_assert(!angle_sort_input<deque<point>>);
+    static_assert(angle_same_input<point> && !angle_same_input<pair<double,double>> && !angle_same_input<int>);
+    static_assert(angle_cmp_input<point,pair<int,int>> && !angle_cmp_input<pair<double,double>,point>);
+    const vector<point> input{{1,2},{1,0},{1,1},{0,1},{2,1}};
+    const vector<point> ccw{{1,1},{2,1},{1,2},{0,1},{1,0}},cw{{1,1},{2,1},{1,0},{0,1},{1,2}};
+    auto v=input;angle_api::sort(v,1,1);CHECK(v==ccw);
+    array<point,5> a;copy(input.begin(),input.end(),a.begin());angle_api::sort(a,1,1,true);CHECK(vector<point>(a.begin(),a.end())==cw);
+    point raw[5];copy(input.begin(),input.end(),raw);angle_api::sort(raw,1,1);CHECK(vector<point>(begin(raw),end(raw))==ccw);
+    v=input;span<point> dynamic=v;angle_api::sort(dynamic,1,1,true);CHECK(v==cw);
+    copy(input.begin(),input.end(),a.begin());angle_api::sort(span{a},1,1);CHECK(vector<point>(a.begin(),a.end())==ccw);
+    v={{99,99}};v.insert(v.end(),input.begin(),input.end());v.push_back({-99,-99});
+    angle_api::sort(span{v}.subspan(1,5),1,1,true);
+    CHECK(v.front()==point(99,99) && v.back()==point(-99,-99));CHECK(vector<point>(v.begin()+1,v.end()-1)==cw);
+    vector<point> empty;angle_api::sort(empty);array<point,0> none;angle_api::sort(none);CHECK(empty.empty() && none.empty());
+    CHECK(angle_api::is_same({1,0},{2,0}));CHECK(!angle_api::is_same({1,0},{-2,0}));
+    CHECK(!angle_api::is_same({0,0},{0,0}));CHECK(!angle_api::is_same({0,0},{1,0}));
+    CHECK(angle_api::is_same(point{2,2},pair<int,int>{3,3},1,1));
+    vector<angle_record> records{{0,1,1},{1,0,2},{0,1,3},{0,0,4},{1,0,5}};
+    auto cmp=angle_api::cmp();CHECK(cmp({0,0},{1,0}));
+    stable_sort(records.begin(),records.end(),cmp);vector<int> ids;for(auto p:records)ids.push_back(p.id);
+    CHECK(ids==vector<int>({4,2,5,1,3}));
+    CHECK(lower_bound(records.begin(),records.end(),point{0,1},cmp)-records.begin()==3);
+    CHECK(upper_bound(records.begin(),records.end(),pair<int,int>{0,1},cmp)-records.begin()==5);
+    auto shifted=[](){return angle_api::cmp(1,1,true);}();v=input;sort(v.begin(),v.end(),shifted);CHECK(v==cw);
+    set<point,decltype(cmp)> ordered(cmp);for(auto p:vector<point>{{0,2},{0,1},{2,0},{1,0},{0,0}})ordered.insert(p);
+    CHECK(vector<point>(ordered.begin(),ordered.end())==vector<point>({{0,0},{1,0},{2,0},{0,1},{0,2}}));
+}
+
+void check_angle_sort_order(){
+    using point=pair<long long,long long>;
+    vector<point> grid;for(int i=-3;i<=3;++i)for(int j=-3;j<=3;++j)grid.push_back({i,j});
+    mt19937 rng(719);
+    for(point center:vector<point>{{0,0},{1,-2},{-2,1}}){
+        auto ray=[&](point p){long long dx=p.first-center.first,dy=p.second-center.second,g=gcd(abs(dx),abs(dy));return g?point{dx/g,dy/g}:point{0,0};};
+        for(auto a:grid)for(auto b:grid)CHECK(angle_api::is_same(a,b,center.first,center.second)==(ray(a)!=point{0,0} && ray(a)==ray(b)));
+        for(bool clock:{false,true})for(int trial=0;trial<30;++trial){
+            auto input=grid;shuffle(input.begin(),input.end(),rng);auto expected=input;
+            auto angle=[&](point p){long double dx=p.first-center.first,dy=p.second-center.second;long double a=atan2l(clock?-dy:dy,dx);return a<0?a+2*acosl(-1.0L):a;};
+            sort(expected.begin(),expected.end(),[&](point a,point b){
+                long double aa=angle(a),ab=angle(b);if(fabsl(aa-ab)>1e-15L)return aa<ab;
+                auto dist=[&](point p){long long dx=p.first-center.first,dy=p.second-center.second;return dx*dx+dy*dy;};
+                return dist(a)<dist(b);
+            });
+            auto direct=input;sort(direct.begin(),direct.end(),angle_api::cmp(center.first,center.second,clock));CHECK(direct==expected);
+            angle_api::sort(input,center.first,center.second,clock);CHECK(input==expected);
+        }
+    }
+}
+
 void check_ccw_api(){
     namespace ccw=geometry::_ccw;using point=pair<long long,long long>;using wide=__int128_t;
     static_assert(same_as<decltype(ccw::ret(point{},point{},point{})),int>);
@@ -2176,7 +2245,7 @@ int main(){
         {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
         {"lucas",check_lucas},{"comb_crt",check_comb_crt},{"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},{"sparse_trie",check_sparse_trie},
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
-        {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"ccw_api",check_ccw_api},{"ccw_large_coordinates",check_ccw_large_coordinates},
+        {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"angle_sort_api",check_angle_sort_api},{"angle_sort_order",check_angle_sort_order},{"ccw_api",check_ccw_api},{"ccw_large_coordinates",check_ccw_large_coordinates},
         {"dlog_phi",check_dlog_phi},{"dlog_large_arithmetic",check_dlog_large_arithmetic},
         {"dlog_normalized_target",check_dlog_normalized_target},{"area_translated",check_area_translated},
         {"suffix_array_bytes",check_suffix_array_bytes},{"string_build_api",check_string_build_api},{"lcs_build_api",check_lcs_build_api}}){
