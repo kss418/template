@@ -255,13 +255,18 @@ public:
     _mod_matrix() : n(0), m(0){}
     _mod_matrix(int n, int m) : n(n), m(m), arr(1LL * n * m){}
 
+    void clear(int n, int m){ // O(nm)
+        arr.assign(1LL * n * m, 0);
+        this->n = n; this->m = m;
+    }
+
     int rows() const{ return n; } // O(1)
     int cols() const{ return m; } // O(1)
 
     mint& at(int i, int j){ return arr[1LL * i * m + j]; }
     const mint& at(int i, int j) const{ return arr[1LL * i * m + j]; }
-    void add(int i, int j, ll v){ at(i, j) += v; }
-    void set(int i, int j, ll v){ at(i, j) = v; }
+    void add(int i, int j, u64 v){ at(i, j) += v; }
+    void set(int i, int j, u64 v){ at(i, j) = v; }
 
     static _mod_matrix id(int n){
         _mod_matrix ret(n, n);

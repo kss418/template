@@ -529,6 +529,8 @@ template<uint64_t mod>
 void check_fixed_matrix_mod(){
     using matrix=geometry::_mod_matrix<mod>;using mint=numeric_templates::_mint<mod>;
     static_assert(!matrix_public_storage<matrix>);
+    static_assert(same_as<decltype(&matrix::set),void(matrix::*)(int,int,uint64_t)>);
+    static_assert(same_as<decltype(&matrix::add),void(matrix::*)(int,int,uint64_t)>);
     static_assert(same_as<decltype(&matrix::pow),matrix(matrix::*)(uint64_t)const>);
     static_assert(same_as<decltype(declval<const matrix&>().rows()),int> && same_as<decltype(declval<const matrix&>().cols()),int>);
     static_assert(same_as<decltype(declval<matrix&>()+=declval<const matrix&>()),matrix&>);
@@ -543,14 +545,27 @@ void check_fixed_matrix_mod(){
     };
     auto make=[](const vector<vector<long long>>& a){
         matrix ret((int)a.size(),(int)a[0].size());
-        for(int i=0;i<ret.rows();++i)for(int j=0;j<ret.cols();++j)ret.set(i,j,a[i][j]);return ret;
+        for(int i=0;i<ret.rows();++i)for(int j=0;j<ret.cols();++j)ret.at(i,j)=a[i][j];return ret;
     };
     auto equal=[&](const matrix& got,const vector<vector<long long>>& want){
         CHECK(got.rows()==(int)want.size() && got.cols()==(int)want[0].size());
         for(int i=0;i<got.rows();++i)for(int j=0;j<got.cols();++j)CHECK(got.at(i,j).v==norm(want[i][j]));
     };
     matrix a(2,3);for(int i=0;i<a.rows();++i)for(int j=0;j<a.cols();++j)CHECK(a.at(i,j)==0);
-    a.set(0,0,-1);a.add(0,0,3);CHECK(a.at(0,0)==2);a.at(1,2)=-3;CHECK(a.at(1,2).v==norm(-3));
+    a.set(0,0,1);a.add(0,0,3);CHECK(a.at(0,0)==4);a.at(1,2)=-3;CHECK(a.at(1,2).v==norm(-3));
+    for(uint64_t v:array<uint64_t,6>{0,1,LLONG_MAX,uint64_t(1)<<63,UINT64_MAX-1,UINT64_MAX}){
+        a.set(0,0,v);CHECK(a.at(0,0).v==v%mod);
+        a.set(0,0,mod-1);a.add(0,0,v);
+        CHECK(a.at(0,0).v==(uint64_t)(((__uint128_t)(mod-1)+v)%mod));
+    }
+    matrix reset;
+    for(auto [n,m]:vector<pair<int,int>>{{2,3},{3,2},{3,2},{1,1},{0,4},{5,0},{0,0},{4,3}}){
+        reset.clear(n,m);CHECK(reset.rows()==n && reset.cols()==m);
+        for(int i=0;i<n;++i)for(int j=0;j<m;++j){CHECK(reset.at(i,j)==0);reset.at(i,j)=5;}
+    }
+    reset.clear(2,3);reset.set(1,2,UINT64_MAX);
+    CHECK(reset*matrix::id(3)==reset && reset.transpose().transpose()==reset);
+    reset.clear(2,3);CHECK(reset==matrix(2,3));
     static_assert(same_as<decltype(a.at(0,0)),mint&>);
     static_assert(same_as<decltype(as_const(a).at(0,0)),const mint&>);
     const vector<vector<long long>> av{{1,2,3},{-4,5,6}},bv{{7,-8},{9,10},{11,12}};
@@ -601,7 +616,7 @@ void check_fixed_matrix(){
     geometry::_mod_matrix a(1,1);a.set(0,0,998244354);CHECK(a.at(0,0)==1);
     static_assert(!matrix_arithmetic<geometry::_mod_matrix<7>,geometry::_mod_matrix<11>>);
     static_assert(!is_constructible_v<geometry::_mod_matrix<7>,int,int,int>);
-    ostringstream out;geometry::_mod_matrix<7> b(1,2);b.set(0,0,-1);b.set(0,1,9);out<<b;
+    ostringstream out;geometry::_mod_matrix<7> b(1,2);b.set(0,0,6);b.set(0,1,9);out<<b;
     CHECK(out.str()=="6 2 \n");
 }
 

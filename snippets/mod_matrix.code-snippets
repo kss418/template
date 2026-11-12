@@ -12,13 +12,18 @@
     "    _mod_matrix() : n(0), m(0){}",
     "    _mod_matrix(int n, int m) : n(n), m(m), arr(1LL * n * m){}",
     "",
+    "    void clear(int n, int m){ // O(nm)",
+    "        arr.assign(1LL * n * m, 0);",
+    "        this->n = n; this->m = m;",
+    "    }",
+    "",
     "    int rows() const{ return n; } // O(1)",
     "    int cols() const{ return m; } // O(1)",
     "",
     "    mint& at(int i, int j){ return arr[1LL * i * m + j]; }",
     "    const mint& at(int i, int j) const{ return arr[1LL * i * m + j]; }",
-    "    void add(int i, int j, ll v){ at(i, j) += v; }",
-    "    void set(int i, int j, ll v){ at(i, j) = v; }",
+    "    void add(int i, int j, u64 v){ at(i, j) += v; }",
+    "    void set(int i, int j, u64 v){ at(i, j) = v; }",
     "",
     "    static _mod_matrix id(int n){",
     "        _mod_matrix ret(n, n);",
@@ -83,6 +88,6 @@
     "    }",
     "};"
   ],
-  "description": "Modular matrix over _mint<mod>; requires >>mint. Zero-based at(i,j) access and rows()/cols() dimension getters. Supports +, -, *, +=, -=, *= and shape-aware equality; *= supports self-multiplication and rectangular results. pow(u64 k) requires a square matrix and skips the final unused square. set/add retain ll value parameters."
+  "description": "Modular matrix over _mint<mod>; requires >>mint. Zero-based at(i,j) access and rows()/cols() dimension getters. Supports +, -, *, +=, -=, *= and shape-aware equality; *= supports self-multiplication and rectangular results. pow(u64 k) requires a square matrix and skips the final unused square. set/add take u64 values. clear(n,m) resets dimensions and fills every entry with zero, including when the dimensions stay the same. Signed values can be assigned through at(i,j)."
 }
 }
