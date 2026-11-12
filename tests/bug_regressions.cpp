@@ -1999,6 +1999,74 @@ void check_ternary_search_large_bounds(){
     CHECK(offline::_ts::max(LLONG_MIN,LLONG_MAX,[&](long long v){return -distance(v);})==0);
 }
 
+template<class T>
+concept frac_public_parts=requires(T& value){value.p;value.q;};
+
+void check_frac_api(){
+    using frac=geometry::_frac;using wide=__int128_t;
+    static_assert(!frac_public_parts<frac>);
+    static_assert(same_as<decltype(declval<const frac&>().num()),wide> && same_as<decltype(declval<const frac&>().den()),wide>);
+    static_assert(same_as<decltype(declval<frac&>()+=declval<const frac&>()),frac&>);
+    static_assert(same_as<decltype(declval<frac&>()-=declval<const frac&>()),frac&>);
+    static_assert(same_as<decltype(declval<frac&>()*=declval<const frac&>()),frac&>);
+    static_assert(same_as<decltype(declval<frac&>()/=declval<const frac&>()),frac&>);
+    static_assert(three_way_comparable<frac,strong_ordering>);
+    frac v;CHECK(v.num()==0 && v.den()==1);
+    v.set(6,-8);CHECK(v.num()==-3 && v.den()==4);CHECK(v.floor()==-1 && v.ceil()==0 && v.to_ld()==-0.75L);
+    CHECK(v.inv()==frac(-4,3) && -v==frac(3,4));v.set(0,-7);CHECK(v.num()==0 && v.den()==1);
+    wide maximum=numeric_limits<wide>::max();
+    CHECK(frac(maximum,2).ceil()==maximum/2+1 && frac(maximum,2).floor()==maximum/2);
+    CHECK(frac(-maximum,2).floor()==-maximum/2-1 && frac(-maximum,2).ceil()==-maximum/2);
+    CHECK(frac(1,maximum).ceil()==1 && frac(-1,maximum).floor()==-1);
+    CHECK(frac(maximum).ceil()==maximum && frac(-maximum).floor()==-maximum);
+    wide big=(wide)1<<100;frac tiny(1,big);
+    CHECK(tiny+tiny==frac(1,big/2));CHECK(tiny-tiny==0);
+    auto self=tiny;CHECK(&(self+=self)==&self);CHECK(self==frac(1,big/2));self-=self;CHECK(self==0 && self.den()==1);
+    wide g=(wide)1<<124;frac a(1,3*g),b(1,5*g);
+    CHECK(a+b==frac(1,15*(g/8)));CHECK(a-b==frac(1,15*(g/2)));
+    frac large(big+1,big-1),inverse(big-1,big+1);
+    CHECK(large*inverse==1);CHECK(large/large==1);CHECK((-large)/large==-1);
+    self=large;self/=self;CHECK(self==1);
+    self=frac(-3,7);self*=self;CHECK(self==frac(9,49));
+    v=frac(1,2);v+=1;CHECK(v==frac(3,2));v-=2;CHECK(v==frac(-1,2));v*=-6;CHECK(v==3);v/=4;CHECK(v==frac(3,4));
+    CHECK(2+v==frac(11,4) && 2-v==frac(5,4) && 2*v==frac(3,2) && 2/v==frac(8,3));
+    CHECK((frac(1,2)<=>frac(2,3))==strong_ordering::less);
+    CHECK((frac(2)<=>frac(2))==strong_ordering::equal && (frac(3)<=>frac(2))==strong_ordering::greater);
+    vector<frac> values{frac(2,3),frac(-1,2),frac(0),frac(1,2)};sort(values.begin(),values.end());
+    CHECK(values==vector<frac>({frac(-1,2),frac(0),frac(1,2),frac(2,3)}));
+}
+
+void check_frac_arithmetic(){
+    using frac=geometry::_frac;using wide=__int128_t;
+    auto canonical=[](const frac& v){CHECK(v.den()>0 && gcd(v.num()<0?-v.num():v.num(),v.den())==1);};
+    auto verify=[&](const frac& v,wide num,wide den){canonical(v);CHECK(v.num()*den==num*v.den());};
+    vector<frac> values;
+    for(long long p=-8;p<=8;++p)for(long long q=-4;q<=4;++q)if(q){
+        frac v(p,q);verify(v,p,q);CHECK(v.floor()==(wide)floorl((long double)p/q));CHECK(v.ceil()==(wide)ceill((long double)p/q));
+        CHECK(fabsl(v.to_ld()-(long double)p/q)<1e-15L);
+        CHECK(!v.num() || v.inv().inv()==v);
+        values.push_back(v);
+        for(long long k=-3;k<=3;++k){
+            wide lhs=v.num(),rhs=(wide)k*v.den();
+            CHECK((v==k)==(lhs==rhs) && (k==v)==(lhs==rhs));
+            CHECK((v!=k)==(lhs!=rhs) && (k!=v)==(lhs!=rhs));
+            CHECK((v<k)==(lhs<rhs) && (k<v)==(rhs<lhs));
+            CHECK((v>k)==(lhs>rhs) && (k>v)==(rhs>lhs));
+            CHECK((v<=k)==(lhs<=rhs) && (k<=v)==(rhs<=lhs));
+            CHECK((v>=k)==(lhs>=rhs) && (k>=v)==(rhs>=lhs));
+        }
+    }
+    for(const auto& a:values)for(const auto& b:values){
+        wide p=a.num(),q=a.den(),r=b.num(),s=b.den(),lhs=p*s,rhs=r*q;
+        CHECK((a==b)==(lhs==rhs) && (a!=b)==(lhs!=rhs));
+        CHECK((a<b)==(lhs<rhs) && (a>b)==(lhs>rhs) && (a<=b)==(lhs<=rhs) && (a>=b)==(lhs>=rhs));
+        verify(a+b,p*s+r*q,q*s);verify(a-b,p*s-r*q,q*s);verify(a*b,p*r,q*s);
+        auto v=a;v+=b;verify(v,p*s+r*q,q*s);v=a;v-=b;verify(v,p*s-r*q,q*s);v=a;v*=b;verify(v,p*r,q*s);
+        if(r){verify(a/b,p*s,q*r);v=a;v/=b;verify(v,p*s,q*r);}
+        CHECK(a.num()==p && a.den()==q && b.num()==r && b.den()==s);
+    }
+}
+
 namespace angle_api=geometry::_angle_sort;
 template<class R>
 concept angle_sort_input=requires(R& r){angle_api::sort(r);};
@@ -2296,7 +2364,7 @@ int main(){
         {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
         {"lucas",check_lucas},{"comb_crt",check_comb_crt},{"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},{"sparse_trie",check_sparse_trie},
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
-        {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"angle_sort_api",check_angle_sort_api},{"angle_sort_order",check_angle_sort_order},{"li_api",check_li_api},{"ccw_api",check_ccw_api},{"ccw_large_coordinates",check_ccw_large_coordinates},
+        {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"frac_api",check_frac_api},{"frac_arithmetic",check_frac_arithmetic},{"angle_sort_api",check_angle_sort_api},{"angle_sort_order",check_angle_sort_order},{"li_api",check_li_api},{"ccw_api",check_ccw_api},{"ccw_large_coordinates",check_ccw_large_coordinates},
         {"dlog_phi",check_dlog_phi},{"dlog_large_arithmetic",check_dlog_large_arithmetic},
         {"dlog_normalized_target",check_dlog_normalized_target},{"area_translated",check_area_translated},
         {"suffix_array_bytes",check_suffix_array_bytes},{"string_build_api",check_string_build_api},{"lcs_build_api",check_lcs_build_api}}){
