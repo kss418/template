@@ -128,6 +128,17 @@ public:
     _frac operator-() const{ return _frac(-p, q); }
     _frac inv() const{ assert(p != 0); return _frac(q, p); }
 
+    _frac pow(ll k) const{ // O(log |k|)
+        _frac ret(1), a = k < 0 ? inv() : *this;
+        u64 n = k < 0 ? -(u64)k : (u64)k;
+        while(n){
+            if(n & 1) ret *= a;
+            n >>= 1;
+            if(n) a *= a;
+        }
+        return ret;
+    }
+
     _frac& operator+=(const _frac& a){
         T g = gcd(q, a.q);
         T num = p * (a.q / g) + a.p * (q / g);

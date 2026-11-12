@@ -2100,6 +2100,37 @@ void check_frac_arithmetic(){
     check_frac_type<int>();check_frac_type<long long>();check_frac_type<__int128_t>();
 }
 
+template<signed_integral T>
+void check_frac_pow_type(){
+    using frac=geometry::_frac<T>;using wide=__int128_t;
+    static_assert(same_as<decltype(declval<const frac&>().pow(0LL)),frac>);
+    const frac a(2,3);
+    CHECK(a.pow(3)==frac(8,27) && a.pow(-2)==frac(9,4));CHECK(a==frac(2,3));
+    CHECK(frac().pow(0)==1 && frac().pow(7)==0);
+    CHECK(frac(-2,3).pow(3)==frac(-8,27) && frac(-2,3).pow(-3)==frac(-27,8));
+    T maximum=numeric_limits<T>::max();
+    CHECK(frac(maximum).pow(1)==maximum && frac(maximum).pow(0)==1);
+    CHECK(frac(maximum).pow(-1)==frac(1,maximum) && frac(1,maximum).pow(-1)==maximum);
+    for(long long k:{LLONG_MIN,LLONG_MIN+1,LLONG_MAX-1,LLONG_MAX}){
+        CHECK(frac(1).pow(k)==1);CHECK(frac(-1).pow(k)==(k%2?-1:1));
+        if(k>0)CHECK(frac().pow(k)==0);
+    }
+    for(int p=-4;p<=4;++p)for(int q=-4;q<=4;++q)if(q)for(int k=-6;k<=6;++k){
+        if(!p && k<0)continue;
+        wide num=1,den=1;
+        for(int i=0;i<abs(k);++i){num*=k<0?q:p;den*=k<0?p:q;}
+        if(den<0){num=-num;den=-den;}
+        const frac v(p,q);auto result=v.pow(k);
+        CHECK((wide)result.num()*den==num*result.den());
+        CHECK(result.den()>0 && gcd(result.num()<0?-result.num():result.num(),result.den())==1);
+        CHECK(v.num()==frac(p,q).num() && v.den()==frac(p,q).den());
+    }
+}
+
+void check_frac_pow(){
+    check_frac_pow_type<int>();check_frac_pow_type<long long>();check_frac_pow_type<__int128_t>();
+}
+
 namespace angle_api=geometry::_angle_sort;
 template<class R>
 concept angle_sort_input=requires(R& r){angle_api::sort(r);};
@@ -2397,7 +2428,7 @@ int main(){
         {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
         {"lucas",check_lucas},{"comb_crt",check_comb_crt},{"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},{"sparse_trie",check_sparse_trie},
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
-        {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"frac_api",check_frac_api},{"frac_arithmetic",check_frac_arithmetic},{"angle_sort_api",check_angle_sort_api},{"angle_sort_order",check_angle_sort_order},{"li_api",check_li_api},{"ccw_api",check_ccw_api},{"ccw_large_coordinates",check_ccw_large_coordinates},
+        {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"frac_api",check_frac_api},{"frac_arithmetic",check_frac_arithmetic},{"frac_pow",check_frac_pow},{"angle_sort_api",check_angle_sort_api},{"angle_sort_order",check_angle_sort_order},{"li_api",check_li_api},{"ccw_api",check_ccw_api},{"ccw_large_coordinates",check_ccw_large_coordinates},
         {"dlog_phi",check_dlog_phi},{"dlog_large_arithmetic",check_dlog_large_arithmetic},
         {"dlog_normalized_target",check_dlog_normalized_target},{"area_translated",check_area_translated},
         {"suffix_array_bytes",check_suffix_array_bytes},{"string_build_api",check_string_build_api},{"lcs_build_api",check_lcs_build_api}}){

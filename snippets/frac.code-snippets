@@ -25,6 +25,17 @@
     "    _frac operator-() const{ return _frac(-p, q); }",
     "    _frac inv() const{ assert(p != 0); return _frac(q, p); }",
     "",
+    "    _frac pow(ll k) const{ // O(log |k|)",
+    "        _frac ret(1), a = k < 0 ? inv() : *this;",
+    "        u64 n = k < 0 ? -(u64)k : (u64)k;",
+    "        while(n){",
+    "            if(n & 1) ret *= a;",
+    "            n >>= 1;",
+    "            if(n) a *= a;",
+    "        }",
+    "        return ret;",
+    "    }",
+    "",
     "    _frac& operator+=(const _frac& a){",
     "        T g = gcd(q, a.q);",
     "        T num = p * (a.q / g) + a.p * (q / g);",
@@ -69,6 +80,6 @@
     "    friend _frac operator/(_frac a, const _frac& b){ return a /= b; }",
     "};"
   ],
-  "description": "Normalized fractions over signed_integral T (default i128), with positive denominators. Use _frac<> for i128 or _frac<int> / _frac<ll> for other integer types. num()/den() read private components; set(p,q) normalizes with q!=0. Supports floor/ceil/to_ld/inv/unary minus, arithmetic and compound assignment, and integer/fraction comparisons through == and <=>. Addition/subtraction reduce denominator gcds before multiplication; multiplication/division cross-cancel. Remaining intermediate calculations, including normalization/sign changes and comparison cross products, must fit T."
+  "description": "Normalized fractions over signed_integral T (default i128), with positive denominators. Use _frac<> for i128 or _frac<int> / _frac<ll> for other integer types. num()/den() read private components; set(p,q) normalizes with q!=0. Supports floor/ceil/to_ld/inv/unary minus, arithmetic and compound assignment, and integer/fraction comparisons through == and <=>. pow(ll k) computes integer powers by binary exponentiation, using the reciprocal for negative k; 0^0 is 1 and zero to a negative power is invalid. Addition/subtraction reduce denominator gcds before multiplication; multiplication/division cross-cancel. Remaining intermediate calculations, including normalization/sign changes and comparison cross products, must fit T."
 }
 }
