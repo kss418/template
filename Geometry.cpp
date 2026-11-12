@@ -192,10 +192,7 @@ public:
     public:
         ll x, y, idx;
         node(pll a, ll idx) : node(a.x, a.y, idx) {};
-        node(ll x, ll y, ll idx){
-            this->x = x; this->y = y;
-            this->idx = idx;
-        }
+        node(ll x, ll y, ll idx) : x(x), y(y), idx(idx){}
         operator pll() const{ return { x, y }; }
     };
     vector <node> arr, st;
