@@ -105,64 +105,65 @@ namespace _li{
     inline bool proper_intersect(pair<pll, pll> a, pair<pll, pll> b){ return proper_intersect(a.x, a.y, b.x, b.y); } // O(1)
 }
 
+template <signed_integral T = i128>
 class _frac{
 private:
-    i128 p, q;
+    T p, q;
 public:
-    _frac(i128 p = 0, i128 q = 1){ set(p, q); }
-    void set(i128 p, i128 q){
+    _frac(T p = 0, T q = 1){ set(p, q); }
+    void set(T p, T q){
         assert(q);
         if(q < 0){ p = -p; q = -q; }
         if(!p){ this->p = 0; this->q = 1; return; }
-        i128 g = gcd(p < 0 ? -p : p, q);
+        T g = gcd(p < 0 ? -p : p, q);
         this->p = p / g; this->q = q / g;
     }
 
-    i128 num() const{ return p; }
-    i128 den() const{ return q; }
+    T num() const{ return p; }
+    T den() const{ return q; }
     ld to_ld() const{ return (ld)p / (ld)q; }
-    i128 floor() const{ return p / q - (p % q < 0); }
-    i128 ceil() const{ return p / q + (p % q > 0); }
+    T floor() const{ return p / q - (p % q < 0); }
+    T ceil() const{ return p / q + (p % q > 0); }
 
     _frac operator-() const{ return _frac(-p, q); }
     _frac inv() const{ assert(p != 0); return _frac(q, p); }
 
     _frac& operator+=(const _frac& a){
-        i128 g = gcd(q, a.q);
-        i128 num = p * (a.q / g) + a.p * (q / g);
-        i128 h = gcd(num < 0 ? -num : num, g);
-        i128 den = (q / g) * (a.q / h);
+        T g = gcd(q, a.q);
+        T num = p * (a.q / g) + a.p * (q / g);
+        T h = gcd(num < 0 ? -num : num, g);
+        T den = (q / g) * (a.q / h);
         p = num / h; q = den;
         return *this;
     }
 
     _frac& operator-=(const _frac& a){
-        i128 g = gcd(q, a.q);
-        i128 num = p * (a.q / g) - a.p * (q / g);
-        i128 h = gcd(num < 0 ? -num : num, g);
-        i128 den = (q / g) * (a.q / h);
+        T g = gcd(q, a.q);
+        T num = p * (a.q / g) - a.p * (q / g);
+        T h = gcd(num < 0 ? -num : num, g);
+        T den = (q / g) * (a.q / h);
         p = num / h; q = den;
         return *this;
     }
 
     _frac& operator*=(const _frac& a){
-        i128 g = gcd(p < 0 ? -p : p, a.q), h = gcd(a.p < 0 ? -a.p : a.p, q);
-        i128 num = (p / g) * (a.p / h), den = (q / h) * (a.q / g);
+        T g = gcd(p < 0 ? -p : p, a.q), h = gcd(a.p < 0 ? -a.p : a.p, q);
+        T num = (p / g) * (a.p / h), den = (q / h) * (a.q / g);
         p = num; q = den;
         return *this;
     }
 
     _frac& operator/=(const _frac& a){
         assert(a.p != 0);
-        i128 g = gcd(p < 0 ? -p : p, a.p < 0 ? -a.p : a.p), h = gcd(q, a.q);
-        i128 num = (p / g) * (a.q / h), den = (q / h) * (a.p / g);
+        T g = gcd(p < 0 ? -p : p, a.p < 0 ? -a.p : a.p), h = gcd(q, a.q);
+        T num = (p / g) * (a.q / h), den = (q / h) * (a.p / g);
         if(den < 0){ num = -num; den = -den; }
         p = num; q = den;
         return *this;
     }
 
     friend bool operator==(const _frac& a, const _frac& b) = default;
-    friend bool operator==(const _frac& a, i128 b){ return a.q == 1 && a.p == b; }
+    friend bool operator==(const _frac& a, T b){ return a.q == 1 && a.p == b; }
     friend auto operator<=>(const _frac& a, const _frac& b){ return a.p * b.q <=> b.p * a.q; }
 
     friend _frac operator+(_frac a, const _frac& b){ return a += b; }
@@ -311,42 +312,42 @@ public:
 //LINE
 class _line{ 
 public:
-    _frac a, b; i128 x = 0; bool vert = false;
+    _frac<> a, b; i128 x = 0; bool vert = false;
     _line() = default;
     _line(const pll& p1, const pll& p2){
         if(p1.x == p2.x){
             vert = true; x = p1.x;
-            a = _frac(), b = _frac();
+            a = _frac<>(), b = _frac<>();
         }
         else{
             vert = false;
             ll dx = p2.x - p1.x, dy = p2.y - p1.y;
-            a = _frac(dy, dx), b = _frac(p1.y) - a * _frac(p1.x);
+            a = _frac<>(dy, dx), b = _frac<>(p1.y) - a * _frac<>(p1.x);
         }
     }
 
-    _line(const _frac& slope, const pll& p){
+    _line(const _frac<>& slope, const pll& p){
         vert = false; x = 0;
-        a = slope; b = _frac(p.y) - a * _frac(p.x);
+        a = slope; b = _frac<>(p.y) - a * _frac<>(p.x);
     }
 
-    _frac f(const _frac& x) const{
+    _frac<> f(const _frac<>& x) const{
         assert(!vert);
         return a * x + b;
     }
 
-    bool intersect(const _line& ot, pair<_frac, _frac>& ret) const{
+    bool intersect(const _line& ot, pair<_frac<>, _frac<>>& ret) const{
         if(vert && ot.vert) return false;
         if(vert){
-            _frac p1 = _frac(x), p2 = ot.f(p1); ret = {p1, p2};
+            _frac<> p1 = _frac<>(x), p2 = ot.f(p1); ret = {p1, p2};
             return true;
         }
         if(ot.vert){
-            _frac p1 = _frac(ot.x), p2 = f(p1); ret = {p1, p2};
+            _frac<> p1 = _frac<>(ot.x), p2 = f(p1); ret = {p1, p2};
             return true;
         }
         if(a == ot.a) return false;
-        _frac p1 = (ot.b - b) / (a - ot.a), p2 = f(p1); ret = {p1, p2};
+        _frac<> p1 = (ot.b - b) / (a - ot.a), p2 = f(p1); ret = {p1, p2};
         return true;
     }
 

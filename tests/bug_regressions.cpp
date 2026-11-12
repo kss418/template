@@ -1186,6 +1186,15 @@ void check_line_same(){
     using P = geometry::pll;
     geometry::_line v(P{0,0}, P{0,1}), h(P{0,0}, P{1,0});
     CHECK(!v.same(h)); CHECK(!h.same(v));
+    using frac=geometry::_frac<>;using wide=__int128_t;
+    static_assert(same_as<decltype(h.a),frac> && same_as<decltype(h.f(frac())),frac>);
+    geometry::_line diagonal(P{0,0},P{2,1}),vertical(P{3,0},P{3,1});pair<frac,frac> intersection;
+    CHECK(diagonal.intersect(vertical,intersection));CHECK(intersection==make_pair(frac(3),frac(3,2)));
+    CHECK(vertical.intersect(diagonal,intersection));CHECK(intersection==make_pair(frac(3),frac(3,2)));
+    wide big=wide(1)<<70;geometry::_line steep(frac(big+1,2),P{0,1});
+    CHECK(steep.f(frac(2))==big+2);
+    geometry::_line large(P{0,4000000000LL},P{4000000000LL,0});
+    CHECK(large.f(frac(1))==3999999999LL);
     vector<pair<P,P>> ends = {
         {{0,0},{0,1}}, {{0,3},{0,-2}}, {{1,0},{1,1}},
         {{0,0},{1,0}}, {{3,0},{-2,0}}, {{0,1},{1,1}},
@@ -2003,7 +2012,7 @@ template<class T>
 concept frac_public_parts=requires(T& value){value.p;value.q;};
 
 void check_frac_api(){
-    using frac=geometry::_frac;using wide=__int128_t;
+    using frac=geometry::_frac<>;using wide=__int128_t;
     static_assert(!frac_public_parts<frac>);
     static_assert(same_as<decltype(declval<const frac&>().num()),wide> && same_as<decltype(declval<const frac&>().den()),wide>);
     static_assert(same_as<decltype(declval<frac&>()+=declval<const frac&>()),frac&>);
@@ -2036,8 +2045,25 @@ void check_frac_api(){
     CHECK(values==vector<frac>({frac(-1,2),frac(0),frac(1,2),frac(2,3)}));
 }
 
-void check_frac_arithmetic(){
-    using frac=geometry::_frac;using wide=__int128_t;
+template<class T>
+concept frac_integer=requires{typename geometry::_frac<T>;};
+
+template<signed_integral T>
+void check_frac_type(){
+    using frac=geometry::_frac<T>;using wide=__int128_t;
+    static_assert(same_as<decltype(declval<const frac&>().num()),T> && same_as<decltype(declval<const frac&>().den()),T>);
+    static_assert(same_as<decltype(declval<const frac&>().floor()),T> && same_as<decltype(declval<const frac&>().ceil()),T>);
+    T maximum=numeric_limits<T>::max();
+    CHECK(frac(maximum,2).ceil()==maximum/2+1 && frac(maximum,2).floor()==maximum/2);
+    CHECK(frac(-maximum,2).floor()==-maximum/2-1 && frac(-maximum,2).ceil()==-maximum/2);
+    T g=T(1)<<(numeric_limits<T>::digits-3);frac first(1,3*g),second(1,5*g);
+    CHECK(first+second==frac(1,15*(g/8)));CHECK(first-second==frac(1,15*(g/2)));
+    frac large(g+1,g-1),inverse(g-1,g+1);
+    CHECK(large*inverse==1 && large/large==1);
+    frac self(1,g);self+=self;CHECK(self==frac(1,g/2));self-=self;CHECK(self==0 && self.den()==1);
+    self=large;self/=self;CHECK(self==1);self=frac(-3,7);self*=self;CHECK(self==frac(9,49));
+    frac mixed(1,2);mixed+=1;mixed-=2;mixed*=-6;mixed/=4;CHECK(mixed==frac(3,4));
+    CHECK(2+mixed==frac(11,4) && 2-mixed==frac(5,4) && 2*mixed==frac(3,2) && 2/mixed==frac(8,3));
     auto canonical=[](const frac& v){CHECK(v.den()>0 && gcd(v.num()<0?-v.num():v.num(),v.den())==1);};
     auto verify=[&](const frac& v,wide num,wide den){canonical(v);CHECK(v.num()*den==num*v.den());};
     vector<frac> values;
@@ -2065,6 +2091,13 @@ void check_frac_arithmetic(){
         if(r){verify(a/b,p*s,q*r);v=a;v/=b;verify(v,p*s,q*r);}
         CHECK(a.num()==p && a.den()==q && b.num()==r && b.den()==s);
     }
+}
+
+void check_frac_arithmetic(){
+    static_assert(frac_integer<int> && frac_integer<long long> && frac_integer<__int128_t>);
+    static_assert(!frac_integer<unsigned> && !frac_integer<bool> && !frac_integer<double>);
+    static_assert(same_as<geometry::_frac<>,geometry::_frac<__int128_t>>);
+    check_frac_type<int>();check_frac_type<long long>();check_frac_type<__int128_t>();
 }
 
 namespace angle_api=geometry::_angle_sort;
