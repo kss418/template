@@ -1263,19 +1263,39 @@ void check_pollard_one(){
     }
 }
 
+template<class T>
+concept line_public_storage=requires(T& v){v.a;} || requires(T& v){v.b;} || requires(T& v){v.x;} || requires(T& v){v.vert;};
+
 void check_line_same(){
     using P = geometry::pll;
     geometry::_line v(P{0,0}, P{0,1}), h(P{0,0}, P{1,0});
     CHECK(!v.same(h)); CHECK(!h.same(v));
     using frac=geometry::_frac<>;using wide=__int128_t;
-    static_assert(same_as<decltype(h.a),frac> && same_as<decltype(h.f(frac())),frac>);
+    static_assert(!line_public_storage<geometry::_line>);
+    static_assert(same_as<decltype(as_const(h).slope()),const frac&> && same_as<decltype(as_const(h).intercept()),const frac&>);
+    static_assert(same_as<decltype(as_const(v).vertical_x()),wide> && same_as<decltype(as_const(h).is_vertical()),bool>);
+    static_assert(same_as<decltype(h.f(frac())),frac>);
+    CHECK(v.is_vertical() && v.vertical_x()==0);CHECK(!h.is_vertical() && h.slope()==0 && h.intercept()==0);
+    geometry::_line default_line;CHECK(!default_line.is_vertical() && default_line.slope()==0 && default_line.intercept()==0);
+    for(auto [p,q]:vector<pair<P,P>>{
+        {{LLONG_MIN,0},{LLONG_MAX,1}},{{LLONG_MAX,1},{LLONG_MIN,0}},
+        {{0,LLONG_MIN},{1,LLONG_MAX}},{{1,LLONG_MAX},{0,LLONG_MIN}},
+        {{LLONG_MIN,LLONG_MIN},{LLONG_MAX,LLONG_MAX}},{{LLONG_MAX,LLONG_MAX},{LLONG_MIN,LLONG_MIN}}
+    }){
+        geometry::_line line(p,q),reverse(q,p);CHECK(!line.is_vertical() && line.same(reverse));
+        CHECK(line.f(frac(p.first))==p.second && line.f(frac(q.first))==q.second);
+        CHECK(line.slope()==reverse.slope() && line.intercept()==reverse.intercept());
+    }
+    for(long long x:{LLONG_MIN,LLONG_MAX}){
+        geometry::_line vertical(P{x,LLONG_MIN},P{x,LLONG_MAX});CHECK(vertical.is_vertical() && vertical.vertical_x()==x);
+    }
     geometry::_line diagonal(P{0,0},P{2,1}),vertical(P{3,0},P{3,1});pair<frac,frac> intersection;
     CHECK(diagonal.intersect(vertical,intersection));CHECK(intersection==make_pair(frac(3),frac(3,2)));
     CHECK(vertical.intersect(diagonal,intersection));CHECK(intersection==make_pair(frac(3),frac(3,2)));
     wide big=wide(1)<<70;geometry::_line steep(frac(big+1,2),P{0,1});
-    CHECK(steep.f(frac(2))==big+2);
+    CHECK(steep.f(frac(2))==big+2);CHECK(steep.slope()==frac(big+1,2) && steep.intercept()==1);
     geometry::_line large(P{0,4000000000LL},P{4000000000LL,0});
-    CHECK(large.f(frac(1))==3999999999LL);
+    CHECK(large.f(frac(1))==3999999999LL);CHECK(large.slope()==-1 && large.intercept()==4000000000LL);
     vector<pair<P,P>> ends = {
         {{0,0},{0,1}}, {{0,3},{0,-2}}, {{1,0},{1,1}},
         {{0,0},{1,0}}, {{3,0},{-2,0}}, {{0,1},{1,1}},

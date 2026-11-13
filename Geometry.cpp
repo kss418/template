@@ -347,8 +347,9 @@ namespace _area{
 
 //LINE
 class _line{ 
-public:
+private:
     _frac<> a, b; i128 x = 0; bool vert = false;
+public:
     _line() = default;
     _line(const pll& p1, const pll& p2){
         if(p1.x == p2.x){
@@ -357,7 +358,7 @@ public:
         }
         else{
             vert = false;
-            ll dx = p2.x - p1.x, dy = p2.y - p1.y;
+            i128 dx = (i128)p2.x - p1.x, dy = (i128)p2.y - p1.y;
             a = _frac<>(dy, dx), b = _frac<>(p1.y) - a * _frac<>(p1.x);
         }
     }
@@ -366,6 +367,11 @@ public:
         vert = false; x = 0;
         a = slope; b = _frac<>(p.y) - a * _frac<>(p.x);
     }
+
+    bool is_vertical() const{ return vert; } // O(1)
+    const _frac<>& slope() const{ assert(!vert); return a; } // O(1)
+    const _frac<>& intercept() const{ assert(!vert); return b; } // O(1)
+    i128 vertical_x() const{ assert(vert); return x; } // O(1)
 
     _frac<> f(const _frac<>& x) const{
         assert(!vert);
