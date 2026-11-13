@@ -332,11 +332,8 @@ public:
 };
 
 //AREA
-class _area{
-public:
-    _area() {}
-
-    ll ret(span<const pll> v){ // div by 2
+namespace _area{
+    inline ll ret(span<const pll> v){ // div by 2
         i128 num = 0;
         for(int i = 0;i < v.size();i++){
             auto [x1, y1] = v[i];
@@ -346,7 +343,7 @@ public:
 
         return (ll)abs(num);
     }
-};
+}
 
 //LINE
 class _line{ 

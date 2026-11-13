@@ -2413,19 +2413,19 @@ void check_dlog_normalized_target(){
 }
 
 void check_area_translated(){
-    geometry::_area area;
+    namespace area=geometry::_area;
     for(long long offset:{1000000000000LL,-1000000000000LL,0LL}){
         for(long long width:{1LL,2000000000LL}){
             vector<pair<long long,long long>> polygon{{offset,offset},{offset+width,offset},{offset+width,offset+1},{offset,offset+1}};
             for(int rotation=0;rotation<4;rotation++){
-                CHECK(area.ret(polygon)==2*width);
-                reverse(polygon.begin(),polygon.end());CHECK(area.ret(polygon)==2*width);
+                CHECK(area::ret(polygon)==2*width);
+                reverse(polygon.begin(),polygon.end());CHECK(area::ret(polygon)==2*width);
                 reverse(polygon.begin(),polygon.end());rotate(polygon.begin(),polygon.begin()+1,polygon.end());
             }
         }
     }
-    vector<pair<long long,long long>> empty;CHECK(area.ret(empty)==0);
-    vector<pair<long long,long long>> triangle{{0,0},{3,0},{0,1}};CHECK(area.ret(triangle)==3);
+    vector<pair<long long,long long>> empty;CHECK(area::ret(empty)==0);
+    vector<pair<long long,long long>> triangle{{0,0},{3,0},{0,1}};CHECK(area::ret(triangle)==3);
 }
 
 void check_lcs_build_api(){
