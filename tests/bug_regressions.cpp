@@ -2620,6 +2620,37 @@ void check_dlog_normalized_target(){
         CHECK(d.ret(a,b,p)==expected);
 }
 
+void check_dot_api(){
+    namespace dot=geometry::_dot;using point=pair<long long,long long>;using wide=__int128_t;
+    static_assert(same_as<decltype(dot::ret(point{},point{})),long long>);
+    static_assert(same_as<decltype(dot::ret(point{},point{},point{})),long long>);
+    static_assert(same_as<decltype(dot::ret(0LL,0LL,0LL,0LL,0LL,0LL)),long long>);
+    auto vectors=[&](point a,point b){
+        wide expected=(wide)a.first*b.first+(wide)a.second*b.second;
+        CHECK(dot::ret(a,b)==expected);CHECK(dot::ret(b,a)==expected);
+        CHECK(dot::ret(a,point{0,0},b)==expected);
+    };
+    auto points=[&](point l,point m,point r){
+        wide expected=((wide)l.first-m.first)*((wide)r.first-m.first)+((wide)l.second-m.second)*((wide)r.second-m.second);
+        CHECK(dot::ret(l,m,r)==expected);CHECK(dot::ret(r,m,l)==expected);
+        CHECK(dot::ret(l.first,l.second,m.first,m.second,r.first,r.second)==expected);
+    };
+    vector<point> grid;for(int px=-2;px<=2;++px)for(int py=-2;py<=2;++py)grid.push_back({px,py});
+    for(auto a:grid)for(auto b:grid)vectors(a,b);
+    for(auto l:grid)for(auto m:grid)for(auto r:grid)points(l,m,r);
+    vectors({4000000000LL,4000000000LL},{4000000000LL,-4000000000LL});
+    vectors({LLONG_MAX,LLONG_MAX},{LLONG_MAX,-LLONG_MAX});
+    vectors({LLONG_MIN,LLONG_MIN},{-1,1});vectors({LLONG_MIN,0},{1,0});vectors({LLONG_MAX,0},{1,0});
+    points({-4000000000LL,4000000000LL},{0,0},{-4000000000LL,-4000000000LL});
+    points({LLONG_MIN,LLONG_MIN},{0,0},{-1,1});points({LLONG_MIN,0},{1,0},{1,1});
+    points({LLONG_MIN,0},{0,0},{1,0});points({-LLONG_MAX,0},{0,0},{-1,0});
+    for(long long offset:{1000000000000LL,-1000000000000LL}){
+        points({offset-2,offset+1},{offset,offset},{offset+3,offset+4});
+    }
+    mt19937_64 rng(1954);auto point_value=[&](){return point{(long long)(rng()%2000000001ULL)-1000000000LL,(long long)(rng()%2000000001ULL)-1000000000LL};};
+    for(int i=0;i<2000;++i){auto l=point_value(),m=point_value(),r=point_value();vectors(l,r);points(l,m,r);}
+}
+
 void check_area_translated(){
     namespace area=geometry::_area;
     for(long long offset:{1000000000000LL,-1000000000000LL,0LL}){
@@ -2716,7 +2747,7 @@ int main(){
         {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"rc_precision_and_ties",check_rc_precision_and_ties},{"ch_api",check_ch_api},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},{"line_extended",check_line_extended},
         {"lucas",check_lucas},{"comb_crt",check_comb_crt},{"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},{"sparse_trie",check_sparse_trie},
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
-        {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"frac_api",check_frac_api},{"frac_arithmetic",check_frac_arithmetic},{"frac_pow",check_frac_pow},{"angle_sort_api",check_angle_sort_api},{"angle_sort_order",check_angle_sort_order},{"li_api",check_li_api},{"inter_regressions",check_inter_regressions},{"inter_locations",check_inter_locations},{"ccw_api",check_ccw_api},{"ccw_large_coordinates",check_ccw_large_coordinates},
+        {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"frac_api",check_frac_api},{"frac_arithmetic",check_frac_arithmetic},{"frac_pow",check_frac_pow},{"angle_sort_api",check_angle_sort_api},{"angle_sort_order",check_angle_sort_order},{"li_api",check_li_api},{"inter_regressions",check_inter_regressions},{"inter_locations",check_inter_locations},{"ccw_api",check_ccw_api},{"ccw_large_coordinates",check_ccw_large_coordinates},{"dot_api",check_dot_api},
         {"dlog_phi",check_dlog_phi},{"dlog_large_arithmetic",check_dlog_large_arithmetic},
         {"dlog_normalized_target",check_dlog_normalized_target},{"area_translated",check_area_translated},
         {"suffix_array_bytes",check_suffix_array_bytes},{"string_build_api",check_string_build_api},{"lcs_build_api",check_lcs_build_api}}){

@@ -508,19 +508,20 @@ public:
     ld dist() const{ return len; } // O(1)
 };
 
-class _dot{
-public:
-    _dot() {} 
+namespace _dot{
+    inline ll ret(pll a, pll b){ // O(1)
+        return (ll)((i128)a.x * b.x + (i128)a.y * b.y);
+    }
+
     // ret > 0 -> angle < 90, ret < 0 -> angle > 90, ret == 0 -> angle == 90
-    ll ret(ll x1, ll y1, ll x2, ll y2, ll x3, ll y3){
-        return ret({x1, y1}, {x2, y2}, {x3, y3});
+    inline ll ret(pll l, pll m, pll r){ // O(1)
+        i128 ax = (i128)m.x - l.x, ay = (i128)m.y - l.y;
+        i128 bx = (i128)m.x - r.x, by = (i128)m.y - r.y;
+        return (ll)(ax * bx + ay * by);
     }
-    ll ret(pll l, pll m, pll r){
-        pll a = {m.x - l.x, m.y - l.y};
-        pll b = {m.x - r.x, m.y - r.y};
-        return a.x * b.x + a.y * b.y;
-    }
-};
+
+    inline ll ret(ll x1, ll y1, ll x2, ll y2, ll x3, ll y3){ return ret({x1, y1}, {x2, y2}, {x3, y3}); } // O(1)
+}
 
 template <size_t m>
 class _gf2{ // 0-based index
