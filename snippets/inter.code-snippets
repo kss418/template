@@ -2,25 +2,24 @@
 "inter": {
   "prefix": ">>inter",
   "body": [
-    "class _inter{ // Require line_intersection",
-    "public:",
-    "    static bool ret(span<const pll> p, pll now){",
-    "        ll cnt = 0, flag = 0, sz = p.size();",
-    "        if(sz < 3) return 0;",
-    "        pll nxt = {1e12, now.y + 1};",
+    "namespace _inter{",
+    "    enum class location{ outside, boundary, inside };",
     "",
-    "        for(int i = 0;i < sz;i++){",
-    "            cnt += _li::intersect({p[i], p[(i + 1) % sz]}, {now, nxt});",
+    "    inline location locate(span<const pll> p, pll now){ // O(n)",
+    "        ll sz = p.size();",
+    "        if(sz < 3) return location::outside;",
+    "        bool inside = 0;",
+    "        for(ll i = 0;i < sz;i++){",
+    "            auto a = p[i], b = p[(i + 1) % sz];",
+    "            if(_li::on_segment(a, b, now)) return location::boundary;",
+    "            if((a.y > now.y) != (b.y > now.y) && (_li::ccw(a, b, now) > 0) == (b.y > a.y)) inside = !inside;",
     "        }",
-    "",
-    "        for(int i = 0;i < sz;i++){",
-    "            flag += _li::on_segment(p[i], p[(i + 1) % sz], now);",
-    "        }",
-    "",
-    "        return (cnt % 2 | flag);",
+    "        return inside ? location::inside : location::outside;",
     "    }",
-    "};"
+    "",
+    "    inline bool ret(span<const pll> p, pll now){ return locate(p, now) != location::outside; } // O(n)",
+    "}"
   ],
-  "description": "Point-in-polygon including boundary; requires >>li."
+  "description": "Point-in-polygon via horizontal ray parity, O(n) time and O(1) extra space; requires >>li. _inter::locate returns location::outside/boundary/inside; ret includes boundary. Vertices follow the simple polygon boundary in either direction; fewer than three vertices return outside. CCW intermediates must fit i128."
 }
 }

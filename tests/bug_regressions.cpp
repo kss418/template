@@ -2408,6 +2408,82 @@ void check_li_api(){
     for(auto v:vector<point>{{-3,0},{3,0},{0,3},{0,-3}})CHECK(!geometry::_inter::ret(polygon,v));
 }
 
+void check_inter_regressions(){
+    using point=pair<long long,long long>;
+    vector<point> large{{-2000000000000LL,-2},{2000000000000LL,-2},{2000000000000LL,2},{-2000000000000LL,2}};
+    CHECK(geometry::_inter::ret(large,{0,0}));CHECK(!geometry::_inter::ret(large,{4000000000000LL,0}));
+    vector<point> vertex{{-1,-2},{1000000000000LL,1},{-1,2}};
+    CHECK(geometry::_inter::ret(vertex,{0,0}));
+    vector<point> high{{-2,LLONG_MAX-2},{2,LLONG_MAX-2},{2,LLONG_MAX},{-2,LLONG_MAX}};
+    CHECK(geometry::_inter::ret(high,{0,LLONG_MAX}));CHECK(geometry::_inter::ret(high,{0,LLONG_MAX-1}));
+    CHECK(!geometry::_inter::ret(high,{3,LLONG_MAX}));
+}
+
+void check_inter_locations(){
+    namespace inter=geometry::_inter;using location=inter::location;
+    using point=pair<long long,long long>;using wide=__int128_t;
+    static_assert(same_as<decltype(inter::locate(span<const point>{},point{})),location>);
+    static_assert(same_as<decltype(inter::ret(span<const point>{},point{})),bool>);
+    auto oracle=[](const vector<point>& p,point q){
+        if(p.size()<3)return location::outside;
+        int winding=0;
+        for(size_t i=0;i<p.size();++i){
+            auto a=p[i],b=p[(i+1)%p.size()];
+            wide cross=((wide)b.first-a.first)*((wide)q.second-a.second)-((wide)b.second-a.second)*((wide)q.first-a.first);
+            if(!cross && min(a.first,b.first)<=q.first && q.first<=max(a.first,b.first) && min(a.second,b.second)<=q.second && q.second<=max(a.second,b.second))return location::boundary;
+            if(a.second<=q.second && q.second<b.second && cross>0)++winding;
+            if(b.second<=q.second && q.second<a.second && cross<0)--winding;
+        }
+        return winding?location::inside:location::outside;
+    };
+    auto verify=[&](const vector<point>& p,point q,location expected){
+        CHECK(inter::locate(p,q)==expected);CHECK(inter::ret(p,q)==(expected!=location::outside));
+    };
+    for(const auto& p:vector<vector<point>>{{},{{0,0}},{{0,0},{2,0}}})for(auto q:vector<point>{{0,0},{1,0},{1,1}})verify(p,q,location::outside);
+    vector<vector<point>> shapes{
+        {{0,0},{4,0},{4,4},{0,4}},{{0,0},{6,0},{6,6},{4,6},{4,2},{2,2},{2,6},{0,6}},
+        {{0,2},{2,0},{4,2},{2,4}},{{0,0},{2,0},{4,0},{4,2},{4,4},{0,4}},
+        {{0,0},{0,0},{4,0},{4,4},{0,4}},{{0,0},{2,0},{4,0}}
+    };
+    for(auto offset:vector<point>{{0,0},{1000000000000LL,1000000000000LL},{-1000000000000LL,-1000000000000LL},{LLONG_MAX-100,LLONG_MIN+100}}){
+        for(auto p:shapes){
+            for(auto& q:p){q.first+=offset.first;q.second+=offset.second;}
+            for(int direction=0;direction<2;++direction){
+                for(size_t rotation=0;rotation<p.size();++rotation){
+                    for(int dx=-1;dx<=7;++dx)for(int dy=-1;dy<=7;++dy){
+                        point q{offset.first+dx,offset.second+dy};auto expected=oracle(p,q);verify(p,q,expected);
+                        auto closed=p;closed.push_back(closed.front());verify(closed,q,expected);
+                    }
+                    rotate(p.begin(),p.begin()+1,p.end());
+                }
+                reverse(p.begin(),p.end());
+            }
+        }
+    }
+    vector<point> grid;for(int px=-1;px<=1;++px)for(int py=-1;py<=1;++py)grid.push_back({px,py});
+    for(size_t i=0;i<grid.size();++i)for(size_t j=i+1;j<grid.size();++j)for(size_t k=j+1;k<grid.size();++k){
+        vector<point> triangle{grid[i],grid[j],grid[k]};
+        for(int px=-2;px<=2;++px)for(int py=-2;py<=2;++py)verify(triangle,{px,py},oracle(triangle,{px,py}));
+    }
+    vector<point> wide_polygon{{LLONG_MIN,-1},{LLONG_MAX,-1},{LLONG_MAX,1},{LLONG_MIN,1}};
+    verify(wide_polygon,{0,0},location::inside);verify(wide_polygon,{LLONG_MIN,0},location::boundary);verify(wide_polygon,{0,2},location::outside);
+    vector<point> tall{{-1,LLONG_MIN},{1,LLONG_MIN},{1,LLONG_MAX},{-1,LLONG_MAX}};
+    verify(tall,{0,0},location::inside);verify(tall,{0,LLONG_MAX},location::boundary);verify(tall,{0,LLONG_MIN},location::boundary);verify(tall,{2,0},location::outside);
+    mt19937_64 rng(8127);
+    for(int round=0;round<1000;++round){
+        long long left=(long long)(rng()%4000000000001ULL)-2000000000000LL,bottom=(long long)(rng()%4000000000001ULL)-2000000000000LL;
+        long long right=left+1+(long long)(rng()%20),top=bottom+1+(long long)(rng()%20);
+        vector<point> p{{left,bottom},{right,bottom},{right,top},{left,top}};
+        if(round&1)reverse(p.begin(),p.end());
+        for(int i=0;i<16;++i){
+            point q{left-2+(long long)(rng()%(right-left+5)),bottom-2+(long long)(rng()%(top-bottom+5))};
+            auto expected=q.first<left || q.first>right || q.second<bottom || q.second>top?location::outside:
+                q.first==left || q.first==right || q.second==bottom || q.second==top?location::boundary:location::inside;
+            verify(p,q,expected);
+        }
+    }
+}
+
 void check_ccw_api(){
     namespace ccw=geometry::_ccw;using point=pair<long long,long long>;using wide=__int128_t;
     static_assert(same_as<decltype(ccw::ret(point{},point{},point{})),int>);
@@ -2585,7 +2661,7 @@ int main(){
         {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"ch_api",check_ch_api},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},{"line_extended",check_line_extended},
         {"lucas",check_lucas},{"comb_crt",check_comb_crt},{"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},{"sparse_trie",check_sparse_trie},
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
-        {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"frac_api",check_frac_api},{"frac_arithmetic",check_frac_arithmetic},{"frac_pow",check_frac_pow},{"angle_sort_api",check_angle_sort_api},{"angle_sort_order",check_angle_sort_order},{"li_api",check_li_api},{"ccw_api",check_ccw_api},{"ccw_large_coordinates",check_ccw_large_coordinates},
+        {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"frac_api",check_frac_api},{"frac_arithmetic",check_frac_arithmetic},{"frac_pow",check_frac_pow},{"angle_sort_api",check_angle_sort_api},{"angle_sort_order",check_angle_sort_order},{"li_api",check_li_api},{"inter_regressions",check_inter_regressions},{"inter_locations",check_inter_locations},{"ccw_api",check_ccw_api},{"ccw_large_coordinates",check_ccw_large_coordinates},
         {"dlog_phi",check_dlog_phi},{"dlog_large_arithmetic",check_dlog_large_arithmetic},
         {"dlog_normalized_target",check_dlog_normalized_target},{"area_translated",check_area_translated},
         {"suffix_array_bytes",check_suffix_array_bytes},{"string_build_api",check_string_build_api},{"lcs_build_api",check_lcs_build_api}}){
