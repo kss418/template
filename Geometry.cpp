@@ -439,19 +439,20 @@ public:
 private:
     vector <node> p;
     pair <pll, pll> result{}; pll ids = {-1, -1};
-    ll mx = 0; ld len = 0;
+    i128 mx = 0; ld len = 0;
 
     i128 area(ll a, ll b, ll c) const{
-        i128 ret = ((i128)p[b].x - p[a].x) * ((i128)p[c].y - p[a].y);
-        ret -= ((i128)p[c].x - p[a].x) * ((i128)p[b].y - p[a].y);
+        i128 ret = _ccw::cross(p[a], p[b], p[c]);
         return ret < 0 ? -ret : ret;
     }
 
     void update(ll l, ll r){
-        ll dx = p[l].x - p[r].x, dy = p[l].y - p[r].y;
-        ll now = dx * dx + dy * dy;
-        if(now <= mx) return;
-        mx = now; result = {pll(p[l]), pll(p[r])}; ids = {p[l].idx, p[r].idx};
+        i128 dx = (i128)p[l].x - p[r].x, dy = (i128)p[l].y - p[r].y;
+        i128 now = dx * dx + dy * dy;
+        if(p[l].idx > p[r].idx) swap(l, r);
+        pll id = {p[l].idx, p[r].idx};
+        if(now < mx || (now == mx && id >= ids)) return;
+        mx = now; result = {pll(p[l]), pll(p[r])}; ids = id;
     }
 public:
     void build(span<const node> arr){ p.assign(all(arr)); build(); } // O(n)
@@ -462,12 +463,17 @@ public:
     }
 
     void build(){ // O(n)
-        vector <node> v;
-        for(const auto& i : p){
-            if(v.empty() || v.back().x != i.x || v.back().y != i.y) v.push_back(i);
+        auto same = [](const node& a, const node& b){ return a.x == b.x && a.y == b.y; };
+        ll cnt = 0;
+        for(auto i : p){
+            if(cnt && same(p[cnt - 1], i)) p[cnt - 1].idx = min(p[cnt - 1].idx, i.idx);
+            else p[cnt++] = i;
         }
-        if(v.size() > 1 && v.front().x == v.back().x && v.front().y == v.back().y) v.pop_back();
-        p.swap(v);
+        p.erase(p.begin() + cnt, p.end());
+        if(p.size() > 1 && same(p.front(), p.back())){
+            p.front().idx = min(p.front().idx, p.back().idx);
+            p.pop_back();
+        }
         mx = 0; len = 0; result = {}; ids = {-1, -1};
         ll sz = p.size(); if(!sz) return;
         result = {pll(p[0]), pll(p[0])}; ids = {p[0].idx, p[0].idx};
@@ -477,8 +483,8 @@ public:
         if(line){
             ll l = 0, r = 0;
             for(ll i = 1;i < sz;i++){
-                if(tie(p[i].x, p[i].y) < tie(p[l].x, p[l].y)) l = i;
-                if(tie(p[i].x, p[i].y) > tie(p[r].x, p[r].y)) r = i;
+                if(tie(p[i].x, p[i].y, p[i].idx) < tie(p[l].x, p[l].y, p[l].idx)) l = i;
+                if(tie(p[i].x, p[i].y) > tie(p[r].x, p[r].y) || (same(p[i], p[r]) && p[i].idx < p[r].idx)) r = i;
             }
             update(l, r);
         }
@@ -498,7 +504,7 @@ public:
 
     const pair <pll, pll>& ret() const{ return result; } // O(1)
     const pll& idx() const{ return ids; } // O(1)
-    ll dist2() const{ return mx; } // O(1)
+    ll dist2() const{ return (ll)mx; } // O(1)
     ld dist() const{ return len; } // O(1)
 };
 

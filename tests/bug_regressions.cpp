@@ -237,9 +237,16 @@ void check_rc_split(){
     static_assert(!rc_point_input<diameter_type>);
     auto distance=[](point a,point b){long long dx=a.first-b.first,dy=a.second-b.second;return dx*dx+dy*dy;};
     auto cross=[](point a,point b,point c){return (__int128_t)(b.first-a.first)*(c.second-a.second)-(__int128_t)(b.second-a.second)*(c.first-a.first);};
-    auto brute=[&](const vector<point>& input){long long mx=0;for(auto a:input)for(auto b:input)mx=max(mx,distance(a,b));return mx;};
+    auto brute=[&](const vector<point>& input){
+        long long mx=0;point ids{-1,-1};
+        for(long long i=0;i<(long long)input.size();++i)for(long long j=i;j<(long long)input.size();++j){
+            long long now=distance(input[i],input[j]);point candidate{i,j};
+            if(now>mx || ids.first==-1 || (now==mx && candidate<ids)){mx=now;ids=candidate;}
+        }
+        return pair{mx,ids};
+    };
     auto verify=[&](const diameter_type& d,const vector<point>& input){
-        long long mx=brute(input);CHECK(d.dist2()==mx);CHECK(abs(d.dist()-sqrtl((long double)mx))<1e-9L);
+        auto [mx,expected_ids]=brute(input);CHECK(d.dist2()==mx);CHECK(d.idx()==expected_ids);CHECK(abs(d.dist()-sqrtl((long double)mx))<1e-9L);
         const auto& [a,b]=d.ret();auto [i,j]=d.idx();
         if(input.empty()){CHECK(i==-1 && j==-1);return;}
         CHECK(0<=i && i<(long long)input.size() && 0<=j && j<(long long)input.size());
@@ -308,6 +315,54 @@ void check_rc_split(){
     hull_type edited;edited.add(0,0);edited.add(1,0);edited.add(0,1);edited.build();
     vector<point> replacement{{0,0},{10,0},{0,1}};edited.make(replacement);edited.build();
     diameter_type d;d.build(edited.idx());verify(d,replacement);
+}
+
+void check_rc_precision_and_ties(){
+    using diameter=geometry::_rc;using node=diameter::node;using point=geometry::pll;using wide=__int128_t;
+    static_assert(same_as<decltype(declval<const diameter&>().dist2()),long long>);
+    auto distance=[](const node& a,const node& b){wide dx=(wide)a.x-b.x,dy=(wide)a.y-b.y;return dx*dx+dy*dy;};
+    auto verify=[&](const diameter& d,const vector<node>& input){
+        wide maximum=0;point ids{-1,-1};
+        for(const auto& a:input)for(const auto& b:input){
+            wide now=distance(a,b);point candidate{min(a.idx,b.idx),max(a.idx,b.idx)};
+            if(now>maximum || ids.first==-1 || (now==maximum && candidate<ids)){maximum=now;ids=candidate;}
+        }
+        CHECK(d.idx()==ids);
+        if(maximum<=LLONG_MAX)CHECK(d.dist2()==(long long)maximum);
+        long double expected=sqrtl((long double)maximum);CHECK(fabsl(d.dist()-expected)<=1e-15L*max(1.L,expected));
+        if(input.empty()){CHECK(d.ret()==make_pair(point{},point{}));return;}
+        auto first=find_if(input.begin(),input.end(),[&](const node& n){return n.idx==ids.first;});
+        auto second=find_if(input.begin(),input.end(),[&](const node& n){return n.idx==ids.second;});
+        CHECK(d.ret()==make_pair(point(*first),point(*second)));
+    };
+    vector<vector<node>> cases{
+        {{0,0,8},{2,0,3},{2,2,6},{0,2,1}},
+        {{0,0,18},{0,0,8},{2,0,13},{2,0,3},{2,2,16},{0,2,11},{0,0,2}},
+        {{0,0,9},{0,0,2},{0,0,6}},
+        {{0,0,8},{3,0,9},{0,0,2},{1,0,1},{3,0,4}}
+    };
+    vector<node> boundary;vector<point> coords{{0,0},{1,0},{2,0},{3,0},{3,1},{3,2},{3,3},{2,3},{1,3},{0,3},{0,2},{0,1}};
+    for(long long i=0;i<(long long)coords.size();++i)boundary.push_back({coords[i],10+(i*7)%12});cases.push_back(boundary);
+    for(auto input:cases)for(int direction=0;direction<2;++direction){
+        for(size_t rotation=0;rotation<input.size();++rotation){
+            diameter d;d.build(input);verify(d,input);auto result=d.ret();auto ids=d.idx();
+            d.build();verify(d,input);CHECK(d.ret()==result && d.idx()==ids);
+            auto closed=input;closed.push_back(input.front());closed.insert(closed.begin(),closed.front());d.build(closed);verify(d,closed);
+            rotate(input.begin(),input.begin()+1,input.end());
+        }
+        reverse(input.begin(),input.end());
+    }
+    diameter d;
+    for(auto input:vector<vector<point>>{
+        {},{{0,0}},{{0,0},{4000000000LL,0}},{{LLONG_MIN,0},{1,0}},
+        {{-2000000000LL,-2000000000LL},{2000000000LL,-2000000000LL},{2000000000LL,2000000000LL},{-2000000000LL,2000000000LL}},
+        {{LLONG_MIN,0},{1,0},{1,1},{LLONG_MIN,1}},
+        {{LLONG_MAX-3,LLONG_MAX-3},{LLONG_MAX,LLONG_MAX-3},{LLONG_MAX,LLONG_MAX},{LLONG_MAX-3,LLONG_MAX}}
+    }){
+        vector<node> indexed;for(long long i=0;i<(long long)input.size();++i)indexed.push_back({input[i],i});
+        d.build(input);verify(d,indexed);d.build();verify(d,indexed);
+    }
+    vector<node> empty;d.build(empty);verify(d,empty);d.build();verify(d,empty);
 }
 
 template<class T>
@@ -2658,7 +2713,7 @@ void check_suffix_array_bytes(){
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
-        {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"ch_api",check_ch_api},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},{"line_extended",check_line_extended},
+        {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"rc_precision_and_ties",check_rc_precision_and_ties},{"ch_api",check_ch_api},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},{"line_extended",check_line_extended},
         {"lucas",check_lucas},{"comb_crt",check_comb_crt},{"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},{"sparse_trie",check_sparse_trie},
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
         {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"frac_api",check_frac_api},{"frac_arithmetic",check_frac_arithmetic},{"frac_pow",check_frac_pow},{"angle_sort_api",check_angle_sort_api},{"angle_sort_order",check_angle_sort_order},{"li_api",check_li_api},{"inter_regressions",check_inter_regressions},{"inter_locations",check_inter_locations},{"ccw_api",check_ccw_api},{"ccw_large_coordinates",check_ccw_large_coordinates},
