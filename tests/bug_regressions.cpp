@@ -1268,33 +1268,33 @@ concept line_public_storage=requires(T& v){v.a;} || requires(T& v){v.b;} || requ
 
 void check_line_same(){
     using P = geometry::pll;
-    geometry::_line v(P{0,0}, P{0,1}), h(P{0,0}, P{1,0});
+    geometry::_line<> v(P{0,0}, P{0,1}), h(P{0,0}, P{1,0});
     CHECK(!v.same(h)); CHECK(!h.same(v));
     using frac=geometry::_frac<>;using wide=__int128_t;
-    static_assert(!line_public_storage<geometry::_line>);
+    static_assert(!line_public_storage<geometry::_line<>>);
     static_assert(same_as<decltype(as_const(h).slope()),const frac&> && same_as<decltype(as_const(h).intercept()),const frac&>);
     static_assert(same_as<decltype(as_const(v).vertical_x()),wide> && same_as<decltype(as_const(h).is_vertical()),bool>);
     static_assert(same_as<decltype(h.f(frac())),frac>);
     CHECK(v.is_vertical() && v.vertical_x()==0);CHECK(!h.is_vertical() && h.slope()==0 && h.intercept()==0);
-    geometry::_line default_line;CHECK(!default_line.is_vertical() && default_line.slope()==0 && default_line.intercept()==0);
+    geometry::_line<> default_line;CHECK(!default_line.is_vertical() && default_line.slope()==0 && default_line.intercept()==0);
     for(auto [p,q]:vector<pair<P,P>>{
         {{LLONG_MIN,0},{LLONG_MAX,1}},{{LLONG_MAX,1},{LLONG_MIN,0}},
         {{0,LLONG_MIN},{1,LLONG_MAX}},{{1,LLONG_MAX},{0,LLONG_MIN}},
         {{LLONG_MIN,LLONG_MIN},{LLONG_MAX,LLONG_MAX}},{{LLONG_MAX,LLONG_MAX},{LLONG_MIN,LLONG_MIN}}
     }){
-        geometry::_line line(p,q),reverse(q,p);CHECK(!line.is_vertical() && line.same(reverse));
+        geometry::_line<> line(p,q),reverse(q,p);CHECK(!line.is_vertical() && line.same(reverse));
         CHECK(line.f(frac(p.first))==p.second && line.f(frac(q.first))==q.second);
         CHECK(line.slope()==reverse.slope() && line.intercept()==reverse.intercept());
     }
     for(long long x:{LLONG_MIN,LLONG_MAX}){
-        geometry::_line vertical(P{x,LLONG_MIN},P{x,LLONG_MAX});CHECK(vertical.is_vertical() && vertical.vertical_x()==x);
+        geometry::_line<> vertical(P{x,LLONG_MIN},P{x,LLONG_MAX});CHECK(vertical.is_vertical() && vertical.vertical_x()==x);
     }
-    geometry::_line diagonal(P{0,0},P{2,1}),vertical(P{3,0},P{3,1});pair<frac,frac> intersection;
+    geometry::_line<> diagonal(P{0,0},P{2,1}),vertical(P{3,0},P{3,1});pair<frac,frac> intersection;
     CHECK(diagonal.intersect(vertical,intersection));CHECK(intersection==make_pair(frac(3),frac(3,2)));
     CHECK(vertical.intersect(diagonal,intersection));CHECK(intersection==make_pair(frac(3),frac(3,2)));
-    wide big=wide(1)<<70;geometry::_line steep(frac(big+1,2),P{0,1});
+    wide big=wide(1)<<70;geometry::_line<> steep(frac(big+1,2),P{0,1});
     CHECK(steep.f(frac(2))==big+2);CHECK(steep.slope()==frac(big+1,2) && steep.intercept()==1);
-    geometry::_line large(P{0,4000000000LL},P{4000000000LL,0});
+    geometry::_line<> large(P{0,4000000000LL},P{4000000000LL,0});
     CHECK(large.f(frac(1))==3999999999LL);CHECK(large.slope()==-1 && large.intercept()==4000000000LL);
     vector<pair<P,P>> ends = {
         {{0,0},{0,1}}, {{0,3},{0,-2}}, {{1,0},{1,1}},
@@ -1305,9 +1305,66 @@ void check_line_same(){
         return (b.first-a.first)*(c.second-a.second) - (b.second-a.second)*(c.first-a.first);
     };
     for(auto [a,b] : ends) for(auto [c,d] : ends){
-        geometry::_line first(a,b), second(c,d);
+        geometry::_line<> first(a,b), second(c,d);
         CHECK(first.same(second) == (cross(a,b,c) == 0 && cross(a,b,d) == 0));
     }
+}
+
+template<class T>
+concept line_integer=requires{typename geometry::_line<T>;};
+
+template<signed_integral T>
+void check_line_extended_type(){
+    using line=geometry::_line<T>;using frac=geometry::_frac<T>;using point=pair<T,T>;using wide=__int128_t;
+    using kind=typename line::relation_type;
+    static_assert(!line_public_storage<line>);
+    static_assert(same_as<decltype(declval<const line&>().slope()),const frac&>);
+    static_assert(same_as<decltype(declval<const line&>().vertical_x()),T>);
+    static_assert(same_as<decltype(declval<const line&>().f(frac())),frac>);
+    line zero;CHECK(zero.contains({0,0}) && !zero.contains({0,1}));
+    CHECK(zero.relation(zero)==kind::coincident);
+    vector<point> points;for(int px=-1;px<=1;++px)for(int py=-1;py<=1;++py)points.push_back({px,py});
+    vector<pair<point,point>> ends;for(auto p:points)for(auto q:points)if(p!=q)ends.push_back({p,q});
+    auto coefficients=[](point p,point q){wide a=(wide)q.second-p.second,b=(wide)p.first-q.first;return array<wide,3>{a,b,-a*p.first-b*p.second};};
+    for(auto [p,q]:ends){
+        const line first(p,q);auto [a,b,c]=coefficients(p,q);
+        CHECK(first.contains(p) && first.contains(q));
+        for(int px=-2;px<=2;++px)for(int py=-2;py<=2;++py)CHECK(first.contains(point{T(px),T(py)})==(a*px+b*py+c==0));
+        for(int px=-3;px<=3;++px)for(int py=-3;py<=3;++py){
+            pair<frac,frac> v{frac(px,2),frac(py,2)};CHECK(first.contains(v)==(a*px+b*py+2*c==0));
+        }
+        for(auto [r,t]:ends){
+            const line second(r,t);auto [d,e,f]=coefficients(r,t);
+            wide det=a*e-b*d;
+            kind expected=det?kind::point:(a*f==c*d && b*f==c*e?kind::coincident:kind::parallel);
+            CHECK(first.relation(second)==expected && second.relation(first)==expected);
+            CHECK(first.same(second)==(expected==kind::coincident));
+            pair<frac,frac> result{frac(7),frac(11)},reverse=result;
+            CHECK(first.intersect(second,result)==(expected==kind::point));
+            CHECK(second.intersect(first,reverse)==(expected==kind::point));
+            if(expected==kind::point){
+                CHECK(result==reverse && first.contains(result) && second.contains(result));
+                wide nx=result.first.num(),dx=result.first.den(),ny=result.second.num(),dy=result.second.den();
+                CHECK(a*nx*dy+b*ny*dx+c*dx*dy==0 && d*nx*dy+e*ny*dx+f*dx*dy==0);
+            }
+            else CHECK(result==make_pair(frac(7),frac(11)) && reverse==result);
+        }
+    }
+    T big=T(1)<<(numeric_limits<T>::digits/2);line wide_line(point{big,0},point{T(big+1),1});
+    CHECK(wide_line.contains(point{T(big+2),2}) && wide_line.intercept()==-big);
+    T maximum=numeric_limits<T>::max();line vertical(point{maximum,0},point{maximum,1});
+    CHECK(vertical.vertical_x()==maximum && vertical.contains(point{maximum,1}) && !vertical.contains(point{T(maximum-1),1}));
+    line horizontal(point{0,maximum},point{1,maximum});
+    CHECK(horizontal.contains(point{1,maximum}) && !horizontal.contains(point{1,T(maximum-1)}));
+    line diagonal(point{0,0},point{2,1});pair<long long,long long> integer_point{4,2};
+    CHECK(diagonal.contains(integer_point) && diagonal.contains({frac(1),frac(1,2)}));
+}
+
+void check_line_extended(){
+    static_assert(line_integer<int> && line_integer<long long> && line_integer<__int128_t>);
+    static_assert(!line_integer<unsigned> && !line_integer<double>);
+    static_assert(same_as<geometry::_line<>,geometry::_line<__int128_t>>);
+    check_line_extended_type<int>();check_line_extended_type<long long>();check_line_extended_type<__int128_t>();
 }
 
 void check_xor_state_api(){
@@ -2525,7 +2582,7 @@ void check_suffix_array_bytes(){
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
-        {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"ch_api",check_ch_api},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},
+        {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"ch_api",check_ch_api},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},{"line_extended",check_line_extended},
         {"lucas",check_lucas},{"comb_crt",check_comb_crt},{"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},{"sparse_trie",check_sparse_trie},
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
         {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"frac_api",check_frac_api},{"frac_arithmetic",check_frac_arithmetic},{"frac_pow",check_frac_pow},{"angle_sort_api",check_angle_sort_api},{"angle_sort_order",check_angle_sort_order},{"li_api",check_li_api},{"ccw_api",check_ccw_api},{"ccw_large_coordinates",check_ccw_large_coordinates},

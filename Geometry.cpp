@@ -346,58 +346,68 @@ namespace _area{
 }
 
 //LINE
+template <signed_integral T = i128>
 class _line{ 
 private:
-    _frac<> a, b; i128 x = 0; bool vert = false;
+    _frac<T> a, b; T x = 0; bool vert = false;
 public:
+    enum class relation_type{ point, parallel, coincident };
+
     _line() = default;
-    _line(const pll& p1, const pll& p2){
+    _line(const pair<T, T>& p1, const pair<T, T>& p2){
         if(p1.x == p2.x){
             vert = true; x = p1.x;
-            a = _frac<>(), b = _frac<>();
+            a = _frac<T>(), b = _frac<T>();
         }
         else{
             vert = false;
-            i128 dx = (i128)p2.x - p1.x, dy = (i128)p2.y - p1.y;
-            a = _frac<>(dy, dx), b = _frac<>(p1.y) - a * _frac<>(p1.x);
+            T dx = (T)p2.x - p1.x, dy = (T)p2.y - p1.y;
+            a = _frac<T>(dy, dx), b = _frac<T>(p1.y) - a * _frac<T>(p1.x);
         }
     }
 
-    _line(const _frac<>& slope, const pll& p){
+    _line(const _frac<T>& slope, const pair<T, T>& p){
         vert = false; x = 0;
-        a = slope; b = _frac<>(p.y) - a * _frac<>(p.x);
+        a = slope; b = _frac<T>(p.y) - a * _frac<T>(p.x);
     }
 
     bool is_vertical() const{ return vert; } // O(1)
-    const _frac<>& slope() const{ assert(!vert); return a; } // O(1)
-    const _frac<>& intercept() const{ assert(!vert); return b; } // O(1)
-    i128 vertical_x() const{ assert(vert); return x; } // O(1)
+    const _frac<T>& slope() const{ assert(!vert); return a; } // O(1)
+    const _frac<T>& intercept() const{ assert(!vert); return b; } // O(1)
+    T vertical_x() const{ assert(vert); return x; } // O(1)
 
-    _frac<> f(const _frac<>& x) const{
+    _frac<T> f(const _frac<T>& x) const{
         assert(!vert);
         return a * x + b;
     }
 
-    bool intersect(const _line& ot, pair<_frac<>, _frac<>>& ret) const{
-        if(vert && ot.vert) return false;
+    relation_type relation(const _line& ot) const{ // O(1)
+        if(vert != ot.vert) return relation_type::point;
+        if(vert) return x == ot.x ? relation_type::coincident : relation_type::parallel;
+        if(a != ot.a) return relation_type::point;
+        return b == ot.b ? relation_type::coincident : relation_type::parallel;
+    }
+
+    bool contains(const pair<_frac<T>, _frac<T>>& p) const{ // O(1)
+        if(vert) return p.x == x;
+        return f(p.x) == p.y;
+    }
+
+    bool intersect(const _line& ot, pair<_frac<T>, _frac<T>>& ret) const{
+        if(relation(ot) != relation_type::point) return false;
         if(vert){
-            _frac<> p1 = _frac<>(x), p2 = ot.f(p1); ret = {p1, p2};
+            _frac<T> p1 = _frac<T>(x), p2 = ot.f(p1); ret = {p1, p2};
             return true;
         }
         if(ot.vert){
-            _frac<> p1 = _frac<>(ot.x), p2 = f(p1); ret = {p1, p2};
+            _frac<T> p1 = _frac<T>(ot.x), p2 = f(p1); ret = {p1, p2};
             return true;
         }
-        if(a == ot.a) return false;
-        _frac<> p1 = (ot.b - b) / (a - ot.a), p2 = f(p1); ret = {p1, p2};
+        _frac<T> p1 = (ot.b - b) / (a - ot.a), p2 = f(p1); ret = {p1, p2};
         return true;
     }
 
-    bool same(const _line& ot) const{
-        if(vert != ot.vert) return false;
-        if(vert) return x == ot.x;
-        return a == ot.a && b == ot.b;
-    }
+    bool same(const _line& ot) const{ return relation(ot) == relation_type::coincident; } // O(1)
 };
 
 // 점 다각형 내부 판별
