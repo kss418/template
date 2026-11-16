@@ -1289,9 +1289,9 @@ void check_line_same(){
     for(long long x:{LLONG_MIN,LLONG_MAX}){
         geometry::_line<> vertical(P{x,LLONG_MIN},P{x,LLONG_MAX});CHECK(vertical.is_vertical() && vertical.vertical_x()==x);
     }
-    geometry::_line<> diagonal(P{0,0},P{2,1}),vertical(P{3,0},P{3,1});pair<frac,frac> intersection;
-    CHECK(diagonal.intersect(vertical,intersection));CHECK(intersection==make_pair(frac(3),frac(3,2)));
-    CHECK(vertical.intersect(diagonal,intersection));CHECK(intersection==make_pair(frac(3),frac(3,2)));
+    geometry::_line<> diagonal(P{0,0},P{2,1}),vertical(P{3,0},P{3,1});
+    auto intersection=diagonal.intersect(vertical);CHECK(intersection.has_value());CHECK(*intersection==make_pair(frac(3),frac(3,2)));
+    intersection=vertical.intersect(diagonal);CHECK(intersection.has_value());CHECK(*intersection==make_pair(frac(3),frac(3,2)));
     wide big=wide(1)<<70;geometry::_line<> steep(frac(big+1,2),P{0,1});
     CHECK(steep.f(frac(2))==big+2);CHECK(steep.slope()==frac(big+1,2) && steep.intercept()==1);
     geometry::_line<> large(P{0,4000000000LL},P{4000000000LL,0});
@@ -1317,6 +1317,7 @@ template<signed_integral T>
 void check_line_extended_type(){
     using line=geometry::_line<T>;using frac=geometry::_frac<T>;using point=pair<T,T>;using wide=__int128_t;
     using kind=typename line::relation_type;
+    static_assert(same_as<decltype(&line::intersect),optional<pair<frac,frac>>(line::*)(const line&)const>);
     static_assert(!line_public_storage<line>);
     static_assert(same_as<decltype(declval<const line&>().slope()),const frac&>);
     static_assert(same_as<decltype(declval<const line&>().vertical_x()),T>);
@@ -1339,15 +1340,14 @@ void check_line_extended_type(){
             kind expected=det?kind::point:(a*f==c*d && b*f==c*e?kind::coincident:kind::parallel);
             CHECK(first.relation(second)==expected && second.relation(first)==expected);
             CHECK(first.same(second)==(expected==kind::coincident));
-            pair<frac,frac> result{frac(7),frac(11)},reverse=result;
-            CHECK(first.intersect(second,result)==(expected==kind::point));
-            CHECK(second.intersect(first,reverse)==(expected==kind::point));
+            auto result=first.intersect(second),reverse=second.intersect(first);
+            CHECK(result.has_value()==(expected==kind::point));
+            CHECK(reverse.has_value()==(expected==kind::point));
             if(expected==kind::point){
-                CHECK(result==reverse && first.contains(result) && second.contains(result));
-                wide nx=result.first.num(),dx=result.first.den(),ny=result.second.num(),dy=result.second.den();
+                CHECK(result==reverse && first.contains(*result) && second.contains(*result));
+                wide nx=result->first.num(),dx=result->first.den(),ny=result->second.num(),dy=result->second.den();
                 CHECK(a*nx*dy+b*ny*dx+c*dx*dy==0 && d*nx*dy+e*ny*dx+f*dx*dy==0);
             }
-            else CHECK(result==make_pair(frac(7),frac(11)) && reverse==result);
         }
     }
     T big=T(1)<<(numeric_limits<T>::digits/2);line wide_line(point{big,0},point{T(big+1),1});

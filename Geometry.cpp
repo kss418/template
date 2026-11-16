@@ -393,18 +393,18 @@ public:
         return f(p.x) == p.y;
     }
 
-    bool intersect(const _line& ot, pair<_frac<T>, _frac<T>>& ret) const{
-        if(relation(ot) != relation_type::point) return false;
+    optional<pair<_frac<T>, _frac<T>>> intersect(const _line& ot) const{
+        if(relation(ot) != relation_type::point) return nullopt;
         if(vert){
-            _frac<T> p1 = _frac<T>(x), p2 = ot.f(p1); ret = {p1, p2};
-            return true;
+            _frac<T> p1 = _frac<T>(x), p2 = ot.f(p1);
+            return pair{p1, p2};
         }
         if(ot.vert){
-            _frac<T> p1 = _frac<T>(ot.x), p2 = f(p1); ret = {p1, p2};
-            return true;
+            _frac<T> p1 = _frac<T>(ot.x), p2 = f(p1);
+            return pair{p1, p2};
         }
-        _frac<T> p1 = (ot.b - b) / (a - ot.a), p2 = f(p1); ret = {p1, p2};
-        return true;
+        _frac<T> p1 = (ot.b - b) / (a - ot.a), p2 = f(p1);
+        return pair{p1, p2};
     }
 
     bool same(const _line& ot) const{ return relation(ot) == relation_type::coincident; } // O(1)
