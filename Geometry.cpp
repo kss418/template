@@ -531,10 +531,12 @@ public:
     public:
         state status;
         bitset <m> value; ll rk, fr;
+        vector <bitset <m>> basis;
         bool inconsistent() const{ return status == state::inconsistent; } // O(1)
         bool unique() const{ return status == state::unique; } // O(1)
         bool multiple() const{ return status == state::multiple; } // O(1)
         const bitset <m>& get_value() const{ return value; } // O(1)
+        const vector <bitset <m>>& get_basis() const{ return basis; } // O(1)
         ll rank() const{ return rk; } // O(1)
         ll free_count() const{ return fr; } // O(1)
     };
@@ -551,7 +553,7 @@ public:
     void clear(){ for(auto& i : bs) i.reset(); }
     void clear(ll n){ bs.assign(n, {}); }
 
-    void build(){
+    void build(bool with_basis = 0){
         ll n = bs.size();
         auto arr = bs; vector <ll> pos(m, -1);
         ll cy = 0;
@@ -572,12 +574,22 @@ public:
             cy++;
         }
 
-        ans = {cy == m ? state::unique : state::multiple, {}, cy, (ll)m - cy};
+        ans = {cy == m ? state::unique : state::multiple, {}, cy, (ll)m - cy, {}};
         for(ll i = cy;i < n;i++){
             if(!arr[i][m]) continue;
-            ans.status = state::inconsistent; return;
+            ans.status = state::inconsistent; break;
         }
-        for(ll i = 0;i < m;i++) if(pos[i] != -1) ans.value[i] = arr[pos[i]][m];
+        if(!ans.inconsistent()){
+            for(ll i = 0;i < m;i++) if(pos[i] != -1) ans.value[i] = arr[pos[i]][m];
+        }
+        if(!with_basis) return;
+        ans.basis.reserve(ans.fr);
+        for(ll j = 0;j < m;j++){
+            if(pos[j] != -1) continue;
+            bitset <m> v; v[j] = 1;
+            for(ll i = 0;i < m;i++) if(pos[i] != -1) v[i] = arr[pos[i]][j];
+            ans.basis.push_back(v);
+        }
     }
 
     const result& ret() const{ return ans; } // O(1)

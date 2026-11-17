@@ -411,7 +411,7 @@ vector<bitset<m+1>> gf2_input(const geometry::_gf2<m>& system){
 }
 
 template<size_t m>
-void verify_gf2(geometry::_gf2<m>& system){
+void verify_gf2(geometry::_gf2<m>& system,bool with_basis=false){
     using solver=geometry::_gf2<m>;
     size_t n=system.rows();
     static_assert(!gf2_public_input<solver>);
@@ -419,7 +419,8 @@ void verify_gf2(geometry::_gf2<m>& system){
     static_assert(same_as<decltype(as_const(system).get_row(0)),const bitset<m+1>&>);
     static_assert(same_as<decltype(as_const(system).ret()),const typename solver::result&>);
     static_assert(same_as<decltype(as_const(system).ret().get_value()),const bitset<m>&>);
-    auto input=gf2_input(system);set<unsigned> image;vector<unsigned> solutions;
+    static_assert(same_as<decltype(as_const(system).ret().get_basis()),const vector<bitset<m>>&>);
+    auto input=gf2_input(system);set<unsigned> image,kernel;vector<unsigned> solutions;
     unsigned rhs=0;for(size_t row=0;row<n;++row)rhs|=(unsigned)input[row][m]<<row;
     for(unsigned value=0;value<(1u<<m);++value){
         unsigned mapped=0;
@@ -427,10 +428,10 @@ void verify_gf2(geometry::_gf2<m>& system){
             bool parity=false;for(size_t col=0;col<m;++col)parity^=input[row][col] && ((value>>col)&1);
             mapped|=(unsigned)parity<<row;
         }
-        image.insert(mapped);if(mapped==rhs)solutions.push_back(value);
+        image.insert(mapped);if(!mapped)kernel.insert(value);if(mapped==rhs)solutions.push_back(value);
     }
     int rank=0;while((1u<<rank)<image.size())++rank;
-    system.build();CHECK(gf2_input(system)==input);
+    system.build(with_basis);CHECK(gf2_input(system)==input);
     const auto& answer=as_const(system).ret();CHECK(&answer==&as_const(system).ret());
     CHECK(answer.rank()==rank && answer.free_count()==(long long)m-rank);
     CHECK(answer.inconsistent()==solutions.empty());CHECK(answer.unique()==(solutions.size()==1));
@@ -439,6 +440,20 @@ void verify_gf2(geometry::_gf2<m>& system){
         auto value=(unsigned)answer.get_value().to_ullong();
         CHECK(find(all(solutions),value)!=solutions.end());
         CHECK(solutions.size()==(1u<<answer.free_count()));
+    }
+    const auto& basis=answer.get_basis();
+    if(!with_basis){CHECK(basis.empty());return;}
+    CHECK(basis.size()==(size_t)answer.free_count());
+    set<unsigned> span{0};
+    for(const auto& vector:basis){
+        unsigned value=(unsigned)vector.to_ullong();CHECK(kernel.count(value)==1);
+        auto original=span;for(unsigned v:original)span.insert(v^value);
+        CHECK(span.size()==2*original.size());
+    }
+    CHECK(span==kernel);
+    if(!solutions.empty()){
+        set<unsigned> generated;for(unsigned v:span)generated.insert(v^(unsigned)answer.get_value().to_ullong());
+        CHECK(generated==set<unsigned>(solutions.begin(),solutions.end()));
     }
 }
 
@@ -449,11 +464,12 @@ void check_gf2_dimensions(){
         for(unsigned encoded=0;encoded<(1u<<(n*(m+1)));++encoded){
             unsigned bits=encoded;
             for(size_t row=0;row<n;++row){system.set_row(row,bitset<m+1>(bits));bits>>=m+1;}
-            verify_gf2(system);
+            verify_gf2(system);verify_gf2(system,true);
             if(encoded%31==0){
                 auto before=system.ret();system.build();const auto& after=system.ret();
                 CHECK(after.status==before.status && after.get_value()==before.get_value());
                 CHECK(after.rank()==before.rank() && after.free_count()==before.free_count());
+                CHECK(after.get_basis().empty());
             }
         }
     }
@@ -525,6 +541,38 @@ void check_gf2_row_api(){
     wide.set_b(1,0);wide.build();CHECK(wide.ret().inconsistent());
     wide.clear(2);wide.build();CHECK(wide.get_row(0).none() && wide.get_row(1).none());
     CHECK(wide.ret().multiple() && wide.ret().rank()==0 && wide.ret().free_count()==129);
+}
+
+void check_gf2_basis(){
+    geometry::_gf2<3> system(2);system.set_row(0,bitset<4>(15));
+    verify_gf2(system,true);
+    vector<bitset<3>> expected{bitset<3>(3),bitset<3>(5)};
+    CHECK(system.ret().get_value().to_ulong()==1 && system.ret().get_basis()==expected);
+    auto snapshot=system.ret();system.build(true);CHECK(system.ret().get_basis()==snapshot.get_basis());
+    system.set_b(0,0);verify_gf2(system,true);CHECK(system.ret().get_value().none() && system.ret().get_basis()==expected);
+    system.set_row(1,bitset<4>(15));verify_gf2(system,true);CHECK(system.ret().inconsistent() && system.ret().get_basis()==expected);
+    system.build();CHECK(system.ret().inconsistent() && system.ret().get_basis().empty());
+    CHECK(snapshot.get_value().to_ulong()==1 && snapshot.get_basis()==expected);
+    system.clear();verify_gf2(system,true);CHECK(system.ret().get_basis().size()==3);
+    system.clear(3);for(int i=0;i<3;++i){system.set_a(i,i,1);system.set_b(i,i%2);}
+    verify_gf2(system,true);CHECK(system.ret().unique() && system.ret().get_basis().empty());
+    geometry::_gf2<129> wide(2);bitset<130> row;for(int i:{0,64,128,129})row[i]=1;
+    wide.set_row(0,row);wide.build(true);
+    auto input=gf2_input(wide);const auto& basis=wide.ret().get_basis();
+    CHECK(basis.size()==128 && wide.ret().multiple() && wide.ret().rank()==1);
+    for(size_t i=0;i<basis.size();++i){
+        bitset<129> v;v[i+1]=1;if(i+1==64 || i+1==128)v[0]=1;
+        CHECK(basis[i]==v);CHECK(!(basis[i][0]^basis[i][64]^basis[i][128]));
+    }
+    wide.build(true);CHECK(gf2_input(wide)==input);
+    wide.set_row(1,row);wide.set_b(1,0);wide.build(true);
+    CHECK(wide.ret().inconsistent() && wide.ret().get_basis().size()==128);
+    wide.build();CHECK(wide.ret().get_basis().empty());
+    wide.clear(0);wide.build(true);CHECK(wide.ret().free_count()==129 && wide.ret().get_basis().size()==129);
+    for(int i=0;i<129;++i)CHECK(wide.ret().get_basis()[i].count()==1 && wide.ret().get_basis()[i][i]);
+    wide.clear(130);for(int i=0;i<129;++i)wide.set_a(i,i,1);
+    wide.build(true);CHECK(wide.ret().unique() && wide.ret().get_basis().empty());
+    wide.set_b(129,1);wide.build(true);CHECK(wide.ret().inconsistent() && wide.ret().get_basis().empty());
 }
 
 template<uint64_t mod>
@@ -2789,7 +2837,7 @@ void check_suffix_array_bytes(){
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
-        {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"rc_precision_and_ties",check_rc_precision_and_ties},{"ch_api",check_ch_api},{"gf2",check_gf2},{"gf2_row_api",check_gf2_row_api},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},{"line_extended",check_line_extended},
+        {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"rc_precision_and_ties",check_rc_precision_and_ties},{"ch_api",check_ch_api},{"gf2",check_gf2},{"gf2_row_api",check_gf2_row_api},{"gf2_basis",check_gf2_basis},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},{"line_extended",check_line_extended},
         {"lucas",check_lucas},{"comb_crt",check_comb_crt},{"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},{"sparse_trie",check_sparse_trie},
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
         {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"frac_api",check_frac_api},{"frac_arithmetic",check_frac_arithmetic},{"frac_pow",check_frac_pow},{"angle_sort_api",check_angle_sort_api},{"angle_sort_order",check_angle_sort_order},{"li_api",check_li_api},{"inter_regressions",check_inter_regressions},{"inter_locations",check_inter_locations},{"ccw_api",check_ccw_api},{"ccw_large_coordinates",check_ccw_large_coordinates},{"dot_api",check_dot_api},
