@@ -595,10 +595,11 @@ public:
     const result& ret() const{ return ans; } // O(1)
 };
 
-template <size_t N = 63>
+template <size_t N = 64> requires (N <= 64)
 class _xor_basis{
-public:
+private:
     array<u64, N> basis{}; int rk = 0;
+public:
     _xor_basis(){ clear(); } // O(max_bit)
     void clear(){ basis.fill(0); rk = 0; } // O(max_bit)
 
@@ -620,7 +621,7 @@ public:
             if(!basis[i]) return 0;
             x ^= basis[i];
         }
-        return 1;
+        return x == 0;
     }
 
     u64 max_xor(u64 x = 0) const{ // O(max_bit)
@@ -635,5 +636,6 @@ public:
         return ret;
     }
 
+    const array<u64, N>& get_basis() const{ return basis; } // O(1)
     int rank() const{ return rk; } // O(1)
 };

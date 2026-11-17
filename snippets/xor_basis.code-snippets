@@ -2,10 +2,11 @@
   "xor_basis": {
     "prefix": ">>xor_basis",
     "body": [
-      "template <size_t N = 63>",
+      "template <size_t N = 64> requires (N <= 64)",
       "class _xor_basis{",
-      "public:",
+      "private:",
       "    array<u64, N> basis{}; int rk = 0;",
+      "public:",
       "    _xor_basis(){ clear(); } // O(max_bit)",
       "    void clear(){ basis.fill(0); rk = 0; } // O(max_bit)",
       "",
@@ -27,7 +28,7 @@
       "            if(!basis[i]) return 0;",
       "            x ^= basis[i];",
       "        }",
-      "        return 1;",
+      "        return x == 0;",
       "    }",
       "",
       "    u64 max_xor(u64 x = 0) const{ // O(max_bit)",
@@ -42,9 +43,10 @@
       "        return ret;",
       "    }",
       "",
+      "    const array<u64, N>& get_basis() const{ return basis; } // O(1)",
       "    int rank() const{ return rk; } // O(1)",
       "};"
     ],
-    "description": "xor basis"
+    "description": "XOR linear basis over u64 with 0 <= N <= 64 bits (default 64). insert requires its input to fit N bits; this precondition is unchecked. can_make tests exact membership, including queries with bits above N. get_basis returns a const reference to the pivot-indexed array, with zero for unused slots. max_xor/min_xor optimize seed XOR a representable value; rank returns the dimension."
   }
 }

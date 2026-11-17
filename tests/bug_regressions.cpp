@@ -575,6 +575,59 @@ void check_gf2_basis(){
     wide.set_b(129,1);wide.build(true);CHECK(wide.ret().inconsistent() && wide.ret().get_basis().empty());
 }
 
+template<size_t N>
+concept xor_basis_bits=requires{typename geometry::_xor_basis<N>;};
+template<class T>
+concept xor_basis_public_state=requires(T& v){v.basis;} || requires(T& v){v.rk;};
+
+template<size_t N>
+void check_xor_basis_small(){
+    using basis_type=geometry::_xor_basis<N>;constexpr unsigned values=1u<<N;
+    static_assert(!xor_basis_public_state<basis_type>);
+    static_assert(same_as<decltype(declval<const basis_type&>().get_basis()),const array<uint64_t,N>&>);
+    for(unsigned mask=0;mask<(1u<<values);++mask){
+        basis_type basis;set<uint64_t> span{0};
+        for(unsigned v=0;v<values;++v)if((mask>>v)&1){
+            CHECK(basis.insert(v)==!span.count(v));CHECK(!basis.insert(v));
+            auto old=span;for(auto value:old)span.insert(value^v);
+        }
+        int rank=0;while((1u<<rank)<span.size())++rank;CHECK(basis.rank()==rank);
+        set<uint64_t> exported{0};
+        for(auto v:as_const(basis).get_basis())if(v){auto old=exported;for(auto value:old)exported.insert(value^v);}
+        CHECK(exported==span);
+        for(unsigned v=0;v<2*values;++v)CHECK(basis.can_make(v)==span.count(v));
+        CHECK(!basis.can_make(uint64_t(1)<<63));CHECK(!basis.can_make(UINT64_MAX));
+        for(unsigned seed=0;seed<2*values;++seed){
+            uint64_t lo=UINT64_MAX,hi=0;for(auto v:span){lo=min(lo,v^seed);hi=max(hi,v^seed);}
+            CHECK(basis.min_xor(seed)==lo && basis.max_xor(seed)==hi);
+        }
+        basis.clear();CHECK(basis.rank()==0 && basis.can_make(0));CHECK(!basis.can_make(1));
+        for(auto v:basis.get_basis())CHECK(v==0);
+        CHECK(basis.min_xor(UINT64_MAX)==UINT64_MAX && basis.max_xor(UINT64_MAX)==UINT64_MAX);
+    }
+}
+
+void check_xor_basis(){
+    static_assert(xor_basis_bits<0> && xor_basis_bits<1> && xor_basis_bits<63> && xor_basis_bits<64>);
+    static_assert(!xor_basis_bits<65> && !xor_basis_bits<numeric_limits<size_t>::max()>);
+    static_assert(same_as<geometry::_xor_basis<>,geometry::_xor_basis<64>>);
+    check_xor_basis_small<0>();check_xor_basis_small<1>();check_xor_basis_small<2>();check_xor_basis_small<3>();
+    geometry::_xor_basis<> basis;uint64_t high=uint64_t(1)<<63;
+    CHECK(!basis.can_make(high));CHECK(basis.insert(high));CHECK(basis.get_basis()[63]==high);
+    CHECK(basis.rank()==1 && basis.can_make(high) && !basis.can_make(1));
+    CHECK(basis.insert(high|1));CHECK(basis.rank()==2 && basis.can_make(1));
+    CHECK(basis.max_xor()==(high|1) && basis.min_xor(high|1)==0);
+    basis.clear();CHECK(basis.rank()==0 && !basis.can_make(high));
+    for(int i=0;i<64;++i){CHECK(basis.insert(uint64_t(1)<<i));CHECK(basis.rank()==i+1);}
+    mt19937_64 rng(6777);
+    for(int i=0;i<1000;++i){uint64_t seed=rng();CHECK(basis.can_make(seed));CHECK(basis.max_xor(seed)==UINT64_MAX && basis.min_xor(seed)==0);}
+    CHECK(!basis.insert(UINT64_MAX) && basis.rank()==64);
+    geometry::_xor_basis<63> narrow;
+    for(int i=0;i<63;++i)CHECK(narrow.insert(uint64_t(1)<<i));
+    CHECK(narrow.can_make(high-1) && !narrow.can_make(high) && !narrow.can_make(UINT64_MAX));
+    CHECK(narrow.min_xor(UINT64_MAX)==high && narrow.max_xor(high)==UINT64_MAX);
+}
+
 template<uint64_t mod>
 void check_fixed_comb_mod(){
     int limit=min<uint64_t>(mod-1,70);
@@ -2837,7 +2890,7 @@ void check_suffix_array_bytes(){
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
-        {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"rc_precision_and_ties",check_rc_precision_and_ties},{"ch_api",check_ch_api},{"gf2",check_gf2},{"gf2_row_api",check_gf2_row_api},{"gf2_basis",check_gf2_basis},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},{"line_extended",check_line_extended},
+        {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"rc_precision_and_ties",check_rc_precision_and_ties},{"ch_api",check_ch_api},{"gf2",check_gf2},{"gf2_row_api",check_gf2_row_api},{"gf2_basis",check_gf2_basis},{"xor_basis",check_xor_basis},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},{"line_extended",check_line_extended},
         {"lucas",check_lucas},{"comb_crt",check_comb_crt},{"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},{"sparse_trie",check_sparse_trie},
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
         {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"frac_api",check_frac_api},{"frac_arithmetic",check_frac_arithmetic},{"frac_pow",check_frac_pow},{"angle_sort_api",check_angle_sort_api},{"angle_sort_order",check_angle_sort_order},{"li_api",check_li_api},{"inter_regressions",check_inter_regressions},{"inter_locations",check_inter_locations},{"ccw_api",check_ccw_api},{"ccw_large_coordinates",check_ccw_large_coordinates},{"dot_api",check_dot_api},
