@@ -615,6 +615,10 @@ public:
         return 0;
     }
 
+    void merge(const _xor_basis& ot){ // O(max_bit^2)
+        for(auto v : ot.basis) if(v) insert(v);
+    }
+
     bool can_make(u64 x) const{ // O(max_bit)
         for(int i = (int)N - 1; i >= 0; i--){
             if(((x >> i) & 1ull) == 0) continue;
@@ -633,6 +637,17 @@ public:
     u64 min_xor(u64 x = 0) const{ // O(max_bit)
         u64 ret = x;
         for(int i = (int)N - 1; i >= 0; i--) ret = min(ret, ret ^ basis[i]);
+        return ret;
+    }
+
+    optional<u64> kth(u64 k) const{ // O(max_bit)
+        if(rk < 64 && (k >> rk)) return nullopt;
+        u64 ret = 0; int bit = rk - 1;
+        for(int i = (int)N - 1; i >= 0; i--){
+            if(!basis[i]) continue;
+            if(((ret >> i) & 1ull) != ((k >> bit) & 1ull)) ret ^= basis[i];
+            bit--;
+        }
         return ret;
     }
 

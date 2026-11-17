@@ -22,6 +22,10 @@
       "        return 0;",
       "    }",
       "",
+      "    void merge(const _xor_basis& ot){ // O(max_bit^2)",
+      "        for(auto v : ot.basis) if(v) insert(v);",
+      "    }",
+      "",
       "    bool can_make(u64 x) const{ // O(max_bit)",
       "        for(int i = (int)N - 1; i >= 0; i--){",
       "            if(((x >> i) & 1ull) == 0) continue;",
@@ -43,10 +47,21 @@
       "        return ret;",
       "    }",
       "",
+      "    optional<u64> kth(u64 k) const{ // O(max_bit)",
+      "        if(rk < 64 && (k >> rk)) return nullopt;",
+      "        u64 ret = 0; int bit = rk - 1;",
+      "        for(int i = (int)N - 1; i >= 0; i--){",
+      "            if(!basis[i]) continue;",
+      "            if(((ret >> i) & 1ull) != ((k >> bit) & 1ull)) ret ^= basis[i];",
+      "            bit--;",
+      "        }",
+      "        return ret;",
+      "    }",
+      "",
       "    const array<u64, N>& get_basis() const{ return basis; } // O(1)",
       "    int rank() const{ return rk; } // O(1)",
       "};"
     ],
-    "description": "XOR linear basis over u64 with 0 <= N <= 64 bits (default 64). insert requires its input to fit N bits; this precondition is unchecked. can_make tests exact membership, including queries with bits above N. get_basis returns a const reference to the pivot-indexed array, with zero for unused slots. max_xor/min_xor optimize seed XOR a representable value; rank returns the dimension."
+    "description": "XOR linear basis over u64 with 0 <= N <= 64 bits (default 64). insert requires its input to fit N bits; this precondition is unchecked. can_make tests exact membership, including queries with bits above N. get_basis returns a const reference to the pivot-indexed array, with zero for unused slots. max_xor/min_xor optimize seed XOR a representable value; rank returns the dimension. merge(other) adds the span of another basis with the same N in O(N^2), preserving other and supporting self-merge. kth(k) returns the optional kth distinct representable value in unsigned sorted order (zero-based, including zero), or nullopt out of range; it is O(N), does not modify the basis, and handles rank 64 without shifting by 64."
   }
 }
