@@ -400,13 +400,26 @@ void check_ch_api(){
     CHECK(hull.add(point{9,8})==0);hull.build();CHECK(h.ret()==vector<point>({{9,8}}) && h.idx()[0].idx==0);
 }
 
+template<class T>
+concept gf2_public_input=requires(T& v){v.bs;};
+
+template<size_t m>
+vector<bitset<m+1>> gf2_input(const geometry::_gf2<m>& system){
+    vector<bitset<m+1>> input;
+    for(long long row=0;row<system.rows();++row)input.push_back(system.get_row(row));
+    return input;
+}
+
 template<size_t m>
 void verify_gf2(geometry::_gf2<m>& system){
     using solver=geometry::_gf2<m>;
-    size_t n=system.bs.size();
+    size_t n=system.rows();
+    static_assert(!gf2_public_input<solver>);
+    static_assert(same_as<decltype(as_const(system).rows()),long long>);
+    static_assert(same_as<decltype(as_const(system).get_row(0)),const bitset<m+1>&>);
     static_assert(same_as<decltype(as_const(system).ret()),const typename solver::result&>);
     static_assert(same_as<decltype(as_const(system).ret().get_value()),const bitset<m>&>);
-    auto input=system.bs;set<unsigned> image;vector<unsigned> solutions;
+    auto input=gf2_input(system);set<unsigned> image;vector<unsigned> solutions;
     unsigned rhs=0;for(size_t row=0;row<n;++row)rhs|=(unsigned)input[row][m]<<row;
     for(unsigned value=0;value<(1u<<m);++value){
         unsigned mapped=0;
@@ -417,7 +430,7 @@ void verify_gf2(geometry::_gf2<m>& system){
         image.insert(mapped);if(mapped==rhs)solutions.push_back(value);
     }
     int rank=0;while((1u<<rank)<image.size())++rank;
-    system.build();CHECK(system.bs==input);
+    system.build();CHECK(gf2_input(system)==input);
     const auto& answer=as_const(system).ret();CHECK(&answer==&as_const(system).ret());
     CHECK(answer.rank()==rank && answer.free_count()==(long long)m-rank);
     CHECK(answer.inconsistent()==solutions.empty());CHECK(answer.unique()==(solutions.size()==1));
@@ -435,7 +448,7 @@ void check_gf2_dimensions(){
         geometry::_gf2<m> system(n);
         for(unsigned encoded=0;encoded<(1u<<(n*(m+1)));++encoded){
             unsigned bits=encoded;
-            for(size_t row=0;row<n;++row){system.bs[row]=bitset<m+1>(bits);bits>>=m+1;}
+            for(size_t row=0;row<n;++row){system.set_row(row,bitset<m+1>(bits));bits>>=m+1;}
             verify_gf2(system);
             if(encoded%31==0){
                 auto before=system.ret();system.build();const auto& after=system.ret();
@@ -452,9 +465,9 @@ void check_gf2(){
     for(long long n:vector<long long>{5,0,2,1,7}){
         geometry::_gf2<2> input(n);
         if(n){input.set_a(n-1,1,1);input.set_b(n-1,1);}
-        verify_gf2(input);CHECK(input.bs.size()==(size_t)n);
+        verify_gf2(input);CHECK(input.rows()==n);
         if(n)CHECK(input.ret().get_value().to_ulong()==2);
-        input.clear();verify_gf2(input);CHECK(input.bs.size()==(size_t)n);
+        input.clear();verify_gf2(input);CHECK(input.rows()==n);
     }
     geometry::_gf2<2> system(2);
     system.set_a(0,0,1);system.set_a(0,1,1);system.set_b(0,0);
@@ -473,13 +486,45 @@ void check_gf2(){
         wide.set_a(i,i,1);if(i+1<129)wide.set_a(i,i+1,1);
         wide.set_b(i,(i%2) ^ (i+1<129?(i+1)%2:0));wide.set_a(129,i,1);
     }
-    auto input=wide.bs;wide.build();CHECK(wide.bs==input);
+    auto input=gf2_input(wide);wide.build();CHECK(gf2_input(wide)==input);
     CHECK(wide.ret().unique() && wide.ret().rank()==129 && wide.ret().free_count()==0);
     for(int i=0;i<129;++i)CHECK(wide.ret().get_value()[i]==(bool)(i%2));
-    wide.set_b(129,1);input=wide.bs;wide.build();CHECK(wide.bs==input);
+    wide.set_b(129,1);input=gf2_input(wide);wide.build();CHECK(gf2_input(wide)==input);
     CHECK(wide.ret().inconsistent() && wide.ret().rank()==129 && wide.ret().free_count()==0);
     wide.clear();wide.build();CHECK(wide.ret().multiple() && wide.ret().free_count()==129);
     CHECK(wide.ret().rank()==0 && wide.ret().get_value().none());
+}
+
+void check_gf2_row_api(){
+    geometry::_gf2<2> system;
+    for(long long n:vector<long long>{5,5,0,2,1,7,2}){
+        system.clear(n);CHECK(system.rows()==n);
+        for(long long row=0;row<n;++row)CHECK(system.get_row(row).none());
+        verify_gf2(system);CHECK(system.ret().multiple() && system.ret().rank()==0);
+        if(n){
+            system.set_row(n-1,bitset<3>(6));CHECK(system.get_row(n-1)==bitset<3>(6));
+            verify_gf2(system);CHECK(system.ret().get_value().to_ulong()==2);
+            system.set_row(n-1,system.get_row(n-1));CHECK(system.get_row(n-1)==bitset<3>(6));
+        }
+        system.clear();CHECK(system.rows()==n);
+        for(long long row=0;row<n;++row)CHECK(system.get_row(row).none());
+        verify_gf2(system);
+        if(n)system.set_b(0,1);
+    }
+    geometry::_gf2<0> no_variables;
+    for(long long n:vector<long long>{2,0,1,1}){
+        no_variables.clear(n);verify_gf2(no_variables);CHECK(no_variables.ret().unique());
+        if(n){no_variables.set_row(0,bitset<1>(1));verify_gf2(no_variables);CHECK(no_variables.ret().inconsistent());}
+    }
+    geometry::_gf2<129> wide(2);bitset<130> row;
+    for(int col:{0,64,128,129})row[col]=1;
+    wide.set_row(0,row);wide.set_row(1,wide.get_row(0));wide.build();
+    CHECK(wide.get_row(0)==row && wide.get_row(1)==row);
+    CHECK(wide.ret().multiple() && wide.ret().rank()==1 && wide.ret().free_count()==128);
+    CHECK(wide.ret().get_value().count()==1 && wide.ret().get_value()[0]);
+    wide.set_b(1,0);wide.build();CHECK(wide.ret().inconsistent());
+    wide.clear(2);wide.build();CHECK(wide.get_row(0).none() && wide.get_row(1).none());
+    CHECK(wide.ret().multiple() && wide.ret().rank()==0 && wide.ret().free_count()==129);
 }
 
 template<uint64_t mod>
@@ -2744,7 +2789,7 @@ void check_suffix_array_bytes(){
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
-        {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"rc_precision_and_ties",check_rc_precision_and_ties},{"ch_api",check_ch_api},{"gf2",check_gf2},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},{"line_extended",check_line_extended},
+        {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"rc_precision_and_ties",check_rc_precision_and_ties},{"ch_api",check_ch_api},{"gf2",check_gf2},{"gf2_row_api",check_gf2_row_api},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},{"line_extended",check_line_extended},
         {"lucas",check_lucas},{"comb_crt",check_comb_crt},{"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},{"sparse_trie",check_sparse_trie},
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
         {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"frac_api",check_frac_api},{"frac_arithmetic",check_frac_arithmetic},{"frac_pow",check_frac_pow},{"angle_sort_api",check_angle_sort_api},{"angle_sort_order",check_angle_sort_order},{"li_api",check_li_api},{"inter_regressions",check_inter_regressions},{"inter_locations",check_inter_locations},{"ccw_api",check_ccw_api},{"ccw_large_coordinates",check_ccw_large_coordinates},{"dot_api",check_dot_api},

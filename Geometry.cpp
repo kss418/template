@@ -538,15 +538,18 @@ public:
         ll rank() const{ return rk; } // O(1)
         ll free_count() const{ return fr; } // O(1)
     };
-
-    vector <bitset <m + 1>> bs;
 private:
+    vector <bitset <m + 1>> bs;
     result ans{};
 public:
     _gf2(ll n = 0) : bs(n){}
+    ll rows() const{ return bs.size(); } // O(1)
+    const bitset <m + 1>& get_row(ll cy) const{ return bs[cy]; } // O(1)
+    void set_row(ll cy, const bitset <m + 1>& v){ bs[cy] = v; }
     void set_a(ll cy, ll cx, bool v){ bs[cy][cx] = v; }
     void set_b(ll cy, bool v){ bs[cy][m] = v; }
     void clear(){ for(auto& i : bs) i.reset(); }
+    void clear(ll n){ bs.assign(n, {}); }
 
     void build(){
         ll n = bs.size();
