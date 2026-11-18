@@ -360,6 +360,150 @@ void check_lca_roots(bool base){
     }
 }
 
+template<bool edge>
+void check_lca_path_extensions(bool base,unsigned seed){
+    mt19937 rng(seed);
+    int count=4+rng()%7,n=base+count-1;
+    graphs::_lca_path<lca_text,edge> tree(n,base);
+    vector<vector<pair<int,string>>> adj(n+1);
+    vector<string> values(n+1);
+    vector<int> labels(count); iota(all(labels),int(base)); shuffle(all(labels),rng);
+    auto add=[&](int a,int b){
+        string ab=rng()%3 ? "["+to_string(a)+">"+to_string(b)+"]" : "";
+        string ba=rng()%3 ? "["+to_string(b)+">"+to_string(a)+"]" : "";
+        if constexpr(edge) tree.add(a,b,ab,ba); else tree.add(a,b);
+        adj[a].push_back({b,ab}); adj[b].push_back({a,ba});
+    };
+    vector<pair<int,int>> skipped;
+    for(int i=1;i<count;i++){
+        int a=labels[rng()%i],b=labels[i];
+        if(rng()%3) add(a,b); else skipped.push_back({a,b});
+    }
+    if constexpr(!edge){
+        for(int v=0;v<=n;v++) values[v]=rng()%3 ? "{"+to_string(v)+"}" : "";
+        tree.make(values);
+    }
+    auto aggregate=[&](const vector<int>& path){
+        string ret;
+        for(int i=0;i<(int)path.size();i++){
+            if constexpr(!edge) ret+=values[path[i]];
+            else if(i) for(auto [w,c]:adj[path[i-1]]) if(w==path[i]) ret+=c;
+        }
+        return ret;
+    };
+    auto verify=[&](int root){
+        tree.build(root);
+        vector<int> par(n+1,-1),dep(n+1,-1);
+        auto visit=[&](int r){
+            queue<int> q; q.push(r); dep[r]=0;
+            while(!q.empty()){
+                int v=q.front(); q.pop();
+                for(auto [w,c]:adj[v]) if(dep[w]==-1){par[w]=v; dep[w]=dep[v]+1; q.push(w);}
+            }
+        };
+        if(root!=-1) visit(root);
+        for(int v=base;v<=n;v++) if(dep[v]==-1) visit(v);
+        for(int a=base;a<=n;a++){
+            vector<int> up{a};
+            for(int k=0;k<=dep[a];k++){
+                CHECK(as_const(tree).query_up(a,k).v==aggregate(up));
+                vector<int> down(up.rbegin(),up.rend());
+                CHECK(as_const(tree).query_down(a,k).v==aggregate(down));
+                if(k<dep[a]) up.push_back(par[up.back()]);
+            }
+            vector<int> prev(n+1,-1); queue<int> q; q.push(a); prev[a]=a;
+            while(!q.empty()){
+                int v=q.front(); q.pop();
+                for(auto [w,c]:adj[v]) if(prev[w]==-1){prev[w]=v; q.push(w);}
+            }
+            for(int b=base;b<=n;b++){
+                if(prev[b]==-1){
+                    CHECK(tree.query(a,b).v.empty());
+                    CHECK(tree.bisect(a,b,[](const auto&){return true;})==-1);
+                    continue;
+                }
+                vector<int> path{b};
+                while(path.back()!=a) path.push_back(prev[path.back()]);
+                reverse(all(path));
+                string full=aggregate(path);
+                CHECK(as_const(tree).query(a,b).v==full);
+                CHECK(tree.bisect(a,b,[](const auto&){return true;})==b);
+                for(size_t limit=0;limit<=full.size()+1;limit++){
+                    int expected=-1,calls=0;
+                    vector<int> prefix;
+                    for(int v:path){
+                        prefix.push_back(v);
+                        if(aggregate(prefix).size()>limit) break;
+                        expected=v;
+                    }
+                    int actual=as_const(tree).bisect(a,b,[&](const lca_text::node& v){
+                        calls++;
+                        return full.starts_with(v.v) && v.v.size()<=limit;
+                    });
+                    CHECK(actual==expected);
+                    CHECK(calls<=4*(int)bit_width((unsigned)count)+1);
+                }
+            }
+        }
+    };
+    verify(-1);
+    for(int root:labels) verify(root);
+    verify(labels.back());
+    if constexpr(!edge){
+        values[labels.front()]="updated"; tree.set(labels.front(),values[labels.front()]);
+        verify(labels.back());
+        vector<string> input(n/2+1,"short");
+        tree.make(input); fill(all(values),"");
+        for(int v=base;v<(int)input.size();v++) values[v]=input[v];
+        verify(labels.front());
+        input.assign(n+4,"long"); tree.make(input);
+        for(int v=base;v<=n;v++) values[v]=input[v];
+        verify(labels.back());
+    }
+    for(auto [a,b]:skipped) add(a,b);
+    verify(labels.front()); verify(labels.back());
+    tree.clear(base,base); tree.build(base);
+    CHECK(tree.query(base,base).v.empty());
+    CHECK(tree.query_up(base,0).v.empty()); CHECK(tree.query_down(base,0).v.empty());
+    CHECK(tree.bisect(base,base,[](const auto&){return true;})==base);
+    if constexpr(!edge){
+        tree.set(base,"Z"); tree.build(); CHECK(tree.query(base,base).v=="Z");
+        CHECK(tree.bisect(base,base,[](const auto& v){return v.v.empty();})==-1);
+        tree.make(vector<string>{}); tree.build(); CHECK(tree.query(base,base).v.empty());
+    }
+    tree.clear(0,1); tree.build(); tree.build();
+    int seen=0; tree.it([&](int){seen++;}); CHECK(seen==0);
+}
+
+void check_lca_path_boundaries(bool base){
+    graphs::_lca_path<lca_text> edges(base+65,base);
+    graphs::_lca_path<lca_text,false> vertices(base+65,base);
+    for(int v=base;v<base+65;v++){
+        edges.add(v,v+1,"a","b"); vertices.add(v,v+1);
+    }
+    for(int v=base;v<=base+65;v++) vertices.set(v,"c");
+    for(int root:{int(base),base+32,base+65}){
+        edges.build(root); vertices.build(root);
+        for(int start:{int(base),base+17,base+32,base+65}) for(int end:{int(base),base+1,base+33,base+65}){
+            int len=abs(start-end),dir=start<=end ? 1 : -1;
+            for(int budget=0;budget<=len+2;budget++){
+                auto f=[&](const lca_text::node& v){return (int)v.v.size()<=budget;};
+                CHECK(edges.bisect(start,end,f)==start+dir*min(len,budget));
+                CHECK(vertices.bisect(start,end,f)==(budget==0 ? -1 : start+dir*min(len,budget-1)));
+            }
+        }
+    }
+    graphs::_lca_path<lca_matrix,false> matrices(base+2,base);
+    lca_matrix::cost a{1,2,3,4},b{0,1,1,0},c{2,0,0,3};
+    matrices.add(base,base+1); matrices.add(base+1,base+2);
+    matrices.set(base,a); matrices.set(base+1,b); matrices.set(base+2,c);
+    for(int root=base;root<=base+2;root++){
+        matrices.build(root);
+        CHECK(matrices.query(base,base+2).v==lca_matrix::merge(lca_matrix::merge(lca_matrix::lift(a),lca_matrix::lift(b)),lca_matrix::lift(c)).v);
+        CHECK(matrices.query(base+2,base).v==lca_matrix::merge(lca_matrix::merge(lca_matrix::lift(c),lca_matrix::lift(b)),lca_matrix::lift(a)).v);
+    }
+}
+
 static_assert(!is_default_constructible_v<lca_matrix::node>);
 template<class P>
 void check_lca_paths(bool base, int mode, unsigned seed){
@@ -595,6 +739,13 @@ int main(){
         for(bool base : {false,true}) for(int mode=0;mode<4;mode++) for(unsigned seed=1;seed<=8;seed++){
             check_lca_paths<lca_text>(base,mode,seed);
             check_lca_paths<lca_matrix>(base,mode,seed);
+        }
+        for(bool base:{false,true}){
+            check_lca_path_boundaries(base);
+            for(unsigned seed=1;seed<=6;seed++){
+                check_lca_path_extensions<true>(base,seed);
+                check_lca_path_extensions<false>(base,seed);
+            }
         }
         for(bool base:{false,true})for(unsigned seed=1;seed<=24;seed++)check_scc_dag(base,seed);
         cout << "PASS " << checks << " graph/LCA/SCC checks\n";
