@@ -19,6 +19,116 @@ concept has_path_query = requires(T& tree){ tree.query(0,0); };
 static_assert(!has_path_query<graphs::_lca>);
 static_assert(has_path_query<graphs::_lca_path<>>);
 static_assert(is_base_of_v<graphs::_lca,graphs::_lca_path<>>);
+template<class T>
+concept has_public_vtree_storage=requires(T& t){t.adj;} || requires(T& t){t.vt;};
+static_assert(!has_public_vtree_storage<graphs::_vtree>);
+static_assert(is_base_of_v<graphs::_lca,graphs::_vtree>);
+static_assert(is_same_v<decltype(declval<const graphs::_vtree&>().nodes()),const vector<int>&>);
+
+void check_vtree(bool base,unsigned seed){
+    mt19937 rng(seed);
+    int count=1+rng()%12,n=base+count-1;
+    graphs::_vtree tree(n,base);
+    vector<vector<pair<int,long long>>> adj(n+1);
+    vector<pair<int,int>> skipped;
+    auto add=[&](int a,int b){
+        long long c=(int)(rng()%31)-15;
+        tree.add(a,b,c); adj[a].push_back({b,c}); adj[b].push_back({a,c});
+    };
+    for(int v=base+1;v<=n;v++){
+        int a=base+rng()%(v-base);
+        if(seed%2 || rng()%3) add(a,v); else skipped.push_back({a,v});
+    }
+    auto verify=[&](int root){
+        tree.build(root);
+        CHECK(tree.nodes().empty()); CHECK(tree.root()==-1);
+        int old_edges=0; tree.it_edge([&](int,int,long long){old_edges++;}); CHECK(old_edges==0);
+        vector<int> p(n+1,-1),dep(n+1,-1),comp(n+1,-1),pos(n+1,-1);
+        vector<long long> dist(n+1);
+        auto visit=[&](int r){
+            queue<int> q; q.push(r); dep[r]=0; comp[r]=r;
+            while(!q.empty()){
+                int v=q.front(); q.pop();
+                for(auto [w,c]:adj[v]) if(dep[w]==-1){
+                    p[w]=v; dep[w]=dep[v]+1; comp[w]=r; dist[w]=dist[v]+c; q.push(w);
+                }
+            }
+        };
+        if(root!=-1) visit(root);
+        for(int v=base;v<=n;v++) if(dep[v]==-1) visit(v);
+        int index=base; tree.it([&](int v){pos[v]=index++;},false);
+        auto ancestor=[&](int a,int b){for(int v=b;v!=-1;v=p[v]) if(v==a) return true; return false;};
+        auto lca=[&](int a,int b){
+            if(comp[a]!=comp[b]) return -1;
+            while(dep[a]>dep[b]) a=p[a];
+            while(dep[b]>dep[a]) b=p[b];
+            while(a!=b){a=p[a]; b=p[b];}
+            return a;
+        };
+        for(int a=base;a<=n;a++){
+            CHECK(tree.parent(a)==p[a]); CHECK(tree.depth(a)==dep[a]); CHECK(tree.dist_root(a)==dist[a]);
+            for(int b=base;b<=n;b++){
+                int c=lca(a,b); CHECK(tree.ret(a,b)==c);
+                CHECK(tree.dist_tree(a,b)==(c==-1 ? -1 : dist[a]+dist[b]-2*dist[c]));
+            }
+        }
+        for(int repeat=0;repeat<18;repeat++){
+            int anchor=base+rng()%count;
+            vector<int> pool,keys;
+            for(int v=base;v<=n;v++) if(comp[v]==comp[anchor]) pool.push_back(v);
+            if(repeat==1) keys=pool;
+            else if(repeat==2) keys={anchor,anchor,anchor};
+            else if(repeat){int k=rng()%(2*pool.size()+1); while(k--) keys.push_back(pool[rng()%pool.size()]);}
+            set<int> expected(all(keys));
+            for(int a:keys) for(int b:keys) expected.insert(lca(a,b));
+            auto nodes=tree.make(keys); set<int> actual(all(nodes));
+            CHECK(actual==expected); CHECK(actual.size()==nodes.size()); CHECK(as_const(tree).nodes()==nodes);
+            CHECK(tree.root()==(nodes.empty() ? -1 : nodes.front()));
+            for(int i=1;i<(int)nodes.size();i++) CHECK(pos[nodes[i-1]]<pos[nodes[i]]);
+            map<pair<int,int>,long long> child_edges,all_edges;
+            vector<int> indegree(n+1);
+            for(int a=base;a<=n;a++) as_const(tree).it_child(a,[&](int b,long long c){
+                CHECK(actual.contains(a)); CHECK(actual.contains(b)); CHECK(a!=b); CHECK(ancestor(a,b));
+                CHECK(c==dist[b]-dist[a]); CHECK(child_edges.emplace(pair{a,b},c).second); indegree[b]++;
+                for(int mid:actual) if(mid!=a && mid!=b) CHECK(!(ancestor(a,mid)&&ancestor(mid,b)));
+            });
+            as_const(tree).it_edge([&](int a,int b,long long c){CHECK(all_edges.emplace(pair{a,b},c).second);});
+            CHECK(child_edges==all_edges); CHECK(all_edges.size()==(nodes.empty() ? 0 : nodes.size()-1));
+            for(int v:nodes){CHECK(indegree[v]==(v==tree.root() ? 0 : 1)); CHECK(ancestor(tree.root(),v));}
+            if(repeat==1){auto copy=nodes; CHECK(tree.make(tree.nodes())==copy); CHECK(tree.nodes()==copy);}
+        }
+    };
+    verify(-1);
+    for(int root=base;root<=n;root++) verify(root);
+    verify(n); verify(-1);
+    for(auto [a,b]:skipped) add(a,b);
+    verify(n); verify(n);
+    tree.clear(base,base); tree.build(base);
+    CHECK(tree.parent(base)==-1); CHECK(tree.dist_root(base)==0);
+    CHECK(tree.make({base,base})==vector<int>{base}); CHECK(tree.root()==base);
+    CHECK(tree.nodes()==vector<int>{base});
+    int edges=0; tree.it_child(base,[&](int,long long){edges++;}); tree.it_edge([&](int,int,long long){edges++;}); CHECK(edges==0);
+    CHECK(tree.make({}).empty()); CHECK(tree.nodes().empty()); CHECK(tree.root()==-1);
+    tree.clear(0,1); tree.build(); CHECK(tree.make({}).empty()); CHECK(tree.root()==-1);
+}
+
+void check_vtree_wide(bool base){
+    constexpr long long big=6000000000000000000LL;
+    graphs::_vtree tree(base+2,base);
+    tree.add(base,base+1,big); tree.add(base+1,base+2,1); tree.build();
+    CHECK(tree.dist_tree(base+1,base+2)==1); CHECK(tree.dist_tree(base+2,base+1)==1);
+    CHECK(tree.dist_root(base+2)==big+1);
+    CHECK((tree.make({base+1,base+2})==vector<int>{base+1,base+2}));
+    tree.it_edge([&](int a,int b,long long c){CHECK(a==base+1); CHECK(b==base+2); CHECK(c==1);});
+    tree.clear(base+2,base); tree.add(base,base+1,big); tree.add(base+1,base+2,big); tree.build();
+    CHECK(tree.dist_tree(base+1,base+2)==big);
+    tree.make({base+1,base+2}); tree.it_edge([&](int,int,long long c){CHECK(c==big);});
+    tree.build(base+2); CHECK(tree.parent(base+2)==-1); CHECK(tree.dist_tree(base,base+1)==big);
+    tree.clear(base+2,base); tree.add(base,base+1,LLONG_MIN); tree.add(base+1,base+2,LLONG_MAX); tree.build();
+    CHECK(tree.dist_root(base+2)==-1); CHECK(tree.dist_tree(base+1,base+2)==LLONG_MAX);
+    CHECK(tree.dist_tree(base,base+1)==LLONG_MIN); CHECK(tree.dist_tree(base,base+2)==-1);
+    tree.make({base,base+2}); tree.it_edge([&](int,int,long long c){CHECK(c==-1);});
+}
 
 void check_lca_numeric(bool base){
     graphs::_lca_path<> tree(base+3,base);
@@ -735,6 +845,10 @@ void check_lift_defaults(){
 int main(){
     try {
         check_lift_defaults();
+        for(bool base:{false,true}){
+            check_vtree_wide(base);
+            for(unsigned seed=1;seed<=12;seed++) check_vtree(base,seed);
+        }
         for(bool base : {false,true}){ check_clist_views(base); check_mst_api(base); check_mst_oracle(base); check_mst_oracle<mst_max_policy>(base,true); check_bcc(base); check_cycles(base); check_lca_order(base); check_lca_numeric(base); check_lca_roots(base); }
         for(bool base : {false,true}) for(int mode=0;mode<4;mode++) for(unsigned seed=1;seed<=8;seed++){
             check_lca_paths<lca_text>(base,mode,seed);

@@ -271,21 +271,18 @@ public:
 };
 
 // Virtual Tree
-class _vtree {
-    bool base;
+class _vtree : public _lca{
 private:
-    vector <vector<int>> lift;
-    vector <ll> dist;
-    vector <int> in, out, dep, used;
-    int n, lg, seq; bool built = 0;
+    using _lca::adj;
+    using _lca::addsol;
+    vector<vector<ll>> weight;
+    vector<vector<pair<int, ll>>> vt;
+    vector<i128> distance;
+    vector<int> used;
 
-    bool is_ancestor(int a, int b) const{
-        return in[a] <= in[b] && out[b] <= out[a];
-    }
-
-    void sort_node(vector <int>& node) const{
+    void sort_node(vector<int>& node) const{
         sort(all(node), [&](int a, int b){
-            return in[a] < in[b];
+            return subtree_range(a).first < subtree_range(b).first;
         });
     }
 
@@ -293,91 +290,67 @@ private:
         for(auto& v : used) vt[v].clear();
         used.clear();
     }
-
-    int lca(int a, int b) const{
-        if(is_ancestor(a, b)) return a;
-        if(is_ancestor(b, a)) return b;
-        for(int i = lg;i >= 0;i--){
-            if(!is_ancestor(lift[i][a], b)) a = lift[i][a];
-        }
-        return lift[0][a];
-    }
-
-    void dfs(int cur, int pre){
-        in[cur] = ++seq;
-        lift[0][cur] = pre;
-        for(int i = 1;i <= lg;i++){
-            lift[i][cur] = lift[i - 1][lift[i - 1][cur]];
-        }
-
-        for(auto& [nxt, co] : adj[cur]){
-            if(nxt == pre) continue;
-            dep[nxt] = dep[cur] + 1;
-            dist[nxt] = dist[cur] + co;
-            dfs(nxt, cur);
-        }
-        out[cur] = seq;
-    }
 public:
-    vector <vector<pair<int, ll>>> adj, vt;
-    _vtree(int n = 0, bool base = 1){ clear(n, base); } // O(1)
-    void clear(int n, bool base = 1){ // O(n)
-        this->n = n; this->base = base; seq = 0; built = 0; lg = 1;
-        while((1ll << lg) <= n) lg++;
-        adj.assign(n + 1, {}); vt.assign(n + 1, {});
-        lift.assign(lg + 1, vector<int>(n + 1, 0));
-        in.assign(n + 1, 0); out.assign(n + 1, 0);
-        dep.assign(n + 1, 0); dist.assign(n + 1, 0);
+    _vtree(int n = 0, bool base = 1) : _lca(n, base), weight(n + 1), vt(n + 1), distance(n + 1, 0){} // O(n log n)
+    void clear(int n, bool base = 1){ // O(n log n)
+        _lca::clear(n, base);
+        weight.assign(n + 1, {}); vt.assign(n + 1, {}); distance.assign(n + 1, 0);
         used.clear();
     }
 
-    void add(int a, int b, ll c = 1){
-        adj[a].push_back({b, c});
-        adj[b].push_back({a, c});
-        built = 0;
-    } // O(1)
+    void add(int a, int b, ll c = 1){ // O(1)
+        _lca::add(a, b); weight[a].push_back(c); weight[b].push_back(c);
+    }
 
     void build(int root = -1){ // O(n log n)
-        seq = 0; built = 1; clear_vt();
-        for(auto& row : lift) fill(all(row), 0);
-        fill(all(in), 0); fill(all(out), 0);
-        fill(all(dep), 0); fill(all(dist), 0);
-        if(n < base) return;
-        if(root == -1) root = base;
-        assert(base <= root && root <= n);
-        dfs(root, root);
+        clear_vt(); _lca::build(root); fill(all(distance), 0);
+        _lca::it([&](int v){
+            for(int i = 0; i < (int)adj[v].size(); i++){
+                int nxt = adj[v][i];
+                if(parent(nxt) == v) distance[nxt] = distance[v] + weight[v][i];
+            }
+        }, false);
     }
 
-    int depth(int v) const { return dep[v]; } // O(1)
-    int parent(int v) const { return lift[0][v]; } // O(1)
-    ll dist_root(int v) const { return dist[v]; } // O(1)
-    int ret(int a, int b) const { return lca(a, b); } // O(log n)
+    ll dist_root(int v) const{ return (ll)distance[v]; } // O(1)
+    const vector<int>& nodes() const{ return used; } // O(1)
+    int root() const{ return used.empty() ? -1 : used[0]; } // O(1)
 
     ll dist_tree(int a, int b) const{ // O(log n)
-        int c = lca(a, b);
-        return dist[a] + dist[b] - 2 * dist[c];
+        int c = ret(a, b);
+        return c == -1 ? -1 : (ll)(distance[a] + distance[b] - 2 * distance[c]);
     }
 
-    vector <int> make(vector <int> node){ // O(k log k)
+    template<class F>
+    void it_child(int v, const F& f) const{ // O(deg_vt(v))
+        for(const auto& [nxt, c] : vt[v]) f(nxt, c);
+    }
+
+    template<class F>
+    void it_edge(const F& f) const{ // O(k)
+        for(int v : used) it_child(v, [&](int nxt, ll c){ f(v, nxt, c); });
+    }
+
+    vector<int> make(vector<int> node){ // O(k_prev + k log k + k log n)
         clear_vt();
         if(node.empty()) return {};
         sort_node(node);
 
         int sz = node.size();
-        for(int i = 0;i < sz - 1;i++) node.push_back(lca(node[i], node[i + 1]));
+        for(int i = 0; i < sz - 1; i++) node.push_back(ret(node[i], node[i + 1]));
 
         sort_node(node);
         node.erase(unique(all(node)), node.end());
         used = node;
 
         vector<int> st = {node[0]};
-        for(int i = 1;i < node.size();i++){
+        for(int i = 1; i < (int)node.size(); i++){
             int v = node[i];
             while(!st.empty() && !is_ancestor(st.back(), v)){
                 st.pop_back();
             }
 
-            vt[st.back()].push_back({v, dist[v] - dist[st.back()]});
+            vt[st.back()].push_back({v, (ll)(distance[v] - distance[st.back()])});
             st.push_back(v);
         }
         return node;
