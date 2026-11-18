@@ -363,11 +363,11 @@ class _st{
     bool base;
 private:
     vector <vector<i128>> sum;
-    vector <vector<int>> lift; ll m; int n, lg; 
+    vector <vector<int>> lift; u64 m; int n, lg;
 public:
-    _st(int n = 0, ll max_step = (1ll << 60), bool base = 1){ clear(n, max_step, base); }; // O(n log m)
-    void clear(int n, ll m = (1ll << 60), bool base = 1){ // O(n log m)
-        lg = max(0, (int)bit_width((u64)m) - 1); this->n = n; this->base = base; this->m = m;
+    _st(int n = 0, u64 max_step = 1ULL << 63, bool base = 1){ clear(n, max_step, base); }; // O(n log m)
+    void clear(int n, u64 m = 1ULL << 63, bool base = 1){ // O(n log m)
+        lg = max(0, (int)bit_width(m) - 1); this->n = n; this->base = base; this->m = m;
         lift.assign(lg + 1, vector<int>(n + 2, n + 1));
         sum.assign(lg + 1, vector<i128>(n + 2, 1));
         for(auto& row : sum) row[n + 1] = 0;
@@ -394,9 +394,9 @@ public:
         return {cur, cost}; // 도착 정점, 사용한 비용
     }
 
-    pair<int, ll> jump(int cur, ll k) const{ // O(log m)
+    pair<int, ll> jump(int cur, u64 k) const{ // O(log m)
         i128 cost = 0;
-        for(int i = lg; i >= 0; i--) if(k & (1ll << i)){
+        for(int i = lg; i >= 0; i--) if(k & (1ULL << i)){
             cost += sum[i][cur]; cur = lift[i][cur];
         }
         return {cur, (ll)cost};

@@ -6,11 +6,11 @@
     "    bool base;",
     "private:",
     "    vector <vector<i128>> sum;",
-    "    vector <vector<int>> lift; ll m; int n, lg; ",
+    "    vector <vector<int>> lift; u64 m; int n, lg;",
     "public:",
-    "    _st(int n = 0, ll max_step = (1ll << 60), bool base = 1){ clear(n, max_step, base); }; // O(n log m)",
-    "    void clear(int n, ll m = (1ll << 60), bool base = 1){ // O(n log m)",
-    "        lg = max(0, (int)bit_width((u64)m) - 1); this->n = n; this->base = base; this->m = m;",
+    "    _st(int n = 0, u64 max_step = 1ULL << 63, bool base = 1){ clear(n, max_step, base); }; // O(n log m)",
+    "    void clear(int n, u64 m = 1ULL << 63, bool base = 1){ // O(n log m)",
+    "        lg = max(0, (int)bit_width(m) - 1); this->n = n; this->base = base; this->m = m;",
     "        lift.assign(lg + 1, vector<int>(n + 2, n + 1));",
     "        sum.assign(lg + 1, vector<i128>(n + 2, 1));",
     "        for(auto& row : sum) row[n + 1] = 0;",
@@ -37,15 +37,15 @@
     "        return {cur, cost}; // \ub3c4\ucc29 \uc815\uc810, \uc0ac\uc6a9\ud55c \ube44\uc6a9",
     "    }",
     "",
-    "    pair<int, ll> jump(int cur, ll k) const{ // O(log m)",
+    "    pair<int, ll> jump(int cur, u64 k) const{ // O(log m)",
     "        i128 cost = 0;",
-    "        for(int i = lg; i >= 0; i--) if(k & (1ll << i)){",
+    "        for(int i = lg; i >= 0; i--) if(k & (1ULL << i)){",
     "            cost += sum[i][cur]; cur = lift[i][cur];",
     "        }",
     "        return {cur, (ll)cost};",
     "    }",
     "};"
   ],
-  "description": "Weighted binary lifting on vertices [base,n]. set(v,next,co=1) replaces an outgoing transition; build() recomputes from preserved inputs after edits. Unset transitions go to n+1 with cost 1. Terminal n+1 stays at itself with cost 0, so reaching it consumes no further budget. max_step is a nonnegative preprocessing bound (default 2^60), supporting exact step counts up to that value; it does not impose a runtime step cap. ret(cur,co) returns (destination,spent_cost) after the longest affordable prefix; require nonnegative budget, positive costs on real vertices, and enough preprocessed steps to cover the walk. jump(cur,k) returns (destination,total_cost) after exactly k nonnegative steps, with k<=max_step; zero and negative transition costs are also supported here. Sum tables and jump accumulation use i128; jump total cost must fit ll. next(v) reads the stored immediate successor. No make() or add() API; use set(). Preprocessing is O(n log max_step), queries O(log max_step)."
+  "description": "Weighted binary lifting on vertices [base,n]. set(v,next,co=1) replaces an outgoing transition; build() recomputes from preserved inputs after edits. Unset transitions go to n+1 with cost 1. Terminal n+1 stays at itself with cost 0, so reaching it consumes no further budget. max_step is a u64 preprocessing bound (default 1ULL << 63), supporting exact step counts up to that value; it does not impose a runtime step cap. ret(cur,co) returns (destination,spent_cost) after the longest affordable prefix; require nonnegative budget, positive costs on real vertices, and enough preprocessed steps to cover the walk. jump(cur,k) returns (destination,total_cost) after exactly u64 k steps, with k<=max_step; zero and negative transition costs are also supported here. Sum tables and jump accumulation use i128; jump total cost must fit ll. next(v) reads the stored immediate successor. No make() or add() API; use set(). Preprocessing is O(n log max_step), queries O(log max_step)."
 }
 }

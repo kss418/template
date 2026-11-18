@@ -934,11 +934,51 @@ void check_lift_boundaries(bool base){
     CHECK((terminal.jump(base,1)==pair<int,long long>{base,LLONG_MIN}));
 }
 
+void check_lift_u64(bool base){
+    using u64=uint64_t;
+    constexpr u64 high=1ULL<<63,maximum=UINT64_MAX;
+    for(u64 bound:{high-1,high,high+1,maximum}){
+        graphs::_st tree(base+2,bound,base);
+        const array<long long,3> cost{-3,0,3};
+        for(int v=0;v<3;v++) tree.set(base+v,base+(v+1)%3,cost[v]);
+        tree.build(); tree.build();
+        vector<u64> steps{0,bound,bound-1};
+        for(u64 k:{high-1,high,high+1,maximum}) if(k<=bound) steps.push_back(k);
+        for(int bit=0;bit<64;bit++) if((1ULL<<bit)<=bound) steps.push_back(1ULL<<bit);
+        for(int start=0;start<3;start++) for(u64 k:steps){
+            long long sum=0; for(u64 j=0;j<k%3;j++) sum+=cost[(start+j)%3];
+            CHECK((tree.jump(base+start,k)==pair<int,long long>{base+(start+k%3)%3,sum}));
+        }
+        for(int v=0;v<3;v++) tree.set(base+v,base+(v+1)%3);
+        tree.build();
+        CHECK((tree.ret(base,LLONG_MAX)==pair<int,long long>{base+LLONG_MAX%3,LLONG_MAX}));
+    }
+    graphs::_st terminal(base,maximum,base);
+    terminal.set(base,base+1,3); terminal.build();
+    CHECK((terminal.jump(base,maximum)==pair<int,long long>{base+1,3}));
+    terminal.clear(base,maximum,base); terminal.set(base,base,LLONG_MAX); terminal.build();
+    CHECK((terminal.jump(base,1)==pair<int,long long>{base,LLONG_MAX}));
+    terminal.set(base,base,LLONG_MIN); terminal.build();
+    CHECK((terminal.jump(base,1)==pair<int,long long>{base,LLONG_MIN}));
+    graphs::_st alternating(base+1,maximum,base);
+    alternating.set(base,base+1,LLONG_MIN); alternating.set(base+1,base,LLONG_MAX); alternating.build();
+    CHECK((alternating.jump(base,high)==pair<int,long long>{base,-(1LL<<62)}));
+    CHECK((alternating.jump(base+1,maximum)==pair<int,long long>{base,0}));
+    graphs::_st defaults(3);
+    for(int round=0;round<2;round++){
+        if(round) defaults.clear(3);
+        for(int v=1;v<=3;v++) defaults.set(v,v==3 ? 1 : v+1,0);
+        defaults.build();
+        CHECK((defaults.jump(1,high)==pair<int,long long>{3,0}));
+    }
+}
+
 int main(){
     try {
         check_lift_defaults();
         for(bool base:{false,true}){
             check_lift_boundaries(base);
+            check_lift_u64(base);
             for(unsigned seed=1;seed<=12;seed++) check_lift_api(base,seed);
         }
         for(bool base:{false,true}){
