@@ -229,6 +229,64 @@ void check_hash_build(){
     check_hash_build_mod<1000000007,1000000009>();check_hash_build_mod<2147483647,2147483629>();
 }
 
+template<int M1,int M2>
+void check_deque_hash_build_mod(){
+    using H=hash_templates::_deque_hash<M1,M2>;
+    for(int capacity:{0,2,64}){
+        pair<int,int> key{3,5};H h(capacity,key);vector<int> values;
+        auto verify=[&](){
+            const auto& read=as_const(h);CHECK(read.size()==(int)values.size());CHECK(read.ret(0,-1)==0);
+            for(int l=0;l<(int)values.size();l++) for(int r=l;r<(int)values.size();r++){
+                long long want=(naive_hash(values,l,r,key.first,M1)<<32)+naive_hash(values,l,r,key.second,M2);
+                CHECK(read.ret(l,r)==want);
+            }
+        };
+        auto rotate=[&](){
+            for(int step=0;step<31 && !values.empty();step++){
+                if(step<16){h.pop_front();values.erase(values.begin());h.push_back(step-7);values.push_back(step-7);}
+                else{h.pop_back();values.pop_back();h.push_front(INT_MIN+step);values.insert(values.begin(),INT_MIN+step);}
+                verify();
+            }
+        };
+        values={INT_MIN,0,INT_MAX,-1,7,0};h.build(values);verify();rotate();
+        h.push_front(99);values.insert(values.begin(),99);h.push_back(-99);values.push_back(-99);verify();
+        h.pop_front();values.erase(values.begin());h.pop_back();values.pop_back();verify();
+        const int raw[]{5,-3,0,5};values={5,-3,0,5};h.build(raw);verify();
+        const array<int,6> padded{111,INT_MIN,0,INT_MAX,-9,222};
+        values={INT_MIN,0,INT_MAX,-9};h.build(span<const int>(padded).subspan(1,4));verify();
+        values={-2,3,-2};h.build(vector<int>{-2,3,-2});verify();
+        const string bytes{'\0',char(0x80),char(0xff),'A','\0'};
+        h.build(bytes);values={0,128,255,65,0};verify();rotate();
+        const string padded_string="xx"+bytes+"yy";
+        h.build(string_view(padded_string).substr(2,bytes.size()));values={0,128,255,65,0};verify();
+        h.build("aba");values={'a','b','a'};verify();
+        auto saved=h;auto saved_values=values;
+        mt19937 rng(628+capacity);
+        for(int round=0;round<30;round++){
+            int n=round%3==0 ? 32 : round%3==1 ? 3 : 0;
+            values.assign(n,0);for(int& v:values)v=int(rng()%1001)-500;
+            h.build(values);verify();
+            string text(n,'\0');values.clear();
+            for(char& c:text){unsigned char b=rng()%256;c=char(b);values.push_back(b);}
+            h.build(text);verify();
+            if(round%3==1)rotate();
+        }
+        CHECK(saved.size()==(int)saved_values.size());
+        for(int l=0;l<(int)saved_values.size();l++)for(int r=l;r<(int)saved_values.size();r++)
+            CHECK(saved.ret(l,r)==((naive_hash(saved_values,l,r,key.first,M1)<<32)+naive_hash(saved_values,l,r,key.second,M2)));
+        h.build(string_view{});values.clear();verify();h.push_front(-8);values={-8};verify();
+        h.build(span<const int>{});values.clear();verify();h.push_back(19);values={19};verify();
+        key={11,17};h.clear(capacity,key);h.build(bytes);values={0,128,255,65,0};verify();rotate();
+    }
+    H defaults;defaults.build("abcdefghijklmnop");CHECK(defaults.size()==16);
+    hash_templates::_hash<M1,M2> prefix;prefix.build("abcdefghijklmnop");
+    for(int l=0;l<16;l++)for(int r=l;r<16;r++)CHECK(defaults.ret(l,r)==prefix.ret(l,r));
+}
+void check_deque_hash_build(){
+    check_deque_hash_build_mod<101,103>();check_deque_hash_build_mod<101,101>();check_deque_hash_build_mod<1000,1001>();
+    check_deque_hash_build_mod<1000000007,1000000009>();check_deque_hash_build_mod<2147483647,2147483629>();
+}
+
 void check_hash_operations(){
     const pair<int,int> key{37,41}, mod{1'000'000'007,1'000'000'009};
     hash_templates::_hash<> prefix(key);hash_templates::_deque_hash<> window(256,key);
@@ -876,7 +934,7 @@ void run(){for(bool base:{false,true}){check_monoids(base);check_actions(base);}
 int main(){
     int failures = 0;
     for(auto [name,test]:vector<pair<string,void(*)()>>{{"hld_direction",bidirectional_checks::check_hld_direction},{"bidirectional",bidirectional_checks::run},{"lazy_equality",check_lazy_equality},{"factory_construction",check_factory_construction},{"default_lazy",check_default_lazy},{"explicit_id",check_explicit_id},
-        {"affine",check_affine},{"hash_defaults",check_hash_defaults},{"hash_operations",check_hash_operations},{"hash_build",check_hash_build},{"deque_hash_reuse",check_deque_hash_reuse},{"fixed_hash",check_fixed_hash}}){
+        {"affine",check_affine},{"hash_defaults",check_hash_defaults},{"hash_operations",check_hash_operations},{"hash_build",check_hash_build},{"deque_hash_build",check_deque_hash_build},{"deque_hash_reuse",check_deque_hash_reuse},{"fixed_hash",check_fixed_hash}}){
         try{test();cout<<"PASS "<<name<<'\n';}catch(const exception& e){++failures;cerr<<"FAIL "<<name<<": "<<e.what()<<'\n';}
     }
     cout<<checks<<" identity/initial-leaf/hash checks, "<<failures<<" failed groups\n";
