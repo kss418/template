@@ -10,17 +10,20 @@ constexpr ll INF = 0x3f3f3f3f3f3f3f3f;
 constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 
 // LCA
-class _lca {
+class _lca{
 protected:
     bool base;
     int n, lg;
     vector<vector<int>> p, adj;
     vector<int> d, comp, ord;
 private:
+    vector<int> in, sz;
+
     void build_comp(int root, int cid){
         stack<int> st; st.push(root); d[root] = 0; comp[root] = cid;
         while(!st.empty()){
-            int cur = st.top(); st.pop(); ord.push_back(cur);
+            int cur = st.top(); st.pop();
+            in[cur] = base + (int)ord.size(); ord.push_back(cur);
             for(int nxt : adj[cur]){
                 if(d[nxt] != -1) continue;
                 p[0][nxt] = cur; d[nxt] = d[cur] + 1; comp[nxt] = cid;
@@ -40,16 +43,23 @@ public:
         while((1ll << lg) <= n) lg++;
         p.assign(lg + 1, vector<int>(n + 1, -1));
         adj.assign(n + 1, {}); d.assign(n + 1, -1); comp.assign(n + 1, 0);
+        in.assign(n + 1, -1); sz.assign(n + 1, 0);
         ord.clear(); ord.reserve(n + 1);
     }
 
     void add(int a, int b){ addsol(a, b); addsol(b, a); } // O(1)
     void addsol(int a, int b){ adj[a].push_back(b); } // O(1)
-    void build(){ // O(n log n)
+    void build(int root = -1){ // O(n log n)
         for(auto& row : p) fill(all(row), -1);
         fill(all(d), -1); fill(all(comp), 0); ord.clear();
+        fill(all(in), -1); fill(all(sz), 1);
         int cid = 0;
+        if(root != -1) build_comp(root, ++cid);
         for(int i = base; i <= n; i++) if(d[i] == -1) build_comp(i, ++cid);
+        for(auto iter = ord.rbegin(); iter != ord.rend(); ++iter){
+            int v = *iter;
+            if(p[0][v] != -1) sz[p[0][v]] += sz[v];
+        }
         for(int i = 1; i <= lg; i++) for(int v = base; v <= n; v++){
             int mid = p[i - 1][v];
             if(mid != -1) p[i][v] = p[i - 1][mid];
@@ -60,14 +70,20 @@ public:
     bool same_comp(int a, int b) const{ return comp[a] == comp[b]; } // O(1)
     int depth(int v) const{ return d[v]; } // O(1)
     int parent(int v) const{ return p[0][v]; } // O(1)
+    int subtree_size(int v) const{ return sz[v]; } // O(1)
+    pair<int, int> subtree_range(int v) const{ return {in[v], in[v] + sz[v] - 1}; } // O(1)
+    bool is_ancestor(int a, int b) const{ // O(1)
+        return same_comp(a, b) && in[a] <= in[b] && in[b] < in[a] + sz[a];
+    }
+
     int ancestor(int v, int k) const{ // O(log n)
         if(k < 0 || k > d[v]) return -1;
         return shift(v, k);
     }
 
-    template<bool REV = true, class F>
-    void it(const F& f) const{ // O(n)
-        if constexpr (!REV) for(int v : ord) f(v);
+    template<class F>
+    void it(const F& f, bool rev = true) const{ // O(n)
+        if(!rev) for(int v : ord) f(v);
         else for(auto iter = ord.rbegin(); iter != ord.rend(); ++iter) f(*iter);
     }
 
@@ -81,6 +97,13 @@ public:
             a = p[i][a]; b = p[i][b];
         }
         return p[0][a];
+    }
+
+    int ret(int a, int b, int root) const{ // O(log n)
+        if(!same_comp(a, b) || !same_comp(a, root)) return -1;
+        int ab = ret(a, b), ar = ret(a, root), br = ret(b, root);
+        if(d[ar] > d[ab]) ab = ar;
+        return d[br] > d[ab] ? br : ab;
     }
 
     int dist(int a, int b) const{ // O(log n)
@@ -115,7 +138,7 @@ public:
 };
 
 template<class policy = lca_policy>
-class _lca_path : public _lca {
+class _lca_path : public _lca{
 public:
     using node = typename policy::node;
     using cost = typename policy::cost;
@@ -143,8 +166,8 @@ public:
         _lca::addsol(a, b); weight[a].push_back({ab, ba});
     }
 
-    void build(){ // O(n log n)
-        _lca::build();
+    void build(int root = -1){ // O(n log n)
+        _lca::build(root);
         arr.assign(lg + 1, vector<path>(n + 1, {policy::id(), policy::id()}));
         vector<bool> used(n + 1, 0);
         for(int a = base; a <= n; a++) for(int i = 0; i < (int)adj[a].size(); i++){

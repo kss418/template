@@ -227,6 +227,139 @@ public:
         return node(v);
     }
 };
+
+void check_lca_roots(bool base){
+    mt19937 rng(7123+base);
+    for(int trial=0;trial<8;trial++){
+        int n=base+8;
+        graphs::_lca plain(n,base);
+        graphs::_lca_path<lca_text> tree(n,base);
+        vector<vector<pair<int,string>>> adj(n+1);
+        auto add=[&](int a,int b){
+            string ab="["+to_string(a)+">"+to_string(b)+"]";
+            string ba="["+to_string(b)+">"+to_string(a)+"]";
+            plain.add(a,b); tree.add(a,b,ab,ba);
+            adj[a].push_back({b,ab}); adj[b].push_back({a,ba});
+        };
+        vector<int> labels(9); iota(all(labels),int(base)); shuffle(all(labels),rng);
+        vector<pair<int,int>> skipped;
+        for(int i=1;i<9;i++){
+            int a=labels[rng()%i],b=labels[i];
+            if(trial==0 || rng()%3) add(a,b); else skipped.push_back({a,b});
+        }
+        auto verify=[&](int root){
+            plain.build(root); tree.build(root);
+            vector<int> par(n+1,-1),dep(n+1,-1),comp(n+1,-1);
+            auto visit=[&](int r){
+                queue<int> q; q.push(r); dep[r]=0; comp[r]=r;
+                while(!q.empty()){
+                    int v=q.front(); q.pop();
+                    for(auto [w,c]:adj[v]) if(dep[w]==-1){
+                        par[w]=v; dep[w]=dep[v]+1; comp[w]=r; q.push(w);
+                    }
+                }
+            };
+            if(root!=-1) visit(root);
+            for(int v=base;v<=n;v++) if(dep[v]==-1) visit(v);
+            auto lca=[](int a,int b,const vector<int>& p,const vector<int>& d){
+                if(d[a]==-1 || d[b]==-1) return -1;
+                while(d[a]>d[b]) a=p[a];
+                while(d[b]>d[a]) b=p[b];
+                while(a!=b){ a=p[a]; b=p[b]; }
+                return a;
+            };
+            vector<int> ord,extended,pos(n+1,-1);
+            plain.it([&](int v){ord.push_back(v);},false);
+            tree.it([&](int v){extended.push_back(v);},false);
+            CHECK(ord==extended); CHECK(ord.size()==9);
+            for(int i=0;i<9;i++){ CHECK(pos[ord[i]]==-1); pos[ord[i]]=base+i; }
+            for(int a=base;a<=n;a++){
+                CHECK(plain.parent(a)==par[a]); CHECK(tree.parent(a)==par[a]);
+                CHECK(plain.depth(a)==dep[a]); CHECK(tree.depth(a)==dep[a]);
+                int expected_size=0;
+                auto [lo,hi]=as_const(plain).subtree_range(a);
+                CHECK(lo==pos[a]); CHECK(base<=lo && lo<=hi && hi<=n);
+                CHECK(tree.subtree_range(a)==plain.subtree_range(a));
+                for(int b=base;b<=n;b++){
+                    bool ancestor=false;
+                    for(int v=b;v!=-1;v=par[v]) if(v==a) ancestor=true;
+                    expected_size+=ancestor;
+                    CHECK(plain.is_ancestor(a,b)==ancestor);
+                    CHECK(tree.is_ancestor(a,b)==ancestor);
+                    CHECK((lo<=pos[b] && pos[b]<=hi)==ancestor);
+                    int want=comp[a]==comp[b] ? lca(a,b,par,dep) : -1;
+                    CHECK(plain.ret(a,b)==want); CHECK(tree.ret(a,b)==want);
+                    vector<int> prev(n+1,-1); vector<string> path(n+1);
+                    queue<int> q; q.push(a); prev[a]=a;
+                    while(!q.empty()){
+                        int v=q.front(); q.pop();
+                        for(auto [w,c]:adj[v]) if(prev[w]==-1){
+                            prev[w]=v; path[w]=path[v]+c; q.push(w);
+                        }
+                    }
+                    CHECK(tree.query(a,b).v==path[b]);
+                    CHECK(plain.dist(a,b)==(want==-1 ? -1 : dep[a]+dep[b]-2*dep[want]));
+                }
+                CHECK(plain.subtree_size(a)==expected_size);
+                CHECK(tree.subtree_size(a)==expected_size);
+                CHECK(hi-lo+1==expected_size);
+                int v=a;
+                for(int k=0;k<=dep[a]+1;k++){
+                    CHECK(plain.ancestor(a,k)==v); CHECK(tree.ancestor(a,k)==v);
+                    if(v!=-1) v=par[v];
+                }
+            }
+            for(int r=base;r<=n;r++){
+                vector<int> rp(n+1,-1),rd(n+1,-1);
+                queue<int> q; q.push(r); rd[r]=0;
+                while(!q.empty()){
+                    int v=q.front(); q.pop();
+                    for(auto [w,c]:adj[v]) if(rd[w]==-1){rp[w]=v; rd[w]=rd[v]+1; q.push(w);}
+                }
+                for(int a=base;a<=n;a++) for(int b=base;b<=n;b++){
+                    int want=lca(a,b,rp,rd);
+                    CHECK(as_const(plain).ret(a,b,r)==want);
+                    CHECK(as_const(tree).ret(a,b,r)==want);
+                }
+            }
+            vector<int> after;
+            plain.it([&](int v){after.push_back(v);},false); CHECK(after==ord);
+            for(bool rev:{false,true}){
+                vector<int> actual,expected=ord;
+                if(rev) reverse(all(expected));
+                plain.it([&](int v){actual.push_back(v);},rev); CHECK(actual==expected);
+            }
+            for(int v=base;v<=n;v++){CHECK(plain.parent(v)==par[v]); CHECK(plain.depth(v)==dep[v]);}
+        };
+        verify(-1);
+        for(int root=base;root<=n;root++) verify(root);
+        verify(n); verify(-1);
+        for(auto [a,b]:skipped) add(a,b);
+        verify(labels.back()); verify(labels.back());
+    }
+    graphs::_lca plain(base+2,base);
+    graphs::_lca_path<lca_text> tree(base+2,base);
+    plain.addsol(base+2,base+1); plain.addsol(base+1,base);
+    tree.addsol(base+2,base+1,"a","A"); tree.addsol(base+1,base,"b","B");
+    for(int repeat=0;repeat<2;repeat++){
+        plain.build(base+2); tree.build(base+2);
+        CHECK(plain.ret(base,base+2)==base+2); CHECK(plain.dist(base,base+2)==2);
+        CHECK(plain.subtree_size(base+2)==3); CHECK(plain.subtree_size(base+1)==2);
+        CHECK((plain.subtree_range(base+2)==pair<int,int>{base,base+2}));
+        CHECK(plain.ret(base+1,base+2,base)==base+1);
+        CHECK(tree.query(base+2,base).v=="ab"); CHECK(tree.query(base,base+2).v=="BA");
+    }
+    plain.clear(base,base); tree.clear(base,base); plain.build(base); tree.build(base);
+    CHECK((plain.subtree_range(base)==pair<int,int>{base,base}));
+    CHECK(tree.subtree_size(base)==1); CHECK(plain.is_ancestor(base,base));
+    CHECK(tree.ret(base,base,base)==base); CHECK(tree.query(base,base).v.empty());
+    plain.clear(0,1); tree.clear(0,1);
+    for(int repeat=0;repeat<2;repeat++){
+        plain.build(); tree.build();
+        int count=0; plain.it([&](int){count++;}); tree.it([&](int){count++;}); CHECK(count==0);
+    }
+}
+
 static_assert(!is_default_constructible_v<lca_matrix::node>);
 template<class P>
 void check_lca_paths(bool base, int mode, unsigned seed){
@@ -267,9 +400,9 @@ void check_lca_paths(bool base, int mode, unsigned seed){
             }
         }
         vector<int> forward, backward, extended;
-        as_const(plain).it<false>([&](int v){forward.push_back(v);});
+        as_const(plain).it([&](int v){forward.push_back(v);},false);
         plain.it([&](int v){backward.push_back(v);});
-        tree.template it<false>([&](int v){extended.push_back(v);});
+        tree.it([&](int v){extended.push_back(v);},false);
         CHECK(forward==extended);
         CHECK(vector<int>(forward.rbegin(),forward.rend())==backward);
         CHECK((int)forward.size()==count);
@@ -458,7 +591,7 @@ void check_lift_defaults(){
 int main(){
     try {
         check_lift_defaults();
-        for(bool base : {false,true}){ check_clist_views(base); check_mst_api(base); check_mst_oracle(base); check_mst_oracle<mst_max_policy>(base,true); check_bcc(base); check_cycles(base); check_lca_order(base); check_lca_numeric(base); }
+        for(bool base : {false,true}){ check_clist_views(base); check_mst_api(base); check_mst_oracle(base); check_mst_oracle<mst_max_policy>(base,true); check_bcc(base); check_cycles(base); check_lca_order(base); check_lca_numeric(base); check_lca_roots(base); }
         for(bool base : {false,true}) for(int mode=0;mode<4;mode++) for(unsigned seed=1;seed<=8;seed++){
             check_lca_paths<lca_text>(base,mode,seed);
             check_lca_paths<lca_matrix>(base,mode,seed);

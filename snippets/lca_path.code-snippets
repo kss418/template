@@ -20,7 +20,7 @@
       "};",
       "",
       "template<class policy = lca_policy>",
-      "class _lca_path : public _lca {",
+      "class _lca_path : public _lca{",
       "public:",
       "    using node = typename policy::node;",
       "    using cost = typename policy::cost;",
@@ -48,8 +48,8 @@
       "        _lca::addsol(a, b); weight[a].push_back({ab, ba});",
       "    }",
       "",
-      "    void build(){ // O(n log n)",
-      "        _lca::build();",
+      "    void build(int root = -1){ // O(n log n)",
+      "        _lca::build(root);",
       "        arr.assign(lg + 1, vector<path>(n + 1, {policy::id(), policy::id()}));",
       "        vector<bool> used(n + 1, 0);",
       "        for(int a = base; a <= n; a++) for(int i = 0; i < (int)adj[a].size(); i++){",
@@ -82,6 +82,6 @@
       "    }",
       "};"
     ],
-    "description": "Directional LCA path aggregation; requires >>lca."
+    "description": "Directional LCA path aggregation; requires >>lca. build(root=-1) forwards the root choice to _lca and rebuilds path aggregates from preserved edge costs. Supports distinct forward/reverse costs and order-sensitive associative merges. Inherits subtree queries, temporary-root LCA queries, and it(f,rev=true). query(a,b) aggregates edges in a-to-b order, returning policy::id() for an empty path or different components."
   }
 }
