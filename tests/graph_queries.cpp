@@ -843,7 +843,7 @@ void check_lift_defaults(){
     constexpr long long big=1LL<<60;
     auto verify=[&](graphs::_st& tree,int base){
         for(long long weight:{1LL,3LL}){
-            for(int v=0;v<3;v++)tree.add(base+v,base+(v+1)%3,weight);
+            for(int v=0;v<3;v++)tree.set(base+v,base+(v+1)%3,weight);
             tree.build();
             for(long long budget:{0LL,1LL,10LL,big}){
                 pair<int,long long> expected{base+int((budget/weight)%3),(budget/weight)*weight};
@@ -856,13 +856,91 @@ void check_lift_defaults(){
     constructed.clear(3);verify(constructed,1);
     graphs::_st cleared;cleared.clear(3);verify(cleared,1);
     graphs::_st zero_based(2,big,0);verify(zero_based,0);
-    cleared.clear(3,16);for(int v=1;v<=3;v++)cleared.add(v,v==3?1:v+1);cleared.build();
+    cleared.clear(3,16);for(int v=1;v<=3;v++)cleared.set(v,v==3?1:v+1);cleared.build();
     CHECK((cleared.ret(1,10)==pair<int,long long>{2,10}));
+}
+
+void check_lift_api(bool base,unsigned seed){
+    mt19937 rng(seed);
+    int count=1+rng()%12,n=base+count-1,sink=n+1;
+    graphs::_st tree(n,256,base);
+    vector<int> nxt(n+2,sink); vector<long long> cost(n+2,1); cost[sink]=0;
+    auto verify=[&](){
+        tree.build();
+        for(int start=base;start<=sink;start++){
+            CHECK(tree.next(start)==nxt[start]);
+            for(long long budget=0;budget<=256;budget++){
+                int v=start; long long used=0;
+                while(v!=sink && cost[v]<=budget-used){used+=cost[v]; v=nxt[v];}
+                CHECK((as_const(tree).ret(start,budget)==pair<int,long long>{v,used}));
+            }
+            int v=start; long long used=0;
+            for(long long k=0;k<=256;k++){
+                CHECK((as_const(tree).jump(start,k)==pair<int,long long>{v,used}));
+                used+=cost[v]; v=nxt[v];
+            }
+        }
+    };
+    verify();
+    for(int round=0;round<3;round++){
+        for(int v=base;v<=n;v++){
+            nxt[v]=base+rng()%(count+1); cost[v]=1+rng()%25;
+            tree.set(v,nxt[v],cost[v]);
+        }
+        verify(); verify();
+    }
+    tree.clear(0,256,1); tree.build(); tree.build();
+    CHECK((tree.jump(1,256)==pair<int,long long>{1,0}));
+    CHECK((tree.ret(1,LLONG_MAX)==pair<int,long long>{1,0}));
+    tree.clear(base,256,base); tree.set(base,base); tree.build();
+    CHECK((tree.jump(base,7)==pair<int,long long>{base,7}));
+}
+
+void check_lift_boundaries(bool base){
+    const long long big=1LL<<62;
+    for(long long maximum:{0LL,1LL,2LL,3LL,4LL,7LL,8LL,(1LL<<60),big-1,big,LLONG_MAX}){
+        graphs::_st tree(base+2,maximum,base);
+        for(int v=0;v<3;v++) tree.set(base+v,base+(v+1)%3);
+        tree.build(); tree.build();
+        vector<long long> steps{0,maximum};
+        if(maximum) steps.push_back(maximum-1);
+        for(int bit=0;bit<=62;bit++) if((1LL<<bit)<=maximum) steps.push_back(1LL<<bit);
+        for(int start=0;start<3;start++) for(long long k:steps){
+            pair<int,long long> expected{base+(start+k%3)%3,k};
+            CHECK(tree.jump(base+start,k)==expected); CHECK(tree.ret(base+start,k)==expected);
+        }
+        const array<long long,3> cost{-3,0,3};
+        for(int v=0;v<3;v++) tree.set(base+v,base+(v+1)%3,cost[v]);
+        tree.build();
+        for(int start=0;start<3;start++) for(long long k:steps){
+            long long sum=0; for(int j=0;j<k%3;j++) sum+=cost[(start+j)%3];
+            CHECK((tree.jump(base+start,k)==pair<int,long long>{base+(start+k%3)%3,sum}));
+        }
+    }
+    graphs::_st terminal(base+1,LLONG_MAX,base);
+    terminal.set(base,base+1,3); terminal.set(base+1,base+2,4); terminal.build();
+    for(long long budget:{0LL,2LL,3LL,6LL,7LL,8LL,LLONG_MAX}){
+        pair<int,long long> expected=budget<3 ? pair{int(base),0LL} : budget<7 ? pair{base+1,3LL} : pair{base+2,7LL};
+        CHECK(terminal.ret(base,budget)==expected);
+    }
+    CHECK((terminal.jump(base,0)==pair<int,long long>{base,0}));
+    CHECK((terminal.jump(base,1)==pair<int,long long>{base+1,3}));
+    CHECK((terminal.jump(base,2)==pair<int,long long>{base+2,7}));
+    CHECK((terminal.jump(base,LLONG_MAX)==pair<int,long long>{base+2,7}));
+    terminal.clear(base,LLONG_MAX,base); terminal.set(base,base,LLONG_MAX); terminal.build();
+    CHECK((terminal.ret(base,LLONG_MAX)==pair<int,long long>{base,LLONG_MAX}));
+    CHECK((terminal.jump(base,1)==pair<int,long long>{base,LLONG_MAX}));
+    terminal.set(base,base,LLONG_MIN); terminal.build();
+    CHECK((terminal.jump(base,1)==pair<int,long long>{base,LLONG_MIN}));
 }
 
 int main(){
     try {
         check_lift_defaults();
+        for(bool base:{false,true}){
+            check_lift_boundaries(base);
+            for(unsigned seed=1;seed<=12;seed++) check_lift_api(base,seed);
+        }
         for(bool base:{false,true}){
             check_vtree_wide(base);
             check_vtree_span(base);

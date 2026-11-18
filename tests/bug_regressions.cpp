@@ -2371,13 +2371,13 @@ void check_alphabets(){
 void check_lift_large_cost(){
     for(bool base:{false,true}){
         graphs::_st lift(base,4,base);
-        lift.add(base,base,2000000000LL);lift.build();
+        lift.set(base,base,2000000000LL);lift.build();
         CHECK((lift.ret(base,1)==pair<int,long long>{base,0}));
         CHECK((lift.ret(base,6000000000LL)==pair<int,long long>{base,6000000000LL}));
         lift.build();CHECK((lift.ret(base,1)==pair<int,long long>{base,0}));
-        lift.add(base,base,5000000000000000000LL);lift.build();
+        lift.set(base,base,5000000000000000000LL);lift.build();
         CHECK((lift.ret(base,LLONG_MAX)==pair<int,long long>{base,5000000000000000000LL}));
-        lift.add(base,base,LLONG_MAX);lift.build();
+        lift.set(base,base,LLONG_MAX);lift.build();
         CHECK((lift.ret(base,LLONG_MAX)==pair<int,long long>{base,LLONG_MAX}));
     }
 }

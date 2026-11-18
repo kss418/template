@@ -359,7 +359,7 @@ public:
 };
 
 // Sparse Table
-class _st {
+class _st{
     bool base;
 private:
     vector <vector<i128>> sum;
@@ -367,13 +367,13 @@ private:
 public:
     _st(int n = 0, ll max_step = (1ll << 60), bool base = 1){ clear(n, max_step, base); }; // O(n log m)
     void clear(int n, ll m = (1ll << 60), bool base = 1){ // O(n log m)
-        lg = 1; this->n = n; this->base = base; this->m = m;
-        while((1ll << lg) <= m) lg++;
+        lg = max(0, (int)bit_width((u64)m) - 1); this->n = n; this->base = base; this->m = m;
         lift.assign(lg + 1, vector<int>(n + 2, n + 1));
         sum.assign(lg + 1, vector<i128>(n + 2, 1));
+        for(auto& row : sum) row[n + 1] = 0;
     }
 
-    void add(int st, int en, ll co = 1) { assert(base <= st && st <= n && base <= en && en <= n + 1); lift[0][st] = en; sum[0][st] = co; } // O(1)
+    void set(int st, int en, ll co = 1){ lift[0][st] = en; sum[0][st] = co; } // O(1)
     void build(){ // O(n log m)
         for(int i = 1;i <= lg;i++){
             for(int j = base;j <= n;j++){
@@ -385,13 +385,21 @@ public:
     }
 
     int next(int v) const{ return lift[0][v]; } // O(1)
-    pair<int, ll> ret(int cur, ll k) const{ // O(log m)
-        ll co = 0;
+    pair<int, ll> ret(int cur, ll co) const{ // O(log m)
+        ll cost = 0;
         for(int i = lg; i >= 0; i--){
-            if(k < sum[i][cur]) continue;
-            co += sum[i][cur]; k -= sum[i][cur]; cur = lift[i][cur];
+            if(co < sum[i][cur]) continue;
+            cost += sum[i][cur]; co -= sum[i][cur]; cur = lift[i][cur];
         }
-        return {cur, co}; // 도착 정점, 사용한 비용
+        return {cur, cost}; // 도착 정점, 사용한 비용
+    }
+
+    pair<int, ll> jump(int cur, ll k) const{ // O(log m)
+        i128 cost = 0;
+        for(int i = lg; i >= 0; i--) if(k & (1ll << i)){
+            cost += sum[i][cur]; cur = lift[i][cur];
+        }
+        return {cur, (ll)cost};
     }
 };
 
