@@ -783,6 +783,8 @@ static_assert(is_base_of_v<graphs::_scc,graphs::_scc_dag>);
 static_assert(is_same_v<decltype(declval<const graphs::_scc_dag&>().ind()),const vector<int>&>);
 static_assert(is_same_v<decltype(declval<const graphs::_scc_dag&>().outd()),const vector<int>&>);
 static_assert(is_same_v<decltype(declval<const graphs::_scc_dag&>().dag()),const vector<vector<int>>&>);
+static_assert(is_same_v<decltype(declval<const graphs::_scc&>().get_group(0)),const vector<int>&>);
+static_assert(is_same_v<decltype(declval<const graphs::_scc&>().groups()),const vector<vector<int>>&>);
 
 void check_scc_dag(bool base,unsigned seed){
     mt19937 rng(seed);int count=1+rng()%12,n=base+count-1;
@@ -803,14 +805,24 @@ void check_scc_dag(bool base,unsigned seed){
         CHECK((int)ids.size()==k);for(int i=0;i<k;i++)CHECK(ids[i]==i);
         g.it_all([&](int v){all_vertices.push_back(v);seen[v]++;});
         CHECK((int)all_vertices.size()==count);
+        CHECK((int)g.groups().size()==k); CHECK(g.groups()==plain.groups());
+        for(bool rev:{false,true}){
+            vector<int> actual_ids,expected_ids(k),actual_vertices,expected_vertices;
+            iota(all(expected_ids),0); if(rev) std::reverse(all(expected_ids));
+            g.it_cid([&](int cid){actual_ids.push_back(cid);},rev); CHECK(actual_ids==expected_ids);
+            for(int cid:expected_ids) for(int v:g.get_group(cid)) expected_vertices.push_back(v);
+            g.it_all([&](int v){actual_vertices.push_back(v);},rev); CHECK(actual_vertices==expected_vertices);
+        }
         vector<vector<int>> expected(k),reverse(k);vector<int> indegree(k,0),outdegree(k,0),mark(k,-1);
         for(int cid=0;cid<k;cid++){
             vector<int> members;g.it_group(cid,[&](int v){members.push_back(v);});
             CHECK((int)members.size()==g.group_size(cid));CHECK(!members.empty());CHECK(g.root(cid)==members[0]);
+            CHECK(g.get_group(cid)==members); CHECK(&g.get_group(cid)==&g.groups()[cid]);
             for(int a:members){
                 CHECK(g.component(a)==cid);
                 for(int b:input[a]){
                     int dest=g.component(b);
+                    if(dest!=cid) CHECK(cid<dest);
                     if(dest==cid||mark[dest]==cid)continue;
                     mark[dest]=cid;expected[cid].push_back(dest);reverse[dest].push_back(cid);indegree[dest]++;outdegree[cid]++;
                 }
@@ -821,24 +833,38 @@ void check_scc_dag(bool base,unsigned seed){
             for(int b=base;b<=n;b++)CHECK(g.same(a,b)==(reach[a][b]&&reach[b][a]));
         }
         const auto* stored_ind=&g.ind();const auto* stored_out=&g.outd();const auto* stored_dag=&g.dag();
+        const auto* stored_reverse=&g.dag(true); const auto* stored_groups=&g.groups();
         for(int repeat=0;repeat<3;repeat++){
             CHECK(&g.ind()==stored_ind);CHECK(&g.outd()==stored_out);CHECK(&g.dag()==stored_dag);
             CHECK(g.ind()==indegree);CHECK(g.outd()==outdegree);CHECK(g.dag()==expected);
+            CHECK(&g.dag(false)==stored_dag); CHECK(&g.dag(true)==stored_reverse); CHECK(g.dag(true)==reverse);
+            CHECK(&g.groups()==stored_groups);
             vector<pair<int,int>> edges,expected_edges;
             g.it_dag([&](int a,int b){edges.push_back({a,b});});
             for(int a=0;a<k;a++)for(int b:expected[a])expected_edges.push_back({a,b});
             CHECK(edges==expected_edges);
+            for(bool rev:{false,true}){
+                vector<pair<int,int>> actual,reference;
+                const auto& adj=rev ? reverse : expected;
+                for(int a=0;a<k;a++) for(int b:adj[a]) reference.push_back({a,b});
+                g.it_dag([&](int a,int b){actual.push_back({a,b});},rev); CHECK(actual==reference);
+            }
             auto check_top=[&](bool rev){
-                const auto& adj=rev?reverse:expected;auto degree=rev?outdegree:indegree;
-                deque<int> q;for(int v=0;v<k;v++)if(!degree[v])q.push_back(v);
+                const auto& adj=rev?reverse:expected;
                 vector<pair<int,int>> reference,actual;
-                while(!q.empty()){
-                    int cur=q.front();q.pop_front();reference.push_back({cur,-1});
-                    for(int nxt:adj[cur]){reference.push_back({cur,nxt});if(!--degree[nxt])q.push_back(nxt);}
+                for(int i=0;i<k;i++){
+                    int cur=rev ? k-1-i : i; reference.push_back({cur,-1});
+                    for(int nxt:adj[cur]) reference.push_back({cur,nxt});
                 }
                 g.it_top([&](int a,int b){actual.push_back({a,b});},[&](int v){actual.push_back({v,-1});},rev);
                 CHECK(actual==reference);
                 int done=0;for(auto [a,b]:actual)if(b==-1)done++;CHECK(done==k);
+                vector<vector<bool>> reached(k,vector<bool>(k,false));
+                g.it_top([&](int a,int b){for(int v=0;v<k;v++) reached[b][v]=reached[b][v]||reached[a][v];},[&](int a){reached[a][a]=true;},rev);
+                for(int a=base;a<=n;a++) for(int b=base;b<=n;b++){
+                    int from=g.component(a),to=g.component(b);
+                    CHECK((rev ? reached[from][to] : reached[to][from])==reach[a][b]);
+                }
                 if(rev){
                     vector<pair<int,int>> defaults;
                     g.it_top([&](int a,int b){defaults.push_back({a,b});},[&](int v){defaults.push_back({v,-1});});
@@ -853,6 +879,7 @@ void check_scc_dag(bool base,unsigned seed){
     add(n,base);verify();CHECK(graph.comp_cnt()==1);CHECK(graph.dag()==vector<vector<int>>(1));
     graph.clear(0,base);graph.build();graph.build();
     CHECK(graph.comp_cnt()==(!base));CHECK(graph.ind()==vector<int>(!base,0));CHECK(graph.outd()==vector<int>(!base,0));
+    CHECK((int)graph.groups().size()==(!base)); CHECK(graph.dag(true)==graph.dag());
     int calls=0;graph.it_dag([&](int,int){calls++;});CHECK(calls==0);
     graph.it_top([&](int,int){calls++;},[&](int){calls++;});CHECK(calls==(!base));
     graph.clear(1,!base);graph.build();CHECK(graph.comp_cnt()==2-int(!base));

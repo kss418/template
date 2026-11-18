@@ -463,9 +463,12 @@ public:
 //SCC
 class _scc{
 protected:
-    vector <vector<int>> adj, rev, group;
-    vector <int> comp, ord; vector <bool> v; int n, cc; bool base;
+    vector<vector<int>> adj, group;
+    vector<int> comp; int cc;
 private:
+    vector<vector<int>> rev;
+    vector<int> ord; vector<bool> v; int n; bool base;
+
     void dfs1(int cur){
         v[cur] = 1;
         for(auto& nxt : adj[cur]) if(!v[nxt]) dfs1(nxt);
@@ -501,35 +504,36 @@ public:
     bool same(int a, int b) const{ return comp[a] == comp[b]; } // O(1)
     int comp_cnt() const{ return cc; } // O(1)
     int root(int cid) const{ return group[cid][0]; } // O(1)
+    const vector<int>& get_group(int cid) const{ return group[cid]; } // O(1)
+    const vector<vector<int>>& groups() const{ return group; } // O(1)
 
-    template <bool REV = false, class F>
-    void it_cid(const F& f) const{ // O(n)
-        if constexpr(!REV) for(int i = 0;i < cc;i++) f(i);
+    template<class F>
+    void it_cid(const F& f, bool rev = false) const{ // O(k)
+        if(!rev) for(int i = 0;i < cc;i++) f(i);
         else for(int i = cc - 1;i >= 0;i--) f(i);
     }
 
-    template <bool REV = false, class F>
-    void it_all(const F& f) const{ // O(n)
-        it_cid<REV>([&](int cid){ for(auto& i : group[cid]) f(i); });
+    template<class F>
+    void it_all(const F& f, bool rev = false) const{ // O(n)
+        it_cid([&](int cid){ it_group(cid, f); }, rev);
     }
 
     template<class F>
-    void it_group(int cid, const F& f) const{ // O(n)
+    void it_group(int cid, const F& f) const{ // O(group_size(cid))
         for(auto& cur : group[cid]) f(cur);
     }
 };
 
-class _scc_dag : public _scc {
+class _scc_dag : public _scc{
 private:
     array<vector<vector<int>>, 2> edges;
-    array<vector<int>, 2> degree, order;
+    array<vector<int>, 2> degree;
 public:
     _scc_dag(int max_index = 0, bool base = 1) : _scc(max_index, base){} // O(n)
     void clear(int max_index, bool base = 1){ // O(n + m)
         _scc::clear(max_index, base);
         for(auto& g : edges) g.clear();
         for(auto& d : degree) d.clear();
-        for(auto& v : order) v.clear();
     }
 
     void build(){ // O(n + m)
@@ -544,30 +548,23 @@ public:
             edges[0][i].push_back(j); edges[1][j].push_back(i);
             degree[0][j]++; degree[1][i]++;
         }
-        for(int dir = 0; dir < 2; dir++){
-            auto pending = degree[dir];
-            auto& top = order[dir]; top.clear(); top.reserve(cc);
-            for(int i = 0; i < cc; i++) if(!pending[i]) top.push_back(i);
-            for(size_t i = 0; i < top.size(); i++)
-                for(int nxt : edges[dir][top[i]]) if(!--pending[nxt]) top.push_back(nxt);
-        }
     }
 
-    const vector<vector<int>>& dag() const{ return edges[0]; } // O(1)
+    const vector<vector<int>>& dag(bool rev = false) const{ return edges[rev]; } // O(1)
     const vector<int>& ind() const{ return degree[0]; } // O(1)
     const vector<int>& outd() const{ return degree[1]; } // O(1)
 
     template<class F>
-    void it_dag(const F& f) const{ // O(k + e)
-        for(int i = 0; i < cc; i++) for(int j : edges[0][i]) f(i, j);
+    void it_dag(const F& f, bool rev = false) const{ // O(k + e)
+        for(int i = 0; i < cc; i++) for(int j : edges[rev][i]) f(i, j);
     }
 
     template<class F, class G>
     void it_top(const F& merge, const G& done, bool rev = true) const{ // O(k + e)
-        for(int cur : order[rev]){
+        it_cid([&](int cur){
             done(cur);
             for(int nxt : edges[rev][cur]) merge(cur, nxt);
-        }
+        }, rev);
     }
 };
 
