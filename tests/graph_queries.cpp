@@ -334,23 +334,23 @@ void check_cycles(bool base){
     complete_graph(triangle,5,base); complete_graph(square,5,base);
     const auto& t = triangle; const auto& s = square;
     for(int repeat = 0; repeat < 2; ++repeat){
-        CHECK(triangle.build() == 10); CHECK(square.build() == 15);
+        triangle.build(); CHECK(triangle.ret() == 10); CHECK(square.build() == 15);
         for(int query = 0; query < 20; ++query){ CHECK(t.ret() == 10); CHECK(s.ret() == 15); }
-        CHECK(triangle.build(3) == 1); CHECK(square.build(3) == 0); CHECK(t.ret() == 1); CHECK(s.ret() == 0);
-        CHECK(triangle.build(7) == 3); CHECK(square.build(7) == 1); CHECK(t.ret() == 3); CHECK(s.ret() == 1);
-        CHECK(triangle.build(1) == 0); CHECK(square.build(1) == 0); CHECK(t.ret() == 0); CHECK(s.ret() == 0);
+        triangle.build(3); CHECK(triangle.ret() == 1); CHECK(square.build(3) == 0); CHECK(t.ret() == 1); CHECK(s.ret() == 0);
+        triangle.build(7); CHECK(triangle.ret() == 3); CHECK(square.build(7) == 1); CHECK(t.ret() == 3); CHECK(s.ret() == 1);
+        triangle.build(1); CHECK(triangle.ret() == 0); CHECK(square.build(1) == 0); CHECK(t.ret() == 0); CHECK(s.ret() == 0);
     }
     triangle.clear(base+3,base); square.clear(base+3,base);
     for(int i = 0; i < 3; ++i){ triangle.add(base+i,base+i+1); square.add(base+i,base+i+1); }
-    CHECK(triangle.build() == 0); CHECK(square.build() == 0);
+    triangle.build(); CHECK(triangle.ret() == 0); CHECK(square.build() == 0);
     triangle.add(base,base+3); square.add(base,base+3);
-    CHECK(triangle.build() == 0); CHECK(square.build() == 1); CHECK(t.ret() == 0); CHECK(s.ret() == 1);
+    triangle.build(); CHECK(triangle.ret() == 0); CHECK(square.build() == 1); CHECK(t.ret() == 0); CHECK(s.ret() == 1);
     triangle.add(base,base+2); square.add(base,base+2);
-    CHECK(triangle.build() == 2); CHECK(square.build() == 1);
+    triangle.build(); CHECK(triangle.ret() == 2); CHECK(square.build() == 1);
     triangle.add(base+1,base+3); square.add(base+1,base+3);
-    CHECK(triangle.build() == 4); CHECK(square.build() == 3);
+    triangle.build(); CHECK(triangle.ret() == 4); CHECK(square.build() == 3);
     triangle.clear(0,base); square.clear(0,base);
-    CHECK(triangle.build() == 0); CHECK(square.build() == 0); CHECK(t.ret() == 0); CHECK(s.ret() == 0);
+    triangle.build(); CHECK(triangle.ret() == 0); CHECK(square.build() == 0); CHECK(t.ret() == 0); CHECK(s.ret() == 0);
 }
 class lca_text {
 public:
@@ -1329,10 +1329,72 @@ void check_bcc_api(bool base){
     graphs::_bcc empty; empty.build(); CHECK(empty.block_count()==0); CHECK(empty.point().empty());
 }
 
+template<class T>
+concept triangle_addsol=requires(T& t){t.addsol(0,1);};
+static_assert(!triangle_addsol<graphs::_3cycle>);
+static_assert(is_same_v<decltype(declval<graphs::_3cycle&>().build()),void>);
+
+void verify_triangles(graphs::_3cycle& g,const vector<vector<bool>>& edges,int base){
+    int n=edges.size(); set<array<int,3>> expected;
+    vector<int> expected_counts(n);
+    for(int a=0;a<n;a++) for(int b=a+1;b<n;b++) for(int c=b+1;c<n;c++)
+        if(edges[a][b] && edges[a][c] && edges[b][c]){
+            expected.insert({base+a,base+b,base+c}); expected_counts[a]++; expected_counts[b]++; expected_counts[c]++;
+        }
+    for(long long mod:{0LL,1LL,2LL,7LL,LLONG_MAX}){
+        g.build(mod); const auto& read=as_const(g);
+        long long want=mod ? expected.size()%mod : expected.size(); CHECK(read.ret()==want);
+        for(int repeat=0;repeat<2;repeat++){
+            set<array<int,3>> actual; vector<int> counts(n);
+            read.it_triangle([&](int a,int b,int c){
+                CHECK(a>=base && a<base+n); CHECK(b>=base && b<base+n); CHECK(c>=base && c<base+n);
+                CHECK(a!=b && b!=c && a!=c); CHECK(edges[a-base][b-base] && edges[a-base][c-base] && edges[b-base][c-base]);
+                array<int,3> triangle{a,b,c}; sort(triangle.begin(),triangle.end()); CHECK(actual.insert(triangle).second);
+                counts[a-base]++; counts[b-base]++; counts[c-base]++;
+            });
+            CHECK(actual==expected); CHECK(counts==expected_counts); CHECK(read.ret()==want);
+        }
+    }
+}
+void check_triangle_api(bool base){
+    for(int n=1;n<=5;n++){
+        vector<pair<int,int>> pairs; for(int a=0;a<n;a++) for(int b=a+1;b<n;b++) pairs.emplace_back(a,b);
+        for(int mask=0;mask<(1<<(int)pairs.size());mask++){
+            graphs::_3cycle g(base+n-1,base); vector<vector<bool>> edges(n,vector<bool>(n));
+            for(int id=0;id<(int)pairs.size();id++) if(mask&(1<<id)){
+                auto[a,b]=pairs[id]; edges[a][b]=edges[b][a]=true; g.add(base+a,base+b);
+            }
+            verify_triangles(g,edges,base);
+        }
+    }
+    mt19937 rng(702+base);
+    for(int trial=0;trial<80;trial++){
+        int n=3+rng()%10; graphs::_3cycle g(base+n-1,base); vector<vector<bool>> edges(n,vector<bool>(n));
+        vector<pair<int,int>> missing;
+        for(int a=0;a<n;a++) for(int b=a+1;b<n;b++){
+            if(rng()%2){edges[a][b]=edges[b][a]=true;g.add(base+a,base+b);} else missing.emplace_back(a,b);
+        }
+        verify_triangles(g,edges,base);
+        if(!missing.empty()){
+            auto[a,b]=missing.front(); edges[a][b]=edges[b][a]=true; g.add(base+a,base+b); verify_triangles(g,edges,base);
+        }
+        g.clear(!base,!base); verify_triangles(g,vector<vector<bool>>(1,vector<bool>(1)),!base);
+        g.clear(0,1); verify_triangles(g,{},1);
+    }
+    graphs::_3cycle nested(base+3,base); complete_graph(nested,4,base); nested.build(3);
+    int calls=0,total=0;
+    as_const(nested).it_triangle([&](int,int,int){
+        calls++; as_const(nested).it_triangle([&](int,int,int){total++;});
+    });
+    CHECK(calls==4); CHECK(total==16); CHECK(nested.ret()==1);
+    graphs::_3cycle empty; verify_triangles(empty,{},1);
+}
+
 int main(){
     try {
         for(bool base:{false,true}) check_bm_api(base);
         check_bm_empty();
+        for(bool base:{false,true}) check_triangle_api(base);
         for(bool base:{false,true}) check_bcc_api(base);
         for(bool base:{false,true}) check_2sat_api(base);
         check_lift_defaults();
