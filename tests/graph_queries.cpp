@@ -334,23 +334,23 @@ void check_cycles(bool base){
     complete_graph(triangle,5,base); complete_graph(square,5,base);
     const auto& t = triangle; const auto& s = square;
     for(int repeat = 0; repeat < 2; ++repeat){
-        triangle.build(); CHECK(triangle.ret() == 10); CHECK(square.build() == 15);
+        triangle.build(); CHECK(triangle.ret() == 10); square.build(); CHECK(square.ret() == 15);
         for(int query = 0; query < 20; ++query){ CHECK(t.ret() == 10); CHECK(s.ret() == 15); }
-        triangle.build(3); CHECK(triangle.ret() == 1); CHECK(square.build(3) == 0); CHECK(t.ret() == 1); CHECK(s.ret() == 0);
-        triangle.build(7); CHECK(triangle.ret() == 3); CHECK(square.build(7) == 1); CHECK(t.ret() == 3); CHECK(s.ret() == 1);
-        triangle.build(1); CHECK(triangle.ret() == 0); CHECK(square.build(1) == 0); CHECK(t.ret() == 0); CHECK(s.ret() == 0);
+        triangle.build(3); CHECK(triangle.ret() == 1); square.build(3); CHECK(square.ret() == 0); CHECK(t.ret() == 1); CHECK(s.ret() == 0);
+        triangle.build(7); CHECK(triangle.ret() == 3); square.build(7); CHECK(square.ret() == 1); CHECK(t.ret() == 3); CHECK(s.ret() == 1);
+        triangle.build(1); CHECK(triangle.ret() == 0); square.build(1); CHECK(square.ret() == 0); CHECK(t.ret() == 0); CHECK(s.ret() == 0);
     }
     triangle.clear(base+3,base); square.clear(base+3,base);
     for(int i = 0; i < 3; ++i){ triangle.add(base+i,base+i+1); square.add(base+i,base+i+1); }
-    triangle.build(); CHECK(triangle.ret() == 0); CHECK(square.build() == 0);
+    triangle.build(); CHECK(triangle.ret() == 0); square.build(); CHECK(square.ret() == 0);
     triangle.add(base,base+3); square.add(base,base+3);
-    triangle.build(); CHECK(triangle.ret() == 0); CHECK(square.build() == 1); CHECK(t.ret() == 0); CHECK(s.ret() == 1);
+    triangle.build(); CHECK(triangle.ret() == 0); square.build(); CHECK(square.ret() == 1); CHECK(t.ret() == 0); CHECK(s.ret() == 1);
     triangle.add(base,base+2); square.add(base,base+2);
-    triangle.build(); CHECK(triangle.ret() == 2); CHECK(square.build() == 1);
+    triangle.build(); CHECK(triangle.ret() == 2); square.build(); CHECK(square.ret() == 1);
     triangle.add(base+1,base+3); square.add(base+1,base+3);
-    triangle.build(); CHECK(triangle.ret() == 4); CHECK(square.build() == 3);
+    triangle.build(); CHECK(triangle.ret() == 4); square.build(); CHECK(square.ret() == 3);
     triangle.clear(0,base); square.clear(0,base);
-    triangle.build(); CHECK(triangle.ret() == 0); CHECK(square.build() == 0); CHECK(t.ret() == 0); CHECK(s.ret() == 0);
+    triangle.build(); CHECK(triangle.ret() == 0); square.build(); CHECK(square.ret() == 0); CHECK(t.ret() == 0); CHECK(s.ret() == 0);
 }
 class lca_text {
 public:
@@ -1390,10 +1390,94 @@ void check_triangle_api(bool base){
     graphs::_3cycle empty; verify_triangles(empty,{},1);
 }
 
+template<class T>
+concept cycle_addsol=requires(T& t){t.addsol(0,1);};
+static_assert(!cycle_addsol<graphs::_4cycle>);
+static_assert(is_same_v<decltype(declval<graphs::_4cycle&>().build()),void>);
+static_assert(is_same_v<decltype(declval<const graphs::_4cycle&>().count(0)),long long>);
+
+array<int,4> canonical_cycle(array<int,4> cycle){
+    rotate(cycle.begin(),min_element(cycle.begin(),cycle.end()),cycle.end());
+    if(cycle[1]>cycle[3]) reverse(cycle.begin()+1,cycle.end());
+    return cycle;
+}
+void verify_cycles(graphs::_4cycle& g,const vector<vector<bool>>& edges,int base){
+    int n=edges.size(); set<array<int,4>> expected; vector<long long> expected_counts(n);
+    for(int a=0;a<n;a++) for(int b=a+1;b<n;b++) for(int c=b+1;c<n;c++) for(int d=c+1;d<n;d++)
+        for(auto cycle:{array{a,b,c,d},array{a,b,d,c},array{a,c,b,d}}){
+            bool valid=true; for(int i=0;i<4;i++) valid&=edges[cycle[i]][cycle[(i+1)%4]];
+            if(!valid) continue;
+            for(int& v:cycle){expected_counts[v]++; v+=base;}
+            expected.insert(cycle);
+        }
+    for(long long mod:{0LL,1LL,2LL,7LL,LLONG_MAX}){
+        g.build(mod); const auto& read=as_const(g); long long exact=expected.size(),want=mod ? exact%mod : exact;
+        CHECK(read.ret()==want);
+        for(int v=0;v<n;v++) CHECK(read.count(base+v)==(mod ? expected_counts[v]%mod : expected_counts[v]));
+        for(int repeat=0;repeat<2;repeat++){
+            set<array<int,4>> actual; vector<long long> counts(n);
+            read.it_cycle([&](int a,int b,int c,int d){
+                array<int,4> cycle{a,b,c,d}; CHECK(set<int>(cycle.begin(),cycle.end()).size()==4);
+                for(int i=0;i<4;i++){
+                    CHECK(cycle[i]>=base && cycle[i]<base+n);
+                    CHECK(edges[cycle[i]-base][cycle[(i+1)%4]-base]); counts[cycle[i]-base]++;
+                }
+                CHECK(actual.insert(canonical_cycle(cycle)).second);
+            });
+            CHECK(actual==expected); CHECK(counts==expected_counts); CHECK(read.ret()==want);
+            for(int v=0;v<n;v++) CHECK(read.count(base+v)==(mod ? expected_counts[v]%mod : expected_counts[v]));
+        }
+    }
+}
+void check_cycle_api(bool base){
+    for(int n=1;n<=5;n++){
+        vector<pair<int,int>> pairs; for(int a=0;a<n;a++) for(int b=a+1;b<n;b++) pairs.emplace_back(a,b);
+        for(int mask=0;mask<(1<<(int)pairs.size());mask++){
+            graphs::_4cycle g(base+n-1,base); vector<vector<bool>> edges(n,vector<bool>(n));
+            for(int id=0;id<(int)pairs.size();id++) if(mask&(1<<id)){
+                auto[a,b]=pairs[id]; edges[a][b]=edges[b][a]=true; g.add(base+a,base+b);
+            }
+            verify_cycles(g,edges,base);
+        }
+    }
+    mt19937 rng(564+base);
+    for(int trial=0;trial<60;trial++){
+        int n=3+rng()%8; graphs::_4cycle g(base+n-1,base); vector<vector<bool>> edges(n,vector<bool>(n));
+        vector<pair<int,int>> missing;
+        for(int a=0;a<n;a++) for(int b=a+1;b<n;b++){
+            if(rng()%2){edges[a][b]=edges[b][a]=true; g.add(base+a,base+b);} else missing.emplace_back(a,b);
+        }
+        verify_cycles(g,edges,base);
+        if(!missing.empty()){
+            auto[a,b]=missing.front(); edges[a][b]=edges[b][a]=true; g.add(base+a,base+b); verify_cycles(g,edges,base);
+        }
+        g.clear(!base,!base); verify_cycles(g,vector<vector<bool>>(1,vector<bool>(1)),!base);
+        g.clear(0,1); verify_cycles(g,{},1);
+    }
+    graphs::_4cycle nested(base+3,base); complete_graph(nested,4,base); nested.build(2);
+    int calls=0,total=0;
+    as_const(nested).it_cycle([&](int,int,int,int){calls++; as_const(nested).it_cycle([&](int,int,int,int){total++;});});
+    CHECK(calls==3); CHECK(total==9); CHECK(nested.ret()==1);
+    for(int v=base;v<=base+3;v++) CHECK(nested.count(v)==1);
+    graphs::_4cycle empty; verify_cycles(empty,{},1);
+}
+void check_cycle_large(bool base){
+    constexpr int leaves=100000;
+    constexpr long long expected=1LL*leaves*(leaves-1)/2;
+    graphs::_4cycle g(base+leaves+1,base);
+    for(int v=base+2;v<=base+leaves+1;v++){g.add(base,v); g.add(base+1,v);}
+    for(long long mod:{0LL,7LL,LLONG_MAX}){
+        g.build(mod); long long want=mod ? expected%mod : expected;
+        CHECK(g.ret()==want); CHECK(g.count(base)==want); CHECK(g.count(base+1)==want);
+        for(int v=base+2;v<=base+leaves+1;v++) CHECK(g.count(v)==(mod ? (leaves-1)%mod : leaves-1));
+    }
+}
+
 int main(){
     try {
         for(bool base:{false,true}) check_bm_api(base);
         check_bm_empty();
+        for(bool base:{false,true}){check_cycle_api(base); check_cycle_large(base);}
         for(bool base:{false,true}) check_triangle_api(base);
         for(bool base:{false,true}) check_bcc_api(base);
         for(bool base:{false,true}) check_2sat_api(base);
