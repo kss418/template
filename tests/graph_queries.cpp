@@ -1137,8 +1137,98 @@ void check_2sat_api(bool base){
     contradiction.build(); CHECK(!contradiction.ret());
 }
 
+static_assert(is_same_v<decltype(declval<graphs::_bm&>().build()),void>);
+static_assert(is_same_v<decltype(declval<graphs::_bm&>().augment()),void>);
+
+int bm_oracle(const vector<vector<bool>>& edges,int right){
+    vector<bool> possible(1<<right); possible[0]=true;
+    for(const auto& row:edges){
+        auto next=possible;
+        for(int mask=0;mask<(1<<right);mask++) if(possible[mask])
+            for(int v=0;v<right;v++) if(row[v] && !(mask&(1<<v))) next[mask|(1<<v)]=true;
+        possible=next;
+    }
+    int result=0;
+    for(int mask=0;mask<(1<<right);mask++) if(possible[mask]) result=max(result,popcount(unsigned(mask)));
+    return result;
+}
+void verify_bm(const graphs::_bm& m,const vector<vector<bool>>& edges,int right,int base){
+    int left=edges.size(),count=0,next=base;
+    CHECK(m.ret()==bm_oracle(edges,right));
+    vector<pair<int,int>> expected,actual;
+    m.it_all([&](int a,int b){
+        CHECK(a==next++); CHECK(m.match_left(a)==b);
+        if(b==-1) return;
+        CHECK(b>=base && b<base+right); CHECK(edges[a-base][b-base]);
+        CHECK(m.match_right(b)==a); expected.emplace_back(a,b); count++;
+    });
+    CHECK(next==base+left); CHECK(count==m.ret());
+    count=0;
+    for(int b=base;b<base+right;b++){
+        int a=m.match_right(b);
+        if(a==-1) continue;
+        CHECK(a>=base && a<base+left); CHECK(m.match_left(a)==b); count++;
+    }
+    CHECK(count==m.ret());
+    m.it_matched([&](int a,int b){actual.emplace_back(a,b);}); CHECK(actual==expected);
+}
+void check_bm_api(bool base){
+    for(int left=1;left<=3;left++) for(int right=1;right<=3;right++)
+        for(int mask=0;mask<(1<<(left*right));mask++){
+            graphs::_bm m(base+left-1,base+right-1,base);
+            vector<vector<bool>> edges(left,vector<bool>(right));
+            for(int a=0;a<left;a++) for(int b=0;b<right;b++) if(mask&(1<<(a*right+b))){
+                edges[a][b]=true; m.addsol(base+a,base+b);
+                if((a+b+mask)%3==0) m.addsol(base+a,base+b);
+            }
+            m.build(); verify_bm(m,edges,right,base);
+            m.augment(); verify_bm(m,edges,right,base);
+            m.build(); verify_bm(m,edges,right,base);
+        }
+    mt19937 rng(915+base);
+    for(int trial=0;trial<120;trial++){
+        int left=1+rng()%6,right=1+rng()%6;
+        graphs::_bm m(base+left-1,base+right-1,base);
+        vector<vector<bool>> edges(left,vector<bool>(right));
+        for(int step=0;step<18;step++){
+            int a=rng()%left,b=rng()%right; edges[a][b]=true; m.addsol(base+a,base+b);
+            m.augment(); verify_bm(m,edges,right,base);
+            if(step%5==0){m.build(); verify_bm(m,edges,right,base);}
+        }
+    }
+    graphs::_bm stable(base+1,base+1,base);
+    stable.addsol(base+1,base); stable.build();
+    stable.addsol(base,base); stable.augment();
+    CHECK(stable.ret()==1); CHECK(stable.match_left(base)==-1); CHECK(stable.match_left(base+1)==base);
+    stable.addsol(base+1,base+1); stable.augment(); CHECK(stable.ret()==2);
+    CHECK(stable.match_left(base)==base); CHECK(stable.match_left(base+1)==base+1);
+    stable.clear(!base,!base,!base); stable.augment(); CHECK(stable.ret()==0);
+    CHECK(stable.match_left(!base)==-1); CHECK(stable.match_right(!base)==-1);
+    stable.addsol(!base,!base); stable.augment(); CHECK(stable.ret()==1);
+    stable.build(); CHECK(stable.ret()==1);
+
+    graphs::_bm shortest(base+3,base+3,base);
+    for(auto [a,b]:{pair{0,0},{0,3},{1,1},{1,2},{2,2},{2,3},{3,1},{3,0}}) shortest.addsol(base+a,base+b);
+    shortest.build(); CHECK(shortest.ret()==4);
+    CHECK(shortest.match_left(base)==base+3); CHECK(shortest.match_left(base+3)==base);
+    CHECK(shortest.match_left(base+1)==base+1); CHECK(shortest.match_left(base+2)==base+2);
+}
+void check_bm_empty(){
+    for(auto [left,right]:{pair{0,0},{0,3},{3,0}}){
+        graphs::_bm m(left,right);
+        vector<vector<bool>> edges(left,vector<bool>(right));
+        m.augment(); verify_bm(m,edges,right,1);
+        m.build(); verify_bm(m,edges,right,1);
+        m.clear(0,0,0); m.addsol(0,0); m.augment(); CHECK(m.ret()==1);
+        CHECK(m.match_left(0)==0); CHECK(m.match_right(0)==0);
+    }
+    graphs::_bm defaults; defaults.build(); CHECK(defaults.ret()==0);
+}
+
 int main(){
     try {
+        for(bool base:{false,true}) check_bm_api(base);
+        check_bm_empty();
         for(bool base:{false,true}) check_2sat_api(base);
         check_lift_defaults();
         for(bool base:{false,true}){

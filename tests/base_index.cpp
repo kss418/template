@@ -571,7 +571,7 @@ void check_graphs(bool base){
     scc.clear(n,!base);scc.build();CHECK(scc.comp_cnt()==n-int(!base)+1);
     graphs::_2sat sat(n,base);CHECK(sat.neg(first)!=sat.pos(n));sat.add_true(sat.pos(first));sat.add_false(sat.pos(n));sat.build();CHECK(sat.ret());
     graphs::_2sat impossible(n,base);impossible.add_eq(impossible.pos(first),impossible.pos(n));impossible.add_true(impossible.pos(first));impossible.add_false(impossible.pos(n));impossible.build();CHECK(!impossible.ret());
-    graphs::_bm match(n,n,base);for(int i=first;i<=n;++i)match.addsol(i,i);CHECK(match.build()==count);
+    graphs::_bm match(n,n,base);for(int i=first;i<=n;++i)match.addsol(i,i);match.build();CHECK(match.ret()==count);
     graphs::_clist<int> list(n,base);CHECK(list.size()==count);list[first].push_front(7);CHECK(list[first].front()==7);
     graphs::_bcc bcc(n,base);for(int i=first+1;i<=n;++i)bcc.add(first,i);bcc.build();CHECK(bcc.point()==vector<long long>{first});CHECK((int)bcc.line().size()==count-1);
     int last=first+3;
@@ -865,7 +865,7 @@ void check_paths_and_flow(bool base){
 void check_defaults(){
     CHECK(sets::_uf(0).count()==0);CHECK(sets::_ufset(0).count()==0);CHECK(graphs::_clist<int>(0).size()==0);
     graphs::_scc scc;scc.build();CHECK(scc.comp_cnt()==0);
-    graphs::_2sat sat;sat.build();CHECK(sat.ret());graphs::_bm bm;CHECK(bm.build()==0);
+    graphs::_2sat sat;sat.build();CHECK(sat.ret());graphs::_bm bm;bm.build();CHECK(bm.ret()==0);
     graphs::_hungarian<> assignment;CHECK(assignment.build()==0);
     graphs::_lca lca;lca.build();graphs::_vtree vt;vt.build();CHECK(vt.make({}).empty());
     range_templates::_hld_path<range_templates::_seg<>> hld;hld.build();

@@ -624,10 +624,10 @@ public:
 
 
 //이분 매칭
-class _bm {
-    bool base;
+class _bm{
 private:
-    vector<vector<int>> adj; int as, bs, result;
+    bool base;
+    vector<vector<int>> adj; int as, bs, result, mn;
     vector<int> av, bv, dist;
     static constexpr int INF = 0x3f3f3f3f;
     bool bfs(){
@@ -636,7 +636,7 @@ private:
             if(av[i] == -1) dist[i] = 0, q.push(i);
             else dist[i] = INF;
         }
-        int mn = INF;
+        mn = INF;
         while(!q.empty()){
             int cur = q.front(); q.pop();
             if(dist[cur] >= mn) continue;
@@ -652,7 +652,7 @@ private:
     bool dfs(int cur){
         for(auto& nxt : adj[cur]){
             int tmp = bv[nxt];
-            if(tmp == -1 || (dist[tmp] == dist[cur] + 1 && dfs(tmp))){
+            if(tmp == -1 ? dist[cur] + 1 == mn : dist[tmp] == dist[cur] + 1 && dfs(tmp)){
                 av[cur] = nxt; bv[nxt] = cur;
                 return true;
             }
@@ -668,18 +668,23 @@ public:
     }
 
     void addsol(int s, int e){ adj[s].push_back(e); } // O(1)
-    int build(){ // O(m sqrt n)
-        result = 0; fill(all(av), -1); fill(all(bv), -1); fill(all(dist), 0);
+    void build(){ // O((n + m) sqrt n)
+        result = 0; fill(all(av), -1); fill(all(bv), -1);
+        augment();
+    }
+
+    void augment(){ // O((n + m) sqrt n)
         while(bfs()){
             for(int i = base;i <= as;i++){
                 if(av[i] != -1) continue;
                 result += dfs(i);
             }
         }
-        return result;
     }
 
     int ret() const{ return result; } // O(1)
+    int match_left(int v) const{ return av[v]; } // O(1)
+    int match_right(int v) const{ return bv[v]; } // O(1)
 
     template <class F>
     void it_all(const F& f) const{
