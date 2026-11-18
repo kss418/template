@@ -6,6 +6,9 @@ namespace graphs {
 using graph_sets::_uf;
 #include "../Graph.cpp"
 }
+namespace paths {
+#include "../Shortest_Path.cpp"
+}
 using namespace std;
 static int checks = 0;
 #define CHECK(c) do { ++checks; if (!(c)) throw runtime_error(string("line ") + to_string(__LINE__) + ": " + #c); } while (0)
@@ -1473,10 +1476,109 @@ void check_cycle_large(bool base){
     }
 }
 
+template<class T>
+concept dij_public_compare=requires{T::less(0,0);} || requires{T::eq(0,0);};
+static_assert(!dij_public_compare<paths::_dij<>>);
+static_assert(is_same_v<decltype(declval<const paths::_dij<>&>().parent(0)),int>);
+static_assert(is_same_v<decltype(declval<const paths::_dij<>&>().source(0)),int>);
+static_assert(requires{static_cast<void(paths::_dij<>::*)(span<const int>)>(&paths::_dij<>::build);});
+
+class dij_lex_policy{
+public:
+    using dist=pair<long long,long long>; using cost=long long;
+    static dist zero(){return {0,0};}
+    static dist inf(){return {paths::INF,paths::INF};}
+    static bool leq(const dist& a,const dist& b){return a<=b;}
+    static dist add(const dist& d,const cost& w){return {d.first+w,d.second+1};}
+};
+class dij_count_policy:public paths::sp_policy{
+public:
+    inline static int calls=0;
+    static dist add(const dist& d,const cost& w){calls++;return d+w;}
+};
+template<class Policy>
+void check_dijkstra_api(bool base){
+    using D=typename Policy::dist;
+    mt19937 rng(842+base);
+    for(int trial=0;trial<100;trial++){
+        int n=1+rng()%10; paths::_dij<Policy> g(base+n-1,base);
+        vector<vector<long long>> edge(n,vector<long long>(n,paths::INF));
+        for(int len=rng()%(2*n*n+1);len--;){
+            int a=rng()%n,b=rng()%n;long long w=rng()%12;
+            if(rng()%4){g.addsol(base+a,base+b,w);edge[a][b]=min(edge[a][b],w);}
+            else{g.add(base+a,base+b,w);edge[a][b]=min(edge[a][b],w);edge[b][a]=min(edge[b][a],w);}
+        }
+        auto verify=[&](const vector<int>& seeds,int mode){
+            vector<vector<D>> dist(n,vector<D>(n,Policy::inf()));
+            for(int a=0;a<n;a++){
+                dist[a][a]=Policy::zero();
+                for(int b=0;b<n;b++) if(edge[a][b]!=paths::INF){
+                    D value=Policy::add(Policy::zero(),edge[a][b]);
+                    if(!Policy::leq(dist[a][b],value)) dist[a][b]=value;
+                }
+            }
+            for(int k=0;k<n;k++) for(int a=0;a<n;a++) for(int b=0;b<n;b++){
+                if(dist[a][k]==Policy::inf() || dist[k][b]==Policy::inf()) continue;
+                D value;
+                if constexpr(is_same_v<D,long long>) value=dist[a][k]+dist[k][b];
+                else value={dist[a][k].first+dist[k][b].first,dist[a][k].second+dist[k][b].second};
+                if(!Policy::leq(dist[a][b],value)) dist[a][b]=value;
+            }
+            if(mode==0) g.build(seeds.front());
+            else if(mode==1) g.build(seeds);
+            else{
+                vector<int> padded{123456};padded.insert(padded.end(),seeds.begin(),seeds.end());padded.push_back(123456);
+                g.build(span<const int>(padded).subspan(1,seeds.size()));
+            }
+            const auto& read=as_const(g);
+            for(int v=0;v<n;v++){
+                D want=Policy::inf();
+                for(int seed:seeds) if(!Policy::leq(want,dist[seed-base][v])) want=dist[seed-base][v];
+                CHECK(read.ret(base+v)==want); CHECK(read.reachable(base+v)==(want!=Policy::inf()));
+                if(want==Policy::inf()){CHECK(read.parent(base+v)==-1);CHECK(read.source(base+v)==-1);continue;}
+                int root=read.source(base+v); CHECK(find(seeds.begin(),seeds.end(),root)!=seeds.end());
+                CHECK(read.parent(root)==-1); CHECK(read.source(root)==root); CHECK(dist[root-base][v]==want);
+                vector<int> backward; vector<bool> seen(n);
+                for(int cur=base+v;cur!=-1;cur=read.parent(cur)){
+                    CHECK(cur>=base && cur<base+n); CHECK(!seen[cur-base]); seen[cur-base]=true;
+                    CHECK(read.source(cur)==root); backward.push_back(cur);
+                }
+                CHECK(backward.back()==root);reverse(backward.begin(),backward.end());
+                vector<int> forward;read.it_path(base+v,[&](int cur){forward.push_back(cur);});CHECK(forward==backward);
+                D value=Policy::zero();
+                for(int i=1;i<(int)forward.size();i++){
+                    auto w=edge[forward[i-1]-base][forward[i]-base];CHECK(w!=paths::INF);value=Policy::add(value,w);
+                }
+                CHECK(value==want);
+            }
+        };
+        vector<int> seeds;for(int len=rng()%(2*n+1);len--;) seeds.push_back(base+rng()%n);
+        verify(seeds,1);verify({base+int(rng()%n)},0);verify({},2);verify(seeds,2);
+        int a=rng()%n,b=rng()%n;g.addsol(base+a,base+b,0);edge[a][b]=0;verify(seeds,1);
+        g.clear(!base,!base);g.build(array{int(!base)});CHECK(g.source(!base)==!base);CHECK(g.parent(!base)==-1);
+        g.build(span<const int>{});CHECK(!g.reachable(!base));CHECK(g.source(!base)==-1);CHECK(g.parent(!base)==-1);
+    }
+}
+void check_dijkstra_seeds(bool base){
+    paths::_dij<dij_count_policy> g(base+100,base);
+    for(int v=base+1;v<=base+100;v++) g.addsol(base,v,1);
+    dij_count_policy::calls=0;g.build(base);int once=dij_count_policy::calls;CHECK(once==100);
+    dij_count_policy::calls=0;g.build(vector<int>(1000,base));CHECK(dij_count_policy::calls==once);
+    for(int v=base;v<=base+100;v++){CHECK(g.source(v)==base);CHECK(g.parent(v)==(v==base ? -1 : int(base)));}
+    paths::_dij<> zero(base+3,base);zero.add(base,base+1,0);zero.add(base+1,base+2,0);
+    const int seeds[]{base,base+2,base,base+2};zero.build(seeds);
+    CHECK(zero.source(base)==base);CHECK(zero.source(base+2)==base+2);
+    CHECK(zero.parent(base)==-1);CHECK(zero.parent(base+2)==-1);CHECK(zero.source(base+3)==-1);
+    int v=base+1;CHECK(zero.ret(v)==0);CHECK(zero.parent(v)==zero.source(v));
+    zero.build(vector<int>{base+3});CHECK(zero.source(base+3)==base+3);CHECK(!zero.reachable(base));
+    paths::_dij<> empty;empty.build(span<const int>{});
+}
+
 int main(){
     try {
         for(bool base:{false,true}) check_bm_api(base);
         check_bm_empty();
+        for(bool base:{false,true}){check_dijkstra_api<paths::sp_policy>(base);check_dijkstra_api<dij_lex_policy>(base);check_dijkstra_seeds(base);}
         for(bool base:{false,true}){check_cycle_api(base); check_cycle_large(base);}
         for(bool base:{false,true}) check_triangle_api(base);
         for(bool base:{false,true}) check_bcc_api(base);

@@ -26,71 +26,68 @@ struct sp_policy{
 };
 
 template<class policy = sp_policy>
-class _dij {
-    bool base;
+class _dij{
 public:
     using dist = typename policy::dist; using cost = typename policy::cost;
 private:
+    bool base;
     struct edge{ cost w; int nxt; }; struct node{ dist d; int v; };
     struct cmp{ bool operator()(const node& a, const node& b) const{ return _dij::less(b.d, a.d); } };
-    vector<vector<edge>> adj; int n; bool built = 0;
-    vector <dist> d; vector<int> pre;
+    vector<vector<edge>> adj; int n;
+    vector <dist> d; vector<int> pre, origin;
     priority_queue<node, vector<node>, cmp> pq;
+
+    static bool less(const dist& a, const dist& b){ return policy::leq(a, b) && !policy::leq(b, a); } // O(1)
+    static bool eq(const dist& a, const dist& b){ return policy::leq(a, b) && policy::leq(b, a); } // O(1)
     void cal(){
-        built = 1;
-        while (!pq.empty()) {
+        while(!pq.empty()){
             auto [cd, cur] = pq.top(); pq.pop();
             if(!eq(cd, d[cur])) continue;
-            for(const auto& i : adj[cur]) {
+            for(const auto& i : adj[cur]){
                 auto& [w, nxt] = i;
                 dist nd = policy::add(cd, w);
                 if(policy::leq(d[nxt], nd)) continue;
-                d[nxt] = nd; pre[nxt] = cur;
-                pq.push({ nd, nxt });
+                d[nxt] = nd; pre[nxt] = cur; origin[nxt] = origin[cur];
+                pq.push({nd, nxt});
             }
         }
     }
-    void reset(int n){ pre.assign(n + 1, -1); d.assign(n + 1, policy::inf()); }
+    void reset(int n){ pre.assign(n + 1, -1); origin.assign(n + 1, -1); d.assign(n + 1, policy::inf()); }
     void chk(int x) const{ assert(x >= base && x <= n); }
 public:
-    static bool less(const dist& a, const dist& b){ return policy::leq(a, b) && !policy::leq(b, a); } // O(1)
-    static bool eq(const dist& a, const dist& b){ return policy::leq(a, b) && policy::leq(b, a); }   // O(1)
-
     _dij(int n = 0, bool base = 1){ clear(n, base); } // O(n)
     void clear(int n, bool base = 1){ // O(n + m)
         this->n = n; this->base = base; adj.assign(n + 1, {}); reset(n);
-        built = 0; while(!pq.empty()) pq.pop();
+        while(!pq.empty()) pq.pop();
     }
 
     void addsol(int st, int en, cost c){ // O(1)
         assert(base <= st && st <= n && base <= en && en <= n);
-        built = 0;
-        adj[st].push_back({ c,en });
+        adj[st].push_back({c, en});
     }
     void add(int st, int en, cost c){ // O(1)
         addsol(st, en, c); addsol(en, st, c);
     }
 
-    void build(int source){ // O((n + m) log n)
-        assert(base <= source && source <= n);
+    void build(int source){ build(span<const int>(&source, 1)); } // O((n + m) log n)
+    void build(span<const int> source){ // O(k + (n + m) log n)
         while(!pq.empty()) pq.pop();
-        reset(n); d[source] = policy::zero();
-        pq.push({ d[source], source }); cal();
-    }
-
-    void build(const vector <int>& source){ // O((n + m) log n)
         reset(n);
-        for(const auto& i : source){
+        for(int i : source){
             assert(base <= i && i <= n);
-            d[i] = policy::zero();
-            pq.push({ d[i], i });
-        } cal();
+            if(origin[i] != -1) continue;
+            d[i] = policy::zero(); origin[i] = i;
+            pq.push({d[i], i});
+        }
+        cal();
     }
 
     dist ret(int x) const{ // O(1)
         chk(x);
         return d[x];
     }
+    int parent(int x) const{ chk(x); return pre[x]; } // O(1)
+    int source(int x) const{ chk(x); return origin[x]; } // O(1)
 
     bool reachable(int x) const{ // O(1)
         chk(x);
