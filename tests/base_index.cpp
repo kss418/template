@@ -569,8 +569,8 @@ void check_graphs(bool base){
     graphs::_st lift(n,32,base);for(int i=first;i<=n;++i)lift.set(i,min(i+1,n));lift.build();CHECK(lift.ret(first,n-first).first==n);
     graphs::_scc scc(n,base);scc.build();CHECK(scc.comp_cnt()==count);CHECK(scc.component(first)>=0);
     scc.clear(n,!base);scc.build();CHECK(scc.comp_cnt()==n-int(!base)+1);
-    graphs::_2sat sat(n,base);CHECK(sat.neg(first)!=sat.pos(n));sat.add_true(sat.pos(first));sat.add_false(sat.pos(n));CHECK(sat.build());
-    graphs::_2sat impossible(n,base);impossible.add_eq(impossible.pos(first),impossible.pos(n));impossible.add_true(impossible.pos(first));impossible.add_false(impossible.pos(n));CHECK(!impossible.build());
+    graphs::_2sat sat(n,base);CHECK(sat.neg(first)!=sat.pos(n));sat.add_true(sat.pos(first));sat.add_false(sat.pos(n));sat.build();CHECK(sat.ret());
+    graphs::_2sat impossible(n,base);impossible.add_eq(impossible.pos(first),impossible.pos(n));impossible.add_true(impossible.pos(first));impossible.add_false(impossible.pos(n));impossible.build();CHECK(!impossible.ret());
     graphs::_bm match(n,n,base);for(int i=first;i<=n;++i)match.addsol(i,i);CHECK(match.build()==count);
     graphs::_clist<int> list(n,base);CHECK(list.size()==count);list[first].push_front(7);CHECK(list[first].front()==7);
     graphs::_bcc bcc(n,base);for(int i=first+1;i<=n;++i)bcc.add(first,i);bcc.build();CHECK(bcc.point()==vector<long long>{first});CHECK((int)bcc.line().size()==count-1);
@@ -865,7 +865,7 @@ void check_paths_and_flow(bool base){
 void check_defaults(){
     CHECK(sets::_uf(0).count()==0);CHECK(sets::_ufset(0).count()==0);CHECK(graphs::_clist<int>(0).size()==0);
     graphs::_scc scc;scc.build();CHECK(scc.comp_cnt()==0);
-    graphs::_2sat sat;CHECK(sat.build());graphs::_bm bm;CHECK(bm.build()==0);
+    graphs::_2sat sat;sat.build();CHECK(sat.ret());graphs::_bm bm;CHECK(bm.build()==0);
     graphs::_hungarian<> assignment;CHECK(assignment.build()==0);
     graphs::_lca lca;lca.build();graphs::_vtree vt;vt.build();CHECK(vt.make({}).empty());
     range_templates::_hld_path<range_templates::_seg<>> hld;hld.build();
@@ -930,8 +930,8 @@ void check_oracles(bool base){
         auto value=[](int mask,int literal){return bool((mask>>(literal/2))&1) != bool(literal%2);};
         bool possible=0;
         for(int mask=0;mask<16;++mask){bool valid=1;for(auto[a,b]:clauses)valid&=value(mask,a)||value(mask,b);possible|=valid;}
-        CHECK(solver.build()==possible);
-        if(possible){int assignment=0;solver.it([&](int i,int v){if(i<=first+3 && v)assignment|=1<<(i-first);});for(auto[a,b]:clauses)CHECK(value(assignment,a)||value(assignment,b));}
+        solver.build();CHECK(solver.ret()==possible);
+        if(possible){int assignment=0;solver.it([&](int i,int v){if(v)assignment|=1<<(i-first);});for(auto[a,b]:clauses)CHECK(value(assignment,a)||value(assignment,b));}
     }
 }
 int main(){

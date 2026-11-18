@@ -1046,8 +1046,100 @@ void check_lift_u64(bool base){
     }
 }
 
+template<class T>
+concept sat_public_add=requires(T& s){s.add(0,1);};
+template<class T>
+concept sat_public_scc=requires(T& s){s.scc;} || requires(T& s){s.get_scc();};
+static_assert(!sat_public_add<graphs::_2sat>);
+static_assert(!sat_public_scc<graphs::_2sat>);
+static_assert(is_same_v<decltype(declval<graphs::_2sat&>().build()),void>);
+static_assert(is_same_v<decltype(declval<const graphs::_2sat&>().ret()),bool>);
+static_assert(is_same_v<decltype(declval<const graphs::_2sat&>().value(0)),bool>);
+
+bool sat_truth(int mask,int literal){ return bool((mask>>(literal%3))&1)!=(literal>=3); }
+bool sat_condition(int kind,int mask,int a,int b,int c){
+    bool av=sat_truth(mask,a),bv=sat_truth(mask,b),cv=sat_truth(mask,c);
+    switch(kind){
+        case 0:return av;
+        case 1:return !av;
+        case 2:return av||bv;
+        case 3:return !av||bv;
+        case 4:return av==bv;
+        case 5:return av!=bv;
+        case 6:return int(av)+bv<=1;
+        case 7:return int(av)+bv+cv<=1;
+        default:return int(av)+bv+cv>=2;
+    }
+}
+void sat_add_condition(graphs::_2sat& s,int base,int kind,int a,int b,int c){
+    auto literal=[&](int i){return i<3 ? s.pos(base+i) : s.neg(base+i-3);};
+    a=literal(a); b=literal(b); c=literal(c);
+    switch(kind){
+        case 0:s.add_true(a);break;
+        case 1:s.add_false(a);break;
+        case 2:s.add_or(a,b);break;
+        case 3:s.add_imp(a,b);break;
+        case 4:s.add_eq(a,b);break;
+        case 5:s.add_xor(a,b);break;
+        case 6:s.add_most1(a,b);break;
+        case 7:s.add_most1(a,b,c);break;
+        default:s.add_least2(a,b,c);
+    }
+}
+int sat_assignment(const graphs::_2sat& s,int base){
+    int mask=0,next=base;
+    s.it([&](int i,bool value){
+        CHECK(i==next++); CHECK(i<=base+2); CHECK(value==s.value(i));
+        if(value) mask|=1<<(i-base);
+    });
+    CHECK(next==base+3);
+    for(int v=0;v<3;v++) CHECK(s.value(base+v)==bool((mask>>v)&1));
+    next=base;
+    s.it_literal([&](int i,bool value){CHECK(i==next++); CHECK(value==sat_truth(mask,i-base));});
+    CHECK(next==base+6);
+    return mask;
+}
+void check_2sat_api(bool base){
+    for(int kind=0;kind<9;kind++) for(int a=0;a<6;a++) for(int b=0;b<(kind<2 ? 1 : 6);b++)
+        for(int c=0;c<(kind<7 ? 1 : 6);c++) for(int mask=0;mask<8;mask++){
+            graphs::_2sat s(base+2,base); sat_add_condition(s,base,kind,a,b,c);
+            for(int v=0;v<3;v++) if(mask&(1<<v)) s.add_true(s.pos(base+v)); else s.add_false(s.pos(base+v));
+            bool possible=sat_condition(kind,mask,a,b,c); s.build(); CHECK(s.ret()==possible);
+            if(possible) CHECK(sat_assignment(s,base)==mask);
+        }
+    mt19937 rng(876+base);
+    for(int trial=0;trial<200;trial++){
+        graphs::_2sat s(base+2,base); vector<array<int,4>> constraints;
+        int count=rng()%15;
+        for(int i=0;i<count;i++){
+            array<int,4> q{int(rng()%9),int(rng()%6),int(rng()%6),int(rng()%6)};
+            constraints.push_back(q); sat_add_condition(s,base,q[0],q[1],q[2],q[3]);
+        }
+        bool possible=false;
+        for(int mask=0;mask<8;mask++){
+            bool valid=true; for(auto q:constraints) valid&=sat_condition(q[0],mask,q[1],q[2],q[3]);
+            possible|=valid;
+        }
+        for(int repeat=0;repeat<2;repeat++){
+            s.build(); CHECK(s.ret()==possible);
+            if(possible){int mask=sat_assignment(s,base); for(auto q:constraints) CHECK(sat_condition(q[0],mask,q[1],q[2],q[3]));}
+        }
+        s.clear(base,base); s.add_true(s.pos(base)); s.build(); CHECK(s.ret()); CHECK(s.value(base));
+        int vars=0,literals=0; s.it([&](int i,bool value){CHECK(i==base); CHECK(value); vars++;});
+        s.it_literal([&](int i,bool value){CHECK(value==(i==base)); literals++;}); CHECK(vars==1); CHECK(literals==2);
+        s.add_false(s.pos(base)); s.build(); CHECK(!s.ret());
+        s.clear(!base,!base); s.add_false(s.pos(!base)); s.build(); CHECK(s.ret()); CHECK(!s.value(!base));
+        s.clear(0,1); s.build(); CHECK(s.ret()); vars=0; s.it([&](int,bool){vars++;}); s.it_literal([&](int,bool){vars++;}); CHECK(vars==0);
+    }
+    graphs::_2sat contradiction(base+1,base);
+    contradiction.add_imp(contradiction.pos(base),contradiction.pos(base+1));
+    contradiction.add_true(contradiction.pos(base)); contradiction.add_false(contradiction.pos(base+1));
+    contradiction.build(); CHECK(!contradiction.ret());
+}
+
 int main(){
     try {
+        for(bool base:{false,true}) check_2sat_api(base);
         check_lift_defaults();
         for(bool base:{false,true}){
             check_lift_boundaries(base);

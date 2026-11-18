@@ -571,21 +571,24 @@ public:
 //2SAT
 class _2sat{
 private:
-    int n = 0, vars = 0; bool base = 1;
+    int n = 0, vars = 0; bool base = 1, result = false;
+    _scc scc;
+    vector<bool> answer;
+
+    void add(int a, int b){ scc.addsol(a, b); } // O(1)
 public:
-    _scc scc; 
     _2sat(int max_index = 0, bool base = 1){ clear(max_index, base); } // O(n)
     void clear(int max_index, bool base = 1){ // O(n)
         this->n = max_index; this->base = base;
         vars = n - base + 1;
         scc.clear(n + vars, base);
+        answer.assign(n + 1, false); result = false;
     }
 
     int pos(int x) const{ return x; } // O(1)
     int neg(int x) const{ return x + vars; } // O(1)
     int op(int x) const{ return x <= n ? x + vars : x - vars; } // O(1)
 
-    void add(int a, int b){ scc.addsol(a, b); } // O(1)
     void add_imp(int a, int b){ add_or(op(a), b); } // O(1)
     void add_or(int a, int b){ add(op(a), b); add(op(b), a); } // O(1)
     void add_true(int x){ add(op(x), x); } // O(1)
@@ -597,20 +600,25 @@ public:
     void add_most1(int a, int b, int c){ add_most1(a, b); add_most1(b, c); add_most1(a, c); } // O(1)
     void add_least2(int a, int b, int c){ add_or(a, b); add_or(a, c); add_or(b, c); } // O(1)
 
-    bool build(){ // O(n + m)
-        scc.build(); 
+    void build(){ // O(n + m)
+        scc.build(); result = true;
         for(int i = base;i <= n;i++){
-            if(scc.same(pos(i), neg(i))) return false;
+            if(scc.same(pos(i), neg(i))){ result = false; return; }
         }
-        return true;
+        for(int i = base; i <= n; i++) answer[i] = scc.component(pos(i)) > scc.component(neg(i));
     }
+
+    bool ret() const{ return result; } // O(1)
+    bool value(int x) const{ return answer[x]; } // O(1)
 
     template<class F>
     void it(const F& f) const{ // O(n)
-        for(int i = base; i <= n + vars; i++){
-            int x = (scc.component(i) > scc.component(op(i))) ? 1 : 0;
-            f(i, x);
-        }
+        for(int i = base; i <= n; i++) f(i, value(i));
+    }
+
+    template<class F>
+    void it_literal(const F& f) const{ // O(n)
+        for(int i = base; i <= n + vars; i++) f(i, i <= n ? value(i) : !value(i - vars));
     }
 };
 
