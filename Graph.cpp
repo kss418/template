@@ -120,15 +120,13 @@ public:
     }
 };
 
-class lca_policy {
+class lca_policy{
 public:
-    class node {
-    public:
+    struct node{
         ll v;
         node(ll v) : v(v){}
     };
-    class cost {
-    public:
+    struct cost{
         ll v;
         cost(ll v = 0) : v(v){}
     };
@@ -143,8 +141,7 @@ public:
     using node = typename policy::node;
     using cost = typename policy::cost;
 private:
-    class path {
-    public:
+    struct path{
         node up, down;
     };
     vector<vector<pair<cost,cost>>> weight;
