@@ -926,6 +926,34 @@ void check_fixed_mint(){
     check_fixed_mint_mod<high>();check_fixed_mint_mod<mx-58>();check_fixed_mint_mod<mx>();
 }
 
+using const_mint7=numeric_templates::_mint<7>;
+static_assert(const_mint7(10).v==3);
+static_assert((const_mint7(3)+6).v==2 && (6+const_mint7(3)).v==2);
+static_assert((const_mint7(3)-6).v==4 && (6-const_mint7(3)).v==3);
+static_assert((const_mint7(3)*5).v==1 && (5*const_mint7(3)).v==1);
+static_assert((const_mint7(2)/3).v==3 && (2/const_mint7(3)).v==3);
+static_assert((+const_mint7(3)).v==3 && (-const_mint7(3)).v==4);
+static_assert(const_mint7(3).pow(0)==1 && const_mint7(3).pow(4)==4 && const_mint7(3).inv()==5);
+static_assert(numeric_templates::_mint<12>(5).inv()==5);
+static_assert(numeric_templates::_mint<1>(123).pow(0)==0);
+static_assert(const_mint7(numeric_limits<__int128_t>::min())==5);
+using const_mint_full=numeric_templates::_mint<numeric_limits<uint64_t>::max()>;
+static_assert(const_mint_full(-1).v==numeric_limits<uint64_t>::max()-1);
+static_assert((const_mint_full(-1)+const_mint_full(-1)).v==numeric_limits<uint64_t>::max()-2);
+static_assert((const_mint_full(-1)*const_mint_full(-1)).v==1);
+static_assert(const_mint_full(2).inv().v==(uint64_t(1)<<63));
+constexpr bool mint_constexpr_compound(){
+    const_mint7 a=3; a+=5; if(a!=1) return false;
+    a*=6; if(a!=6) return false;
+    a-=2; if(a!=4) return false;
+    a/=3; if(a!=6) return false;
+    a+=a; if(a!=5) return false;
+    a*=a; if(a!=4) return false;
+    a-=a; if(a!=0) return false;
+    a=5; return a==5;
+}
+static_assert(mint_constexpr_compound());
+
 void check_dynamic_mint(){
     using mint=numeric_templates::_dynamic_mint;using value=long long;using wide=__int128_t;
     static_assert(is_default_constructible_v<mint> && is_constructible_v<mint,value,value>);
