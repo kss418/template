@@ -59,6 +59,14 @@ public:
     }
 
     void reset(){ arr.x.pre.clear(); arr.y.pre.clear(); }
+    void build(string_view s){ // O(n)
+        reset();
+        for(unsigned char c : s) push_back(c);
+    }
+    void build(span<const int> v){ // O(n)
+        reset();
+        for(int value : v) push_back(value);
+    }
     void push_back(int v){ arr.x.push_back(v); arr.y.push_back(v); } // O(1)
     void pop_back(){ arr.x.pop_back(); arr.y.pop_back(); } // O(1)
     int size() const{ return arr.x.size(); } // O(1)

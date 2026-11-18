@@ -188,6 +188,47 @@ long long naive_hash(const vector<int>& values,int l,int r,int key,int mod){
     for(int i=l;i<=r;++i){long long value=(values[i]%(long long)mod+mod)%mod;result=(result+value*power)%mod;power=power*key%mod;}
     return result;
 }
+template<int M1,int M2>
+void check_hash_build_mod(){
+    hash_templates::_hash<M1,M2> h({3,5});pair<int,int> key{3,5};
+    auto verify=[&](const vector<int>& values){
+        CHECK(h.size()==(int)values.size());CHECK(h.ret(0,-1)==0);
+        for(int l=0;l<(int)values.size();l++) for(int r=l;r<(int)values.size();r++){
+            long long expected=(naive_hash(values,l,r,key.first,M1)<<32)+naive_hash(values,l,r,key.second,M2);
+            CHECK(h.ret(l,r)==expected);
+        }
+    };
+    vector<int> values{INT_MIN,0,INT_MAX,-1,7};h.build(values);verify(values);
+    h.push_back(-5);values.push_back(-5);verify(values);h.pop_back();values.pop_back();verify(values);
+    const array<int,6> padded{111,-9,0,INT_MAX,INT_MIN,222};
+    h.build(span<const int>(padded).subspan(1,4));verify({-9,0,INT_MAX,INT_MIN});
+    const int arr[]{-3,4,-3};h.build(arr);verify({-3,4,-3});
+    h.build(vector<int>{5,0,-7});verify({5,0,-7});
+    h.build("ababa");verify({'a','b','a','b','a'});
+    const string bytes{'\0',char(0x80),char(0xff),'A','\0'};
+    h.build(bytes);verify({0,128,255,65,0});
+    const string padded_string="xx"+bytes+"yy";
+    h.build(string_view(padded_string).substr(2,bytes.size()));verify({0,128,255,65,0});
+    h.build(string_view{});verify({});h.push_back(12);verify({12});
+    h.build(span<const int>{});verify({});
+    mt19937 rng(946);
+    for(int round=0;round<50;round++){
+        int n=round%3==0 ? 24 : round%3==1 ? 2 : 0;
+        vector<int> v(n);for(int& value:v)value=int(rng()%1001)-500;
+        h.build(v);verify(v);
+        string text(n,'\0');vector<int> unsigned_values;
+        for(char& c:text){unsigned char b=rng()%256;c=char(b);unsigned_values.push_back(b);}
+        h.build(text);verify(unsigned_values);
+    }
+    key={11,17};h.clear(key);h.build(bytes);verify({0,128,255,65,0});
+    h.reset();h.build(values);verify(values);
+    h.clear();key={911382323,972663749};h.build(values);verify(values);
+}
+void check_hash_build(){
+    check_hash_build_mod<101,103>();check_hash_build_mod<101,101>();check_hash_build_mod<1000,1001>();
+    check_hash_build_mod<1000000007,1000000009>();check_hash_build_mod<2147483647,2147483629>();
+}
+
 void check_hash_operations(){
     const pair<int,int> key{37,41}, mod{1'000'000'007,1'000'000'009};
     hash_templates::_hash<> prefix(key);hash_templates::_deque_hash<> window(256,key);
@@ -835,7 +876,7 @@ void run(){for(bool base:{false,true}){check_monoids(base);check_actions(base);}
 int main(){
     int failures = 0;
     for(auto [name,test]:vector<pair<string,void(*)()>>{{"hld_direction",bidirectional_checks::check_hld_direction},{"bidirectional",bidirectional_checks::run},{"lazy_equality",check_lazy_equality},{"factory_construction",check_factory_construction},{"default_lazy",check_default_lazy},{"explicit_id",check_explicit_id},
-        {"affine",check_affine},{"hash_defaults",check_hash_defaults},{"hash_operations",check_hash_operations},{"deque_hash_reuse",check_deque_hash_reuse},{"fixed_hash",check_fixed_hash}}){
+        {"affine",check_affine},{"hash_defaults",check_hash_defaults},{"hash_operations",check_hash_operations},{"hash_build",check_hash_build},{"deque_hash_reuse",check_deque_hash_reuse},{"fixed_hash",check_fixed_hash}}){
         try{test();cout<<"PASS "<<name<<'\n';}catch(const exception& e){++failures;cerr<<"FAIL "<<name<<": "<<e.what()<<'\n';}
     }
     cout<<checks<<" identity/initial-leaf/hash checks, "<<failures<<" failed groups\n";
