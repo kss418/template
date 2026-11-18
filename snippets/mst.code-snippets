@@ -6,7 +6,7 @@
     "class _mst{",
     "private:",
     "    bool base;",
-    "    T result = 0; int n;",
+    "    T result{}; int n;",
     "    class edge{",
     "    public:",
     "        int s, e; T c;",
@@ -16,7 +16,7 @@
     "public:",
     "    _mst(int n = 0, bool base = 1){ clear(n, base); } // O(n)",
     "    void clear(int n, bool base = 1){ // O(n)",
-    "        this->n = n; this->base = base; result = 0;",
+    "        this->n = n; this->base = base; result = T{};",
     "        uf.clear(n, base); adj.clear(); selected.clear();",
     "    }",
     "",
@@ -26,7 +26,7 @@
     "    }",
     "",
     "    bool build(int components = 1, bool maximum = false){ // O(n + m log m)",
-    "        uf.clear(n, base); result = 0; selected.clear();",
+    "        uf.clear(n, base); result = T{}; selected.clear();",
     "        vector<int> order(adj.size()); iota(all(order), 0);",
     "        sort(all(order), [&](int a, int b){",
     "            if(adj[a].c < adj[b].c) return !maximum;",
@@ -34,7 +34,7 @@
     "            return a < b;",
     "        });",
     "        int need = n - base + 1 - components;",
-    "        conditional_t<is_integral_v<T>, i128, T> total = 0;",
+    "        conditional_t<is_integral_v<T>, i128, T> total{};",
     "        for(int id : order){",
     "            if((int)selected.size() >= need) break;",
     "            const auto& [st, en, c] = adj[id];",
@@ -55,6 +55,6 @@
     "    }",
     "};"
   ],
-  "description": "Numeric spanning forest; requires >>uf. _mst<T=ll> uses T directly for edge costs and ret() (ll, i128 and ld are supported). add(u,v,cost) returns a stable zero-based edge ID. build(components=1,maximum=false) recomputes the minimum forest by default, or maximum when true, stopping at the requested component count when reachable. It returns false if disconnected input prevents the target; ret() and it_edge() then expose the maximum-cardinality forest produced. Equal costs are ordered by insertion ID in both modes. ret() returns the cached scalar total; it_edge(f) calls f(id,u,v,cost) on selected original edges in selection order. Integer costs accumulate in i128 before conversion to T; intermediate sums must fit i128 and the final total must fit T. Floating totals accumulate in T. Rebuild after adding input, and clear(n,base=1) resets inputs and IDs. Vertex n is the maximum external index. Build is O(n+m log m), ret O(1), and edge iteration O(selected edges)."
+  "description": "Numeric spanning forest; requires >>uf. _mst<T=ll> uses T directly for edge costs and ret() (ll, i128 and ld are supported). T{} must construct the additive identity; T must support copying, assignment and strict ordering with <. Non-integral T must also support T += T. add(u,v,cost) returns a stable zero-based edge ID. build(components=1,maximum=false) recomputes the minimum forest by default, or maximum when true, stopping at the requested component count when reachable. It returns false if disconnected input prevents the target; ret() and it_edge() then expose the maximum-cardinality forest produced. Equal costs are ordered by insertion ID in both modes. ret() returns the cached scalar total; it_edge(f) calls f(id,u,v,cost) on selected original edges in selection order. Integer costs accumulate in i128 before conversion to T; intermediate sums must fit i128 and the final total must fit T. Non-integral totals accumulate in T from its default-constructed identity. Rebuild after adding input, and clear(n,base=1) resets inputs and IDs. Vertex n is the maximum external index. Build is O(n+m log m), ret O(1), and edge iteration O(selected edges)."
 }
 }

@@ -196,6 +196,31 @@ void check_mst_api(bool base){
     tree.clear(0,0);CHECK(tree.build());CHECK(tree.ret()==0);CHECK(chosen().empty());
 }
 
+class mst_default_cost{
+public:
+    long long v;
+    mst_default_cost() : v(0){}
+    explicit mst_default_cost(long long v) : v(v){}
+    bool operator<(const mst_default_cost& other) const{ return v < other.v; }
+    void operator+=(const mst_default_cost& other){ v += other.v; }
+};
+
+void check_mst_default_cost(bool base){
+    graphs::_mst<mst_default_cost> tree(base+2,base);
+    tree.add(base,base+1,mst_default_cost(3)); tree.add(base+1,base+2,mst_default_cost(-2));
+    tree.add(base,base+2,mst_default_cost(10));
+    CHECK(tree.build()); CHECK(tree.ret().v==1);
+    CHECK(tree.build(1,true)); CHECK(tree.ret().v==13);
+    CHECK(tree.build(2)); CHECK(tree.ret().v==-2);
+    CHECK(tree.build(3,true)); CHECK(tree.ret().v==0);
+    CHECK(tree.build()); CHECK(tree.ret().v==1);
+    tree.clear(base+2,base); CHECK(!tree.build()); CHECK(tree.ret().v==0);
+    CHECK(tree.add(base,base+1,mst_default_cost(4))==0);
+    CHECK(!tree.build()); CHECK(tree.ret().v==4);
+    tree.clear(0,1); CHECK(tree.build()); CHECK(tree.ret().v==0);
+    int count=0; tree.it_edge([&](int,int,int,const mst_default_cost&){ count++; }); CHECK(count==0);
+}
+
 void check_mst_numeric(bool base){
     using i128=__int128_t;
     graphs::_mst<> tree(base+3,base);
@@ -992,7 +1017,7 @@ int main(){
             check_vtree_span(base);
             for(unsigned seed=1;seed<=12;seed++) check_vtree(base,seed);
         }
-        for(bool base : {false,true}){ check_clist_views(base); check_mst_api(base); check_mst_numeric(base); check_mst_oracle(base); check_mst_oracle(base,true); check_mst_oracle<graphs::i128>(base); check_mst_oracle<graphs::i128>(base,true); check_mst_oracle<long double>(base); check_mst_oracle<long double>(base,true); check_bcc(base); check_cycles(base); check_lca_order(base); check_lca_numeric(base); check_lca_roots(base); }
+        for(bool base : {false,true}){ check_clist_views(base); check_mst_api(base); check_mst_default_cost(base); check_mst_numeric(base); check_mst_oracle(base); check_mst_oracle(base,true); check_mst_oracle<graphs::i128>(base); check_mst_oracle<graphs::i128>(base,true); check_mst_oracle<long double>(base); check_mst_oracle<long double>(base,true); check_bcc(base); check_cycles(base); check_lca_order(base); check_lca_numeric(base); check_lca_roots(base); }
         for(bool base : {false,true}) for(int mode=0;mode<4;mode++) for(unsigned seed=1;seed<=8;seed++){
             check_lca_paths<lca_text>(base,mode,seed);
             check_lca_paths<lca_matrix>(base,mode,seed);

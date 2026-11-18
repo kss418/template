@@ -408,7 +408,7 @@ template<class T = ll>
 class _mst{
 private:
     bool base;
-    T result = 0; int n;
+    T result{}; int n;
     class edge{
     public:
         int s, e; T c;
@@ -418,7 +418,7 @@ private:
 public:
     _mst(int n = 0, bool base = 1){ clear(n, base); } // O(n)
     void clear(int n, bool base = 1){ // O(n)
-        this->n = n; this->base = base; result = 0;
+        this->n = n; this->base = base; result = T{};
         uf.clear(n, base); adj.clear(); selected.clear();
     }
 
@@ -428,7 +428,7 @@ public:
     }
 
     bool build(int components = 1, bool maximum = false){ // O(n + m log m)
-        uf.clear(n, base); result = 0; selected.clear();
+        uf.clear(n, base); result = T{}; selected.clear();
         vector<int> order(adj.size()); iota(all(order), 0);
         sort(all(order), [&](int a, int b){
             if(adj[a].c < adj[b].c) return !maximum;
@@ -436,7 +436,7 @@ public:
             return a < b;
         });
         int need = n - base + 1 - components;
-        conditional_t<is_integral_v<T>, i128, T> total = 0;
+        conditional_t<is_integral_v<T>, i128, T> total{};
         for(int id : order){
             if((int)selected.size() >= need) break;
             const auto& [st, en, c] = adj[id];
