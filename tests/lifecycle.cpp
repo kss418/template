@@ -53,7 +53,7 @@ void check_rebuild(bool base){
     paths::_floyd<> floyd(n,base);floyd.addsol(first,first+1,5);floyd.addsol(first+1,n,3);floyd.build();CHECK(floyd.ret(first,n)==8);floyd.build();CHECK(floyd.ret(first,n)==8);floyd.addsol(first,n,2);floyd.build();CHECK(floyd.ret(first,n)==2);
     graphs::_scc scc(n,base);scc.addsol(first,n);scc.build();scc.build();CHECK(!scc.same(first,n));scc.addsol(n,first);scc.build();CHECK(scc.same(first,n));
     graphs::_2sat sat(n,base);sat.add_true(sat.pos(first));CHECK(sat.build());CHECK(sat.build());sat.add_false(sat.pos(first));CHECK(!sat.build());
-    graphs::_vtree vt(n,base);for(int i=first;i<n;++i)vt.add(i,i+1);vt.build();CHECK(vt.make({first,n}).size()==2);vt.build(n);CHECK(vt.dist_tree(first,n)==3);CHECK(vt.make({first,n}).size()==2);
+    graphs::_vtree vt(n,base);for(int i=first;i<n;++i)vt.add(i,i+1);vt.build();CHECK(vt.make(array{first,n}).size()==2);vt.build(n);CHECK(vt.dist_tree(first,n)==3);CHECK(vt.make(array{first,n}).size()==2);
     graphs::_3cycle triangle(n,base);triangle.add(first,first+1);triangle.add(first+1,first+2);triangle.add(first+2,first);triangle.build();CHECK(triangle.ret()==1);triangle.build();CHECK(triangle.ret()==1);triangle.add(first,n);triangle.add(first+1,n);triangle.build();CHECK(triangle.ret()==2);
     graphs::_4cycle square(n,base);for(int i=first;i<=n;++i)square.add(i,i==n?first:i+1);square.build();CHECK(square.ret()==1);square.build();CHECK(square.ret()==1);
     external_mo::state=123;

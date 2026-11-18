@@ -331,7 +331,8 @@ public:
         for(int v : used) it_child(v, [&](int nxt, ll c){ f(v, nxt, c); });
     }
 
-    vector<int> make(vector<int> node){ // O(k_prev + k log k + k log n)
+    vector<int> make(span<const int> v){ // O(k_prev + k log k + k log n)
+        vector<int> node(all(v));
         clear_vt();
         if(node.empty()) return {};
         sort_node(node);

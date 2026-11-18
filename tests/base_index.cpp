@@ -558,7 +558,7 @@ void check_graphs(bool base){
     for(int i=first;i<n;++i){lca.add(i,i+1);weighted.add(i,i+1,1);hld.add(i,i+1);vt.add(i,i+1);mst.add(i,i+1,1);}
     lca.build();weighted.build();hld.build();vt.build();
     CHECK(lca.depth(first)==0);CHECK(lca.ancestor(n,n-first)==first);CHECK(lca.ret(first,n)==first);CHECK(lca.dist(first,n)==n-first);
-    CHECK(weighted.query(first,n).v==n-first);CHECK(vt.dist_tree(first,n)==n-first);CHECK(vt.make({first,n}).front()==first);
+    CHECK(weighted.query(first,n).v==n-first);CHECK(vt.dist_tree(first,n)==n-first);CHECK(vt.make(array{first,n}).front()==first);
     for(int i=first;i<=n;++i)hld.set(i,{1});CHECK(hld.query(first,n).v==count);CHECK(hld.query_sub(first).v==count);
     range_templates::_hld_path<range_templates::_seg<>> edge_hld(n,1,base);
     for(int i=first;i<n;++i)edge_hld.add(i,i+1);

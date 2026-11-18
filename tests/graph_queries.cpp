@@ -105,7 +105,7 @@ void check_vtree(bool base,unsigned seed){
     verify(n); verify(n);
     tree.clear(base,base); tree.build(base);
     CHECK(tree.parent(base)==-1); CHECK(tree.dist_root(base)==0);
-    CHECK(tree.make({base,base})==vector<int>{base}); CHECK(tree.root()==base);
+    CHECK(tree.make(array{int(base),int(base)})==vector<int>{base}); CHECK(tree.root()==base);
     CHECK(tree.nodes()==vector<int>{base});
     int edges=0; tree.it_child(base,[&](int,long long){edges++;}); tree.it_edge([&](int,int,long long){edges++;}); CHECK(edges==0);
     CHECK(tree.make({}).empty()); CHECK(tree.nodes().empty()); CHECK(tree.root()==-1);
@@ -118,16 +118,34 @@ void check_vtree_wide(bool base){
     tree.add(base,base+1,big); tree.add(base+1,base+2,1); tree.build();
     CHECK(tree.dist_tree(base+1,base+2)==1); CHECK(tree.dist_tree(base+2,base+1)==1);
     CHECK(tree.dist_root(base+2)==big+1);
-    CHECK((tree.make({base+1,base+2})==vector<int>{base+1,base+2}));
+    CHECK((tree.make(array{base+1,base+2})==vector<int>{base+1,base+2}));
     tree.it_edge([&](int a,int b,long long c){CHECK(a==base+1); CHECK(b==base+2); CHECK(c==1);});
     tree.clear(base+2,base); tree.add(base,base+1,big); tree.add(base+1,base+2,big); tree.build();
     CHECK(tree.dist_tree(base+1,base+2)==big);
-    tree.make({base+1,base+2}); tree.it_edge([&](int,int,long long c){CHECK(c==big);});
+    tree.make(array{base+1,base+2}); tree.it_edge([&](int,int,long long c){CHECK(c==big);});
     tree.build(base+2); CHECK(tree.parent(base+2)==-1); CHECK(tree.dist_tree(base,base+1)==big);
     tree.clear(base+2,base); tree.add(base,base+1,LLONG_MIN); tree.add(base+1,base+2,LLONG_MAX); tree.build();
     CHECK(tree.dist_root(base+2)==-1); CHECK(tree.dist_tree(base+1,base+2)==LLONG_MAX);
     CHECK(tree.dist_tree(base,base+1)==LLONG_MIN); CHECK(tree.dist_tree(base,base+2)==-1);
-    tree.make({base,base+2}); tree.it_edge([&](int,int,long long c){CHECK(c==-1);});
+    tree.make(array{int(base),base+2}); tree.it_edge([&](int,int,long long c){CHECK(c==-1);});
+}
+
+void check_vtree_span(bool base){
+    graphs::_vtree tree(base+3,base);
+    tree.add(base,base+1); tree.add(base+1,base+2); tree.add(base+1,base+3); tree.build();
+    const array<int,5> keys{-1,base+2,base+3,base+2,-1};
+    const set<int> expected{base+1,base+2,base+3};
+    auto result=tree.make(span<const int>(keys).subspan(1,3));
+    CHECK(set<int>(all(result))==expected); CHECK(keys[1]==base+2 && keys[2]==base+3);
+    CHECK(tree.make(tree.nodes())==result);
+    auto subset=span<const int>(tree.nodes()).subspan(1);
+    result=tree.make(subset); CHECK(set<int>(all(result))==expected);
+    const int raw[]{base+2,base+3};
+    result=tree.make(raw); CHECK(set<int>(all(result))==expected);
+    result=tree.make(span<const int,2>(raw)); CHECK(set<int>(all(result))==expected);
+    vector<int> input{base+2,base+3,base+2},copy=input;
+    result=tree.make(input); CHECK(input==copy); CHECK(set<int>(all(result))==expected);
+    CHECK(tree.make(span<const int>{}).empty()); CHECK(tree.root()==-1); CHECK(tree.nodes().empty());
 }
 
 void check_lca_numeric(bool base){
@@ -847,6 +865,7 @@ int main(){
         check_lift_defaults();
         for(bool base:{false,true}){
             check_vtree_wide(base);
+            check_vtree_span(base);
             for(unsigned seed=1;seed<=12;seed++) check_vtree(base,seed);
         }
         for(bool base : {false,true}){ check_clist_views(base); check_mst_api(base); check_mst_oracle(base); check_mst_oracle<mst_max_policy>(base,true); check_bcc(base); check_cycles(base); check_lca_order(base); check_lca_numeric(base); check_lca_roots(base); }
