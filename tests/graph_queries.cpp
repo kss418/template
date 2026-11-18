@@ -171,61 +171,67 @@ void check_lca_numeric(bool base){
     graphs::_lca_path<> empty; empty.build(); empty.build();
 }
 
-class mst_box_policy{
-public:
-    class node{
-    public:
-        long long v;int count;
-        node(long long v,int count=1):v(v),count(count){}
-        node operator+(const node& other) const{return {v+other.v,count+other.count};}
-    };
-    static node leaf(){return {0,0};}
-    static bool less(const node& a,const node& b){return a.v<b.v;}
-};
-class mst_max_policy : public graphs::mst_policy{
-public:
-    static bool less(const node& a,const node& b){return a.v>b.v;}
-};
-static_assert(!is_default_constructible_v<mst_box_policy::node>);
-static_assert(!is_default_constructible_v<graphs::mst_policy::node>);
-static_assert(is_same_v<graphs::_mst<>::node,graphs::mst_policy::node>);
-
 void check_mst_api(bool base){
     graphs::_mst<> tree(base+3,base);
     CHECK(tree.add(base,base+1,5)==0);CHECK(tree.add(base+1,base+2,1)==1);
     CHECK(tree.add(base+2,base+3,2)==2);CHECK(tree.add(base,base+3,9)==3);
     auto chosen=[&](){vector<int> ids;as_const(tree).it_edge([&](int id,int,int,const auto&){ids.push_back(id);});return ids;};
-    CHECK(tree.build(2));CHECK(as_const(tree).ret().v==3);CHECK(chosen()==vector<int>({1,2}));
-    CHECK(tree.build());CHECK(as_const(tree).ret().v==8);CHECK(chosen()==vector<int>({1,2,0}));
+    CHECK(tree.build(2));CHECK(as_const(tree).ret()==3);CHECK(chosen()==vector<int>({1,2}));
+    CHECK(tree.build());CHECK(as_const(tree).ret()==8);CHECK(chosen()==vector<int>({1,2,0}));
     CHECK(tree.build());CHECK(chosen()==vector<int>({1,2,0}));
+    CHECK(tree.build(1,true));CHECK(tree.ret()==16);CHECK(chosen()==vector<int>({3,0,2}));
+    CHECK(tree.build(2,true));CHECK(tree.ret()==14);CHECK(chosen()==vector<int>({3,0}));
+    CHECK(tree.build());CHECK(tree.ret()==8);CHECK(chosen()==vector<int>({1,2,0}));
     graphs::_lca paths(base+3,base);
     as_const(tree).it_edge([&](int,int a,int b,const auto&){paths.add(a,b);});paths.build();
     CHECK(paths.dist(base,base+3)==3);
-    CHECK(tree.add(base,base+3,0)==4);CHECK(tree.build());CHECK(tree.ret().v==3);CHECK(chosen()==vector<int>({4,1,2}));
-    CHECK(tree.build(4));CHECK(tree.ret().v==0);CHECK(chosen().empty());
+    CHECK(tree.add(base,base+3,0)==4);CHECK(tree.build());CHECK(tree.ret()==3);CHECK(chosen()==vector<int>({4,1,2}));
+    CHECK(tree.build(4));CHECK(tree.ret()==0);CHECK(chosen().empty());
     tree.clear(base+1,base);CHECK(tree.add(base,base+1,1)==0);CHECK(tree.add(base,base+1,1)==1);
-    CHECK(tree.add(base,base,-100)==2);CHECK(tree.build());CHECK(tree.ret().v==1);CHECK(chosen()==vector<int>({0}));
+    CHECK(tree.add(base,base,-100)==2);CHECK(tree.build());CHECK(tree.ret()==1);CHECK(chosen()==vector<int>({0}));
+    CHECK(tree.build(1,true));CHECK(tree.ret()==1);CHECK(chosen()==vector<int>({0}));
     tree.clear(base+2,base);CHECK(tree.add(base,base+1,-4)==0);CHECK(!tree.build());
-    CHECK(tree.ret().v==-4);CHECK(chosen()==vector<int>({0}));CHECK(tree.build(2));CHECK(tree.ret().v==-4);
-    tree.clear(0,1);CHECK(tree.build());CHECK(tree.ret().v==0);CHECK(chosen().empty());
-    tree.clear(0,0);CHECK(tree.build());CHECK(tree.ret().v==0);CHECK(chosen().empty());
-    graphs::_mst<mst_box_policy> boxed(base+2,base);
-    CHECK(boxed.add(base,base+1,{3})==0);CHECK(boxed.add(base+1,base+2,{-2})==1);
-    CHECK(boxed.build());CHECK(as_const(boxed).ret().v==1);
-    int calls=0;as_const(boxed).it_edge([&](int,int,int,const mst_box_policy::node&){++calls;});CHECK(calls==2);
-    CHECK(as_const(boxed).ret().count==2);CHECK(boxed.build(3));
-    CHECK(as_const(boxed).ret().count==0);CHECK(as_const(boxed).ret().v==0);
+    CHECK(tree.ret()==-4);CHECK(chosen()==vector<int>({0}));CHECK(tree.build(2));CHECK(tree.ret()==-4);
+    tree.clear(0,1);CHECK(tree.build());CHECK(tree.ret()==0);CHECK(chosen().empty());
+    tree.clear(0,0);CHECK(tree.build());CHECK(tree.ret()==0);CHECK(chosen().empty());
 }
 
-template<class Policy=graphs::mst_policy>
+void check_mst_numeric(bool base){
+    using i128=__int128_t;
+    graphs::_mst<> tree(base+3,base);
+    tree.add(base,base+1,LLONG_MIN); tree.add(base+1,base+2,-1); tree.add(base+2,base+3,LLONG_MAX);
+    CHECK(tree.build()); CHECK(tree.ret()==-2);
+    CHECK(tree.build(1,true)); CHECK(tree.ret()==-2);
+    tree.clear(base+3,base);
+    tree.add(base,base+1,LLONG_MAX); tree.add(base+1,base+2,1); tree.add(base+2,base+3,LLONG_MIN);
+    CHECK(tree.build(1,true)); CHECK(tree.ret()==0); CHECK(tree.build()); CHECK(tree.ret()==0);
+    graphs::_mst<i128> wide(base+2,base);
+    i128 big=(i128)1<<100;
+    wide.add(base,base+1,big+3); wide.add(base+1,base+2,big+5); wide.add(base,base+2,big+10);
+    CHECK(wide.build()); CHECK(wide.ret()==2*big+8);
+    CHECK(wide.build(1,true)); CHECK(wide.ret()==2*big+15);
+    int count=0;
+    wide.it_edge([&](int,int,int,const i128& cost){CHECK(cost>=big); count++;}); CHECK(count==2);
+    graphs::_mst<long double> real(base+2,base);
+    real.add(base,base+1,1.25L); real.add(base+1,base+2,2.5L); real.add(base,base+2,4.125L);
+    CHECK(real.build()); CHECK(real.ret()==3.75L);
+    CHECK(real.build(1,true)); CHECK(real.ret()==6.625L);
+    CHECK(real.build(2,true)); CHECK(real.ret()==4.125L);
+    real.clear(base+2,base);
+    real.add(base,base+1,1); real.add(base,base+2,1); real.add(base+1,base+2,sqrtl(2));
+    CHECK(real.build()); CHECK(fabsl(real.ret()-2)<1e-15L);
+    CHECK(real.build(1,true)); CHECK(fabsl(real.ret()-(1+sqrtl(2)))<1e-15L);
+}
+
+template<class T=long long>
 void check_mst_oracle(bool base,bool is_max=false){
     mt19937 rng(625+base);
     for(int trial=0;trial<45;++trial){
         int count=1+rng()%5,n=base+count-1,m=rng()%9;
-        graphs::_mst<Policy> tree(n,base);vector<tuple<int,int,long long>> edges;
+        graphs::_mst<T> tree(n,base);vector<tuple<int,int,long long>> edges;
         auto add=[&](int a,int b,long long c){CHECK(tree.add(base+a,base+b,c)==(int)edges.size());edges.push_back({a,b,c});};
         for(int i=0;i<m;++i)add(rng()%count,rng()%count,(int)(rng()%11)-5);
-        CHECK(tree.build(count));add(rng()%count,rng()%count,(int)(rng()%11)-5);
+        CHECK(tree.build(count,is_max));add(rng()%count,rng()%count,(int)(rng()%11)-5);
         auto root=[](vector<int>& p,int v){while(p[v]!=v)v=p[v];return v;};
         vector<int> complete(count);iota(all(complete),0);int minimum=count;
         for(auto[a,b,c]:edges){a=root(complete,a);b=root(complete,b);if(a!=b){complete[a]=b;--minimum;}}
@@ -240,15 +246,15 @@ void check_mst_oracle(bool base,bool is_max=false){
                 }
                 if(valid)best=is_max?max(best,sum):min(best,sum);
             }
-            CHECK(tree.build(target)==(minimum<=target));CHECK(as_const(tree).ret().v==best);
+            CHECK(tree.build(target,is_max)==(minimum<=target));CHECK(as_const(tree).ret()==best);
             vector<int> ids,p(count);iota(all(p),0);long long sum=0;
             as_const(tree).it_edge([&](int id,int a,int b,const auto& c){
                 CHECK(id>=0&&id<(int)edges.size());auto[oa,ob,oc]=edges[id];
-                CHECK(a==base+oa);CHECK(b==base+ob);CHECK(c.v==oc);
-                int ra=root(p,a-base),rb=root(p,b-base);CHECK(ra!=rb);p[ra]=rb;sum+=c.v;ids.push_back(id);
+                CHECK(a==base+oa);CHECK(b==base+ob);CHECK(c==oc);
+                int ra=root(p,a-base),rb=root(p,b-base);CHECK(ra!=rb);p[ra]=rb;sum+=(long long)c;ids.push_back(id);
             });
             CHECK((int)ids.size()==needed);CHECK(sum==best);
-            CHECK(tree.build(target)==(minimum<=target));vector<int> repeated;
+            CHECK(tree.build(target,is_max)==(minimum<=target));vector<int> repeated;
             as_const(tree).it_edge([&](int id,int,int,const auto&){repeated.push_back(id);});CHECK(repeated==ids);
         }
     }
@@ -986,7 +992,7 @@ int main(){
             check_vtree_span(base);
             for(unsigned seed=1;seed<=12;seed++) check_vtree(base,seed);
         }
-        for(bool base : {false,true}){ check_clist_views(base); check_mst_api(base); check_mst_oracle(base); check_mst_oracle<mst_max_policy>(base,true); check_bcc(base); check_cycles(base); check_lca_order(base); check_lca_numeric(base); check_lca_roots(base); }
+        for(bool base : {false,true}){ check_clist_views(base); check_mst_api(base); check_mst_numeric(base); check_mst_oracle(base); check_mst_oracle(base,true); check_mst_oracle<graphs::i128>(base); check_mst_oracle<graphs::i128>(base,true); check_mst_oracle<long double>(base); check_mst_oracle<long double>(base,true); check_bcc(base); check_cycles(base); check_lca_order(base); check_lca_numeric(base); check_lca_roots(base); }
         for(bool base : {false,true}) for(int mode=0;mode<4;mode++) for(unsigned seed=1;seed<=8;seed++){
             check_lca_paths<lca_text>(base,mode,seed);
             check_lca_paths<lca_matrix>(base,mode,seed);

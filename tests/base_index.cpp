@@ -564,7 +564,7 @@ void check_graphs(bool base){
     for(int i=first;i<n;++i)edge_hld.add(i,i+1);
     edge_hld.build();edge_hld.set(first,{99});for(int i=first+1;i<=n;++i)edge_hld.set(i,{2});
     CHECK(edge_hld.query(first,n).v==2*(count-1));CHECK(edge_hld.query_sub(first).v==2*(count-1));
-    CHECK(mst.build());CHECK(mst.ret().v==count-1);
+    CHECK(mst.build());CHECK(mst.ret()==count-1);
     graphs::_mst<> disconnected(n,base);for(int i=first+1;i<n;++i)disconnected.add(i,i+1,1);CHECK(!disconnected.build());
     graphs::_st lift(n,32,base);for(int i=first;i<=n;++i)lift.set(i,min(i+1,n));lift.build();CHECK(lift.ret(first,n-first).first==n);
     graphs::_scc scc(n,base);scc.build();CHECK(scc.comp_cnt()==count);CHECK(scc.component(first)>=0);
