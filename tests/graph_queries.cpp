@@ -305,21 +305,21 @@ void check_bcc(bool base){
     graphs::_bcc graph(c,base); graph.add(a,b); graph.add(b,c); graph.build();
     const auto& read = graph;
     CHECK(read.point() == vector<long long>{b});
-    CHECK(read.line().size() == 2); CHECK(read.ret().size() == 2); CHECK(graph.num[b] == 1);
-    auto points = read.point(), low = graph.mn, order = graph.seq, split = graph.num;
-    auto bridges = read.line(); auto blocks = read.ret(); auto visits = graph.cnt;
+    CHECK(read.line().size() == 2); CHECK(read.ret().size() == 2); CHECK(read.split_count(b) == 2);
+    auto points = read.point();
+    auto bridges = read.line(); auto blocks = read.ret();
     const auto* stored_points = &read.point(); const auto* stored_lines = &read.line(); const auto* stored_blocks = &read.ret();
     for(int i = 0; i < 10; ++i){
         CHECK(&read.point() == stored_points); CHECK(&read.line() == stored_lines); CHECK(&read.ret() == stored_blocks);
         CHECK(read.point() == points); CHECK(read.line() == bridges); CHECK(read.ret() == blocks);
-        CHECK(graph.mn == low); CHECK(graph.seq == order); CHECK(graph.num == split); CHECK(graph.cnt == visits);
+        CHECK(read.split_count(b) == 2); CHECK(read.is_cut(b));
     }
     graph.build(); CHECK(read.point() == points); CHECK(read.line() == bridges); CHECK(read.ret() == blocks);
     graph.add(a,c); graph.build();
     CHECK(read.point().empty()); CHECK(read.line().empty()); CHECK(read.ret().size() == 1); CHECK(read.ret()[0].size() == 3);
-    CHECK(graph.num[b] == 0); CHECK(graph.st.empty()); CHECK(points == vector<long long>{b});
+    CHECK(read.split_count(b) == 1); CHECK(!read.is_cut(b)); CHECK(points == vector<long long>{b});
     graph.clear(c,base); graph.add(a,b); graph.add(a,c); graph.build();
-    CHECK(read.point() == vector<long long>{a}); CHECK(graph.num[a] == 2);
+    CHECK(read.point() == vector<long long>{a}); CHECK(read.split_count(a) == 2);
     graph.clear(); graph.build(); CHECK(read.point() == vector<long long>{a}); CHECK(read.line().size() == 2);
     graph.clear(base,base); graph.build(); CHECK(read.point().empty()); CHECK(read.line().empty()); CHECK(read.ret().empty());
     graphs::_bcc empty(0,base); empty.build(); CHECK(empty.point().empty()); CHECK(empty.line().empty()); CHECK(empty.ret().empty());
@@ -1225,10 +1225,115 @@ void check_bm_empty(){
     graphs::_bm defaults; defaults.build(); CHECK(defaults.ret()==0);
 }
 
+template<class T>
+concept bcc_public_storage=requires(T& t){t.adj;} || requires(T& t){t.mn;} || requires(T& t){t.seq;}
+    || requires(T& t){t.num;} || requires(T& t){t.n;} || requires(T& t){t.cnt;} || requires(T& t){t.st;};
+static_assert(!bcc_public_storage<graphs::_bcc>);
+static_assert(is_same_v<decltype(declval<graphs::_bcc&>().add(0,1)),int>);
+static_assert(is_same_v<decltype(declval<const graphs::_bcc&>().get_edge(0)),const pair<long long,long long>&>);
+static_assert(is_same_v<decltype(declval<const graphs::_bcc&>().get_block(0)),const vector<int>&>);
+static_assert(is_same_v<decltype(declval<const graphs::_bcc&>().block_vertices(0)),const vector<long long>&>);
+static_assert(is_same_v<decltype(declval<const graphs::_bcc&>().vertex_blocks(0)),const vector<int>&>);
+
+int bcc_components(int n,const vector<pair<int,int>>& edges,int skip_vertex=-1,int skip_edge=-1){
+    vector<vector<int>> adj(n);
+    for(int i=0;i<(int)edges.size();i++) if(i!=skip_edge){
+        auto[a,b]=edges[i]; if(a==skip_vertex || b==skip_vertex) continue;
+        adj[a].push_back(b); adj[b].push_back(a);
+    }
+    vector<bool> seen(n); int count=0;
+    for(int v=0;v<n;v++) if(v!=skip_vertex && !seen[v]){
+        count++; queue<int> q; q.push(v); seen[v]=true;
+        while(!q.empty()){int a=q.front(); q.pop(); for(int b:adj[a]) if(!seen[b]){seen[b]=true; q.push(b);}}
+    }
+    return count;
+}
+void verify_bcc_api(graphs::_bcc& graph,int n,const vector<pair<int,int>>& edges,int base){
+    int m=edges.size(),before=bcc_components(n,edges);
+    vector<int> parent(m); iota(parent.begin(),parent.end(),0);
+    auto root=[&](int v){while(parent[v]!=v) v=parent[v]; return v;};
+    for(int mask=1;mask<(1<<m);mask++){
+        vector<int> degree(n); vector<pair<int,int>> cycle; int first=-1;
+        for(int i=0;i<m;i++) if(mask&(1<<i)){
+            auto[a,b]=edges[i]; degree[a]++; degree[b]++; cycle.push_back(edges[i]); first=i;
+        }
+        bool valid=popcount(unsigned(mask))>=2; int used=0;
+        for(int d:degree){used+=d!=0; if(d && d!=2) valid=false;}
+        if(!valid || bcc_components(n,cycle)!=n-used+1) continue;
+        for(int i=0;i<m;i++) if(mask&(1<<i)) parent[root(i)]=root(first);
+    }
+    for(int repeat=0;repeat<2;repeat++){
+        graph.build(); const auto& g=as_const(graph);
+        vector<long long> cuts; vector<int> bridges,seen(m),component(m,-1);
+        for(int v=0;v<n;v++){
+            int split=bcc_components(n,edges,v)-before+1;
+            CHECK(g.split_count(base+v)==split); CHECK(g.is_cut(base+v)==(split>1));
+            if(split>1) cuts.push_back(base+v);
+        }
+        auto got_cuts=g.point(); sort(got_cuts.begin(),got_cuts.end()); CHECK(got_cuts==cuts);
+        vector<pair<long long,long long>> bridge_pairs;
+        for(int id=0;id<m;id++){
+            auto[a,b]=edges[id]; CHECK((g.get_edge(id)==pair<long long,long long>{base+a,base+b}));
+            if(bcc_components(n,edges,-1,id)>before){bridges.push_back(id); bridge_pairs.emplace_back(base+min(a,b),base+max(a,b));}
+        }
+        auto got_bridges=g.bridge_ids(); sort(got_bridges.begin(),got_bridges.end()); CHECK(got_bridges==bridges);
+        auto got_pairs=g.line(); sort(got_pairs.begin(),got_pairs.end()); sort(bridge_pairs.begin(),bridge_pairs.end()); CHECK(got_pairs==bridge_pairs);
+        CHECK(g.block_count()==(int)g.ret().size()); vector<vector<int>> memberships(n);
+        for(int cid=0;cid<g.block_count();cid++){
+            const auto& block=g.get_block(cid); CHECK(!block.empty());
+            vector<pair<long long,long long>> pairs; set<long long> vertices;
+            for(int id:block){
+                CHECK(id>=0 && id<m); CHECK(!seen[id]++); component[id]=cid; CHECK(g.edge_block(id)==cid);
+                auto[a,b]=edges[id]; pairs.emplace_back(base+min(a,b),base+max(a,b)); vertices.insert(base+a); vertices.insert(base+b);
+            }
+            auto stored=g.ret()[cid]; for(auto&[a,b]:stored) if(a>b) swap(a,b);
+            sort(stored.begin(),stored.end()); sort(pairs.begin(),pairs.end()); CHECK(stored==pairs);
+            const auto& values=g.block_vertices(cid);
+            CHECK(set<long long>(values.begin(),values.end())==vertices); CHECK(values.size()==vertices.size());
+            for(long long v:vertices) memberships[v-base].push_back(cid);
+        }
+        for(int id=0;id<m;id++) CHECK(seen[id]==1);
+        for(int a=0;a<m;a++) for(int b=0;b<m;b++) CHECK((component[a]==component[b])==(root(a)==root(b)));
+        for(int v=0;v<n;v++) CHECK(g.vertex_blocks(base+v)==memberships[v]);
+    }
+}
+void check_bcc_api(bool base){
+    for(int n=1;n<=4;n++){
+        vector<pair<int,int>> all_edges;
+        for(int a=0;a<n;a++) for(int b=a+1;b<n;b++) all_edges.emplace_back(a,b);
+        for(int mask=0;mask<(1<<(int)all_edges.size());mask++){
+            graphs::_bcc g(base+n-1,base); vector<pair<int,int>> edges;
+            for(int id=0;id<(int)all_edges.size();id++) if(mask&(1<<id)){
+                auto[a,b]=all_edges[id]; CHECK(g.add(base+a,base+b)==(int)edges.size()); edges.emplace_back(a,b);
+            }
+            verify_bcc_api(g,n,edges,base);
+        }
+    }
+    mt19937 rng(427+base);
+    for(int trial=0;trial<160;trial++){
+        int n=2+rng()%5,m=rng()%9; graphs::_bcc g(base+n-1,base); vector<pair<int,int>> edges;
+        for(int i=0;i<m;i++){
+            int a=rng()%n,b=rng()%(n-1); if(b>=a) b++;
+            CHECK(g.add(base+a,base+b)==i); edges.emplace_back(a,b);
+        }
+        verify_bcc_api(g,n,edges,base);
+        int a=rng()%n,b=(a+1)%n; CHECK(g.add(base+a,base+b)==m); edges.emplace_back(a,b);
+        verify_bcc_api(g,n,edges,base);
+        g.clear(); verify_bcc_api(g,n,edges,base);
+        g.clear(!base,!base); verify_bcc_api(g,1,{},!base);
+        g.clear(!base+1,!base); CHECK(g.add(!base,!base+1)==0); verify_bcc_api(g,2,{{0,1}},!base);
+        g.clear(0,1); g.build(); CHECK(g.block_count()==0); CHECK(g.ret().empty()); CHECK(g.bridge_ids().empty());
+    }
+    graphs::_bcc singleton(base,base); verify_bcc_api(singleton,1,{},base);
+    CHECK(singleton.vertex_blocks(base).empty());
+    graphs::_bcc empty; empty.build(); CHECK(empty.block_count()==0); CHECK(empty.point().empty());
+}
+
 int main(){
     try {
         for(bool base:{false,true}) check_bm_api(base);
         check_bm_empty();
+        for(bool base:{false,true}) check_bcc_api(base);
         for(bool base:{false,true}) check_2sat_api(base);
         check_lift_defaults();
         for(bool base:{false,true}){

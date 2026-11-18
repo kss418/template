@@ -699,66 +699,87 @@ public:
 
 //BCC
 class _bcc{
+private:
     bool base;
-    vector <ll> points;
-    vector <pll> lines;
-    vector <vector <pll>> blocks;
+    ll n, cnt;
+    vector<pll> edges, lines;
+    vector<vector<int>> adj, block_edges, memberships;
+    vector<vector<ll>> vertices;
+    vector<ll> points, mn, seq, num;
+    vector<int> bridges, component, mark;
+    vector<vector<pll>> blocks;
+    stack<int> st;
 
-    void dfs(ll cur, ll pre = -1){
+    void make_block(int last){
+        int cid = blocks.size();
+        blocks.emplace_back(); block_edges.emplace_back(); vertices.emplace_back();
+        while(true){
+            int id = st.top(); st.pop();
+            auto [s, e] = edges[id];
+            blocks.back().push_back({s, e}); block_edges.back().push_back(id); component[id] = cid;
+            for(ll v : {s, e}) if(mark[v] != cid){
+                mark[v] = cid; vertices.back().push_back(v); memberships[v].push_back(cid);
+            }
+            if(id == last) break;
+        }
+    }
+
+    void dfs(ll cur, int pre = -1){
         seq[cur] = mn[cur] = ++cnt;
-        ll children = 0; bool cut = false, skipped_parent = false;
-        for(auto nxt : adj[cur]){
-            if(nxt == pre && !skipped_parent){ skipped_parent = true; continue; }
+        num[cur] = pre == -1 ? 0 : 1;
+        for(int id : adj[cur]){
+            if(id == pre) continue;
+            auto [s, e] = edges[id]; ll nxt = s == cur ? e : s;
             if(seq[nxt]){
                 mn[cur] = min(mn[cur], seq[nxt]);
-                if(seq[nxt] < seq[cur]) st.push({cur, nxt});
+                if(seq[nxt] < seq[cur]) st.push(id);
                 continue;
             }
 
-            st.push({cur, nxt}); dfs(nxt, cur); children++;
+            st.push(id); dfs(nxt, id);
             mn[cur] = min(mn[cur], mn[nxt]);
-            if(mn[nxt] > seq[cur]) lines.push_back({min(cur, nxt), max(cur, nxt)});
-            if(mn[nxt] >= seq[cur]){
-                if(pre != -1){ cut = true; num[cur]++; }
-                vector <pll> block;
-                while(true){
-                    auto edge = st.top(); st.pop(); block.push_back(edge);
-                    if(edge == pll(cur, nxt)) break;
-                }
-                blocks.push_back(move(block));
+            if(mn[nxt] > seq[cur]){
+                lines.push_back({min(cur, nxt), max(cur, nxt)}); bridges.push_back(id);
             }
+            if(mn[nxt] >= seq[cur]){ num[cur]++; make_block(id); }
         }
-        if(pre == -1 && children >= 2){ cut = true; num[cur] = children; }
-        if(cut) points.push_back(cur);
+        if(num[cur] > 1) points.push_back(cur);
     }
 public:
-    vector <vector <ll>> adj;
-    vector <ll> mn, seq, num;
-    ll n, cnt;
-    stack <pll> st;
-
-    _bcc(ll n = 0, bool base = 1){ clear(n, base); }
-    void add(ll s, ll e){
-        adj[s].push_back(e); adj[e].push_back(s);
+    _bcc(ll n = 0, bool base = 1){ clear(n, base); } // O(n)
+    int add(ll s, ll e){ // O(1)
+        int id = edges.size(); edges.push_back({s, e});
+        adj[s].push_back(id); adj[e].push_back(id); return id;
     }
 
-    void clear(ll n, bool base = 1){
+    void clear(ll n, bool base = 1){ // O(n + m)
         this->n = n; this->base = base;
-        adj.assign(n + 1, {}); clear();
+        adj.assign(n + 1, {}); edges.clear(); clear();
     }
-    void clear(){
+    void clear(){ // O(n + m)
         seq.assign(n + 1, 0); mn.assign(n + 1, 0); num.assign(n + 1, 0); cnt = 0;
+        mark.assign(n + 1, -1); component.assign(edges.size(), -1); memberships.assign(n + 1, {});
         while(!st.empty()) st.pop();
-        points.clear(); lines.clear(); blocks.clear();
+        points.clear(); lines.clear(); blocks.clear(); bridges.clear(); block_edges.clear(); vertices.clear();
     }
 
     void build(){ // O(n + m)
         clear();
-        for(int i = base;i <= n;i++) if(!seq[i]) dfs(i);
+        for(ll i = base;i <= n;i++) if(!seq[i]) dfs(i);
     }
     const vector<ll>& point() const{ return points; } // O(1)
     const vector<pll>& line() const{ return lines; } // O(1)
     const vector<vector<pll>>& ret() const{ return blocks; } // O(1)
+
+    bool is_cut(ll v) const{ return num[v] > 1; } // O(1)
+    ll split_count(ll v) const{ return num[v]; } // O(1)
+    const pll& get_edge(int id) const{ return edges[id]; } // O(1)
+    const vector<int>& bridge_ids() const{ return bridges; } // O(1)
+    int edge_block(int id) const{ return component[id]; } // O(1)
+    int block_count() const{ return blocks.size(); } // O(1)
+    const vector<int>& get_block(int cid) const{ return block_edges[cid]; } // O(1)
+    const vector<ll>& block_vertices(int cid) const{ return vertices[cid]; } // O(1)
+    const vector<int>& vertex_blocks(ll v) const{ return memberships[v]; } // O(1)
 };
 
 class _3cycle{
