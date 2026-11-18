@@ -175,6 +175,8 @@ void check_mst_api(bool base){
     graphs::_mst<> tree(base+3,base);
     CHECK(tree.add(base,base+1,5)==0);CHECK(tree.add(base+1,base+2,1)==1);
     CHECK(tree.add(base+2,base+3,2)==2);CHECK(tree.add(base,base+3,9)==3);
+    const graphs::_mst<>::edge& original=as_const(tree).get_edge(3);
+    CHECK(original.s==base && original.e==base+3 && original.c==9);
     auto chosen=[&](){vector<int> ids;as_const(tree).it_edge([&](int id,int,int,const auto&){ids.push_back(id);});return ids;};
     CHECK(tree.build(2));CHECK(as_const(tree).ret()==3);CHECK(chosen()==vector<int>({1,2}));
     CHECK(tree.build());CHECK(as_const(tree).ret()==8);CHECK(chosen()==vector<int>({1,2,0}));
@@ -183,7 +185,9 @@ void check_mst_api(bool base){
     CHECK(tree.build(2,true));CHECK(tree.ret()==14);CHECK(chosen()==vector<int>({3,0}));
     CHECK(tree.build());CHECK(tree.ret()==8);CHECK(chosen()==vector<int>({1,2,0}));
     graphs::_lca paths(base+3,base);
-    as_const(tree).it_edge([&](int,int a,int b,const auto&){paths.add(a,b);});paths.build();
+    as_const(tree).it_edge([&](int id,int,int,const auto&){
+        const auto& e=tree.get_edge(id); paths.add(e.s,e.e);
+    });paths.build();
     CHECK(paths.dist(base,base+3)==3);
     CHECK(tree.add(base,base+3,0)==4);CHECK(tree.build());CHECK(tree.ret()==3);CHECK(chosen()==vector<int>({4,1,2}));
     CHECK(tree.build(4));CHECK(tree.ret()==0);CHECK(chosen().empty());
@@ -205,6 +209,17 @@ public:
     void operator+=(const mst_default_cost& other){ v += other.v; }
 };
 
+template<class T>
+concept mst_cost_supported=requires{typename graphs::_mst<T>;};
+static_assert(mst_cost_supported<long long>);
+static_assert(mst_cost_supported<__int128_t>);
+static_assert(mst_cost_supported<long double>);
+static_assert(mst_cost_supported<mst_default_cost>);
+static_assert(!mst_cost_supported<vector<int>>);
+static_assert(!mst_cost_supported<complex<double>>);
+static_assert(!mst_cost_supported<valarray<int>>);
+static_assert(is_same_v<decltype(declval<const graphs::_mst<>&>().get_edge(0)),const graphs::_mst<>::edge&>);
+
 void check_mst_default_cost(bool base){
     graphs::_mst<mst_default_cost> tree(base+2,base);
     tree.add(base,base+1,mst_default_cost(3)); tree.add(base+1,base+2,mst_default_cost(-2));
@@ -223,7 +238,7 @@ void check_mst_default_cost(bool base){
 
 void check_mst_numeric(bool base){
     using i128=__int128_t;
-    graphs::_mst<> tree(base+3,base);
+    graphs::_mst<i128> tree(base+3,base);
     tree.add(base,base+1,LLONG_MIN); tree.add(base+1,base+2,-1); tree.add(base+2,base+3,LLONG_MAX);
     CHECK(tree.build()); CHECK(tree.ret()==-2);
     CHECK(tree.build(1,true)); CHECK(tree.ret()==-2);

@@ -405,15 +405,18 @@ public:
 
 // MST
 template<class T = ll>
+requires requires(T& a, const T& b){
+    a += b;
+    { a < b } -> convertible_to<bool>;
+}
 class _mst{
+public:
+    struct edge{
+        int s, e; T c;
+    };
 private:
     bool base;
     T result{}; int n;
-    class edge{
-    public:
-        int s, e; T c;
-    };
-
     _uf uf; vector<edge> adj; vector<int> selected;
 public:
     _mst(int n = 0, bool base = 1){ clear(n, base); } // O(n)
@@ -427,6 +430,8 @@ public:
         return id;
     }
 
+    const edge& get_edge(int id) const{ return adj[id]; } // O(1)
+
     bool build(int components = 1, bool maximum = false){ // O(n + m log m)
         uf.clear(n, base); result = T{}; selected.clear();
         vector<int> order(adj.size()); iota(all(order), 0);
@@ -436,14 +441,12 @@ public:
             return a < b;
         });
         int need = n - base + 1 - components;
-        conditional_t<is_integral_v<T>, i128, T> total{};
         for(int id : order){
             if((int)selected.size() >= need) break;
             const auto& [st, en, c] = adj[id];
             if(!uf.merge(st, en)) continue;
-            total += c; selected.push_back(id);
+            result += c; selected.push_back(id);
         }
-        result = (T)total;
         return (int)selected.size() >= need;
     }
 
