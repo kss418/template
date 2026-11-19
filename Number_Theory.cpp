@@ -226,26 +226,41 @@ public:
     bool is_prime(ll x) const{ return x >= 2 && !bs[x - l]; } // O(1)
 };
 
-class _gcd {
-public:
-    _gcd() {}
-
-    tll build(ll a, ll b) {
-        if (!b) return { a, 1, 0 };
-        auto [g, x, y] = build(b, a % b);
-        return { g, y, x - a / b * y };
+namespace _gcd{
+    constexpr tll build(ll a, ll b){ // O(log max(|a|, |b|))
+        i128 g = a, r = b, x = 1, y = 0, nx = 0, ny = 1;
+        while(r){
+            i128 q = g / r, tmp = g % r;
+            g = r; r = tmp;
+            tmp = x - q * nx; x = nx; nx = tmp;
+            tmp = y - q * ny; y = ny; ny = tmp;
+        }
+        if(g < 0){ g = -g; x = -x; y = -y; }
+        return {(ll)g, (ll)x, (ll)y};
     }
 
-    ll ret(ll a, ll b) {
-        return get<0>(build(a, b));
+    constexpr ll ret(ll a, ll b){ // O(log max(|a|, |b|))
+        i128 x = a, y = b;
+        while(y){ i128 tmp = x % y; x = y; y = tmp; }
+        return (ll)(x < 0 ? -x : x);
     }
 
-    ll inv(ll a, ll mod) {
+    constexpr ll inv(ll a, ll mod){ // O(log mod)
         auto [g, x, y] = build(a, mod);
-        if (!a || g != 1) return -1;
-        return (x < 0 ? x + mod : x);
+        if(g != 1) return -1;
+        x %= mod;
+        return x < 0 ? x + mod : x;
     }
-};
+
+    constexpr optional<pll> solve(ll a, ll b, ll mod){ // O(log mod)
+        auto [g, x, y] = build(a, mod);
+        if(b % g) return nullopt;
+        ll period = mod / g;
+        i128 value = (i128)x * (b / g) % period;
+        if(value < 0) value += period;
+        return pll{(ll)value, period};
+    }
+}
 
 class _crt{
 public:

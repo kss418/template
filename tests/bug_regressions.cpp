@@ -36,6 +36,62 @@ using namespace std;
 static int checks = 0;
 #define CHECK(c) do { ++checks; if (!(c)) throw runtime_error(string("line ") + to_string(__LINE__) + ": " + #c); } while (0)
 
+static_assert(same_as<decltype(numeric_templates::_gcd::build(0,0)),tuple<long long,long long,long long>>);
+static_assert(same_as<decltype(numeric_templates::_gcd::solve(0,0,1)),optional<pair<long long,long long>>>);
+static_assert(numeric_templates::_gcd::ret(-6,4)==2);
+static_assert(numeric_templates::_gcd::ret(LLONG_MIN,-1)==1);
+static_assert(numeric_templates::_gcd::inv(-1,7)==6);
+static_assert(numeric_templates::_gcd::inv(-4,7)==5);
+static_assert(numeric_templates::_gcd::inv(6,9)==-1);
+static_assert(numeric_templates::_gcd::solve(6,8,14)==make_optional(pair{6ll,7ll}));
+static_assert(!numeric_templates::_gcd::solve(6,5,14));
+static_assert([]{auto[g,a,b]=numeric_templates::_gcd::build(LLONG_MIN,-1);return g==1 && (__int128_t)LLONG_MIN*a-b==1;}());
+
+void check_gcd(){
+    namespace calc=numeric_templates::_gcd;
+    auto magnitude=[](long long v){return v<0?0ull-(unsigned long long)v:(unsigned long long)v;};
+    auto verify_gcd=[&](long long a,long long b){
+        auto expected=std::gcd(magnitude(a),magnitude(b));
+        if(expected>(unsigned long long)LLONG_MAX)return;
+        auto[g,cx,cy]=calc::build(a,b);
+        CHECK(g==(long long)expected);CHECK(calc::ret(a,b)==g);
+        CHECK((__int128_t)a*cx+(__int128_t)b*cy==g);
+    };
+    for(long long a=-35;a<=35;++a)for(long long b=-35;b<=35;++b)verify_gcd(a,b);
+    vector<long long> limits{LLONG_MIN,LLONG_MIN+1,-LLONG_MAX,-2,-1,0,1,2,LLONG_MAX-1,LLONG_MAX};
+    for(auto a:limits)for(auto b:limits)verify_gcd(a,b);
+    for(long long mod=1;mod<=64;++mod)for(long long a=-80;a<=80;++a){
+        long long expected=-1;
+        for(long long v=0;v<mod;++v)if(((__int128_t)a*v-1)%mod==0){expected=v;break;}
+        CHECK(calc::inv(a,mod)==expected);
+    }
+    for(long long mod=1;mod<=25;++mod)for(long long a=-20;a<=20;++a)for(long long b=-20;b<=20;++b){
+        vector<long long> expected;
+        for(long long v=0;v<mod;++v)if((a*v-b)%mod==0)expected.push_back(v);
+        auto result=calc::solve(a,b,mod);CHECK(result.has_value()==!expected.empty());
+        if(!result)continue;
+        auto[value,period]=*result;CHECK(value==expected.front());CHECK(period>0);
+        vector<long long> actual;for(long long v=value;v<mod;v+=period)actual.push_back(v);
+        CHECK(actual==expected);
+    }
+    auto verify_mod=[&](long long a,long long b,long long mod){
+        auto g=std::gcd(magnitude(a),(unsigned long long)mod);
+        auto inverse=calc::inv(a,mod);
+        if(g==1){CHECK(inverse>=0 && inverse<mod);CHECK(((__int128_t)a*inverse-1)%mod==0);}
+        else CHECK(inverse==-1);
+        auto result=calc::solve(a,b,mod);CHECK(result.has_value()==(b%(long long)g==0));
+        if(!result)return;
+        auto[value,period]=*result;CHECK(value>=0 && value<period);CHECK(period==mod/(long long)g);
+        CHECK(((__int128_t)a*value-b)%mod==0);
+        CHECK(((__int128_t)a*((__int128_t)value+period)-b)%mod==0);
+    };
+    for(auto a:limits)for(auto b:limits)for(long long mod:{1ll,2ll,7ll,LLONG_MAX-1,LLONG_MAX})verify_mod(a,b,mod);
+    mt19937_64 rng(9119);uniform_int_distribution<long long> input(LLONG_MIN,LLONG_MAX),modulus(1,LLONG_MAX);
+    for(int trial=0;trial<4000;++trial){
+        auto a=input(rng),b=input(rng);verify_gcd(a,b);verify_mod(a,b,modulus(rng));
+    }
+}
+
 template<class T>
 concept string_build_input = requires(T& value,const string& s,span<const long long> v){value.build(s);value.build(v);};
 template<class T>
@@ -3097,6 +3153,7 @@ void check_suffix_array_bytes(){
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
+        {"gcd",check_gcd},
         {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"rc_precision_and_ties",check_rc_precision_and_ties},{"ch_api",check_ch_api},{"gf2",check_gf2},{"gf2_row_api",check_gf2_row_api},{"gf2_basis",check_gf2_basis},{"xor_basis",check_xor_basis},{"xor_basis_merge_kth",check_xor_basis_merge_kth},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"es",check_es},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},{"line_extended",check_line_extended},
         {"lucas",check_lucas},{"comb_crt",check_comb_crt},{"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},{"sparse_trie",check_sparse_trie},
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
