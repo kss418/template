@@ -50,7 +50,7 @@
 - `Number_Theory.cpp`
   - Modint (`_mint`)
   - Dynamic Modint (`_dynamic_mint`)
-  - Sieve of Eratosthenes (`_es`)
+  - Sieve of Eratosthenes / Segmented Sieve (`_es`, `_es_segment`)
   - Extended Euclidean (`_gcd`)
   - CRT (`_crt`)
   - Discrete Logarithm (`_dlog`)

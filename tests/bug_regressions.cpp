@@ -999,6 +999,96 @@ constexpr bool dynamic_mint_constexpr_compound(){
 }
 static_assert(dynamic_mint_constexpr_compound());
 
+template<class S>
+concept sieve_public_storage=requires(S& s){s.bs;} || requires(S& s){s.prime;};
+static_assert(!sieve_public_storage<numeric_templates::_es<100>>);
+static_assert(is_same_v<decltype(declval<const numeric_templates::_es<100>&>().ret()),const vector<int>&>);
+static_assert(is_same_v<decltype(declval<const numeric_templates::_es_segment<100>&>().ret()),const vector<long long>&>);
+static_assert(is_base_of_v<numeric_templates::_es<100>,numeric_templates::_es_segment<100>>);
+
+bool es_trial_prime(int value){
+    if(value<2) return false;
+    for(int d=2;d<=value/d;d++) if(value%d==0) return false;
+    return true;
+}
+template<size_t N>
+void check_es_api(){
+    numeric_templates::_es<N> sieve;const auto& read=as_const(sieve);vector<int> expected;
+    for(int v=0;v<=(int)N;v++) if(es_trial_prime(v)) expected.push_back(v);
+    const auto* stored=&read.ret();
+    for(int repeat=0;repeat<3;repeat++){
+        if(repeat) sieve.build();
+        CHECK(read.ret()==expected);CHECK(&read.ret()==stored);CHECK(read.count()==(int)expected.size());
+        vector<int> visited;read.it_prime([&](int p){visited.push_back(p);});CHECK(visited==expected);
+        for(int v=0;v<=(int)N;v++) CHECK(read.is_prime(v)==es_trial_prime(v));
+        mt19937 rng(643);
+        for(int query=0;query<150;query++){
+            int l=rng()%(N+1),r=rng()%(N+1),count=0;
+            for(int p:expected) count+=l<=p && p<=r;
+            CHECK(read.count(l,r)==count);
+        }
+    }
+}
+uint64_t es_mr_power(uint64_t a,uint64_t e,uint64_t mod){
+    uint64_t value=1;
+    for(;e;e>>=1,a=(__uint128_t)a*a%mod) if(e&1) value=(__uint128_t)value*a%mod;
+    return value;
+}
+bool es_mr_prime(long long raw){
+    if(raw<2) return false;uint64_t n=raw,d=n-1;int shift=0;
+    for(int p:{2,3,5,7,11,13,17,19,23,29,31,37}) if(n%p==0) return n==(uint64_t)p;
+    while(!(d&1)){d>>=1;shift++;}
+    for(uint64_t a:{2ULL,325ULL,9375ULL,28178ULL,450775ULL,9780504ULL,1795265022ULL}){
+        if(a%n==0) continue;
+        uint64_t value=es_mr_power(a%n,d,n);if(value==1 || value==n-1) continue;
+        bool passed=false;
+        for(int i=1;i<shift;i++){value=(__uint128_t)value*value%n;if(value==n-1){passed=true;break;}}
+        if(!passed) return false;
+    }
+    return true;
+}
+template<size_t N>
+void verify_es_segment(numeric_templates::_es_segment<N>& sieve,long long lo,long long hi){
+    vector<long long> expected;
+    for(long long v=lo;v<=hi;v++) if(es_mr_prime(v)) expected.push_back(v);
+    const auto& read=as_const(sieve);
+    for(int repeat=0;repeat<2;repeat++){
+        if(repeat) sieve.build();
+        CHECK(read.ret()==expected);CHECK(read.count()==(long long)expected.size());
+        vector<long long> visited;read.it_prime([&](long long p){visited.push_back(p);});CHECK(visited==expected);
+        for(long long v=lo;v<=hi;v++) CHECK(read.is_prime(v)==es_mr_prime(v));
+        if(lo<=hi){
+            CHECK(read.count(lo,hi)==(long long)expected.size());CHECK(read.count(hi,lo-1)==0);
+            mt19937 rng(854);
+            for(int query=0;query<80;query++){
+                long long l=lo+rng()%(hi-lo+1),r=lo+rng()%(hi-lo+1),count=0;
+                for(long long p:expected) count+=l<=p && p<=r;
+                CHECK(read.count(l,r)==count);
+            }
+        }
+    }
+}
+void check_es(){
+    check_es_api<0>();check_es_api<1>();check_es_api<2>();check_es_api<3>();check_es_api<4>();
+    check_es_api<8>();check_es_api<9>();check_es_api<10>();check_es_api<25>();check_es_api<49>();
+    check_es_api<1000>();check_es_api<100000>();
+    numeric_templates::_es_segment<100000> sieve;
+    CHECK(sieve.ret().empty());CHECK(sieve.count()==0);
+    for(auto [l,r]:vector<pair<long long,long long>>{{0,-1},{-20,1},{0,0},{1,1},{2,2},{3,3},{4,4},{0,1000},
+        {48,51},{9998200050LL,9998200120LL},{9999999900LL,10000000000LL},{15,7}}){
+        sieve.build(l,r);verify_es_segment(sieve,l,r);
+    }
+    mt19937 rng(429);
+    for(int trial=0;trial<100;trial++){
+        long long lo=trial%2 ? 9000000000LL+rng()%100000 : rng()%100000;
+        long long hi=lo+rng()%120;sieve.build(lo,hi);verify_es_segment(sieve,lo,hi);
+    }
+    numeric_templates::_es_segment<0> zero(0,0);verify_es_segment(zero,0,0);
+    numeric_templates::_es_segment<1> tiny(-4,3);verify_es_segment(tiny,-4,3);
+    numeric_templates::_es_segment<101> square(10190,10201);verify_es_segment(square,10190,10201);
+    auto saved=sieve;auto expected=saved.ret();sieve.build(0,-1);CHECK(sieve.ret().empty());CHECK(saved.ret()==expected);
+}
+
 void check_dynamic_mint(){
     using mint=numeric_templates::_dynamic_mint;using value=long long;using wide=__int128_t;
     static_assert(is_default_constructible_v<mint> && is_constructible_v<mint,value,value>);
@@ -3007,7 +3097,7 @@ void check_suffix_array_bytes(){
 int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
-        {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"rc_precision_and_ties",check_rc_precision_and_ties},{"ch_api",check_ch_api},{"gf2",check_gf2},{"gf2_row_api",check_gf2_row_api},{"gf2_basis",check_gf2_basis},{"xor_basis",check_xor_basis},{"xor_basis_merge_kth",check_xor_basis_merge_kth},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},{"line_extended",check_line_extended},
+        {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"rc_precision_and_ties",check_rc_precision_and_ties},{"ch_api",check_ch_api},{"gf2",check_gf2},{"gf2_row_api",check_gf2_row_api},{"gf2_basis",check_gf2_basis},{"xor_basis",check_xor_basis},{"xor_basis_merge_kth",check_xor_basis_merge_kth},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"es",check_es},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},{"line_extended",check_line_extended},
         {"lucas",check_lucas},{"comb_crt",check_comb_crt},{"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},{"sparse_trie",check_sparse_trie},
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
         {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"frac_api",check_frac_api},{"frac_arithmetic",check_frac_arithmetic},{"frac_pow",check_frac_pow},{"angle_sort_api",check_angle_sort_api},{"angle_sort_order",check_angle_sort_order},{"li_api",check_li_api},{"inter_regressions",check_inter_regressions},{"inter_locations",check_inter_locations},{"ccw_api",check_ccw_api},{"ccw_large_coordinates",check_ccw_large_coordinates},{"dot_api",check_dot_api},

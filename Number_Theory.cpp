@@ -155,14 +155,16 @@ public:
 };
 
 template <size_t n>
-class _es {
+class _es{
 public:
-    static constexpr size_t sz = (n >> 1) + 1; 
+    static constexpr size_t sz = (n >> 1) + 1;
+private:
     bitset <sz> bs;
     vector <int> prime;
-    _es() { build(); }
+public:
+    _es(){ build(); }
 
-    void build(){
+    void build(){ // O(n log log n)
         prime.clear(); bs.reset();
         if(n >= 2) prime.push_back(2);
         bs.set(0);
@@ -173,14 +175,55 @@ public:
         }
     }
 
-    const vector<int>& ret() { return prime; } // 소수 벡터 반환
+    const vector<int>& ret() const{ return prime; } // O(1)
+    int count() const{ return prime.size(); } // O(1)
+    int count(int l, int r) const{ // O(log pi(n))
+        if(l > r) return 0;
+        return upper_bound(all(prime), r) - lower_bound(all(prime), l);
+    }
     template <class F>
     void it_prime(const F& f) const{ for(auto& p : prime) f(p); } // O(pi(n))
-    bool is_prime(int x) const { // 소수 판별
+    bool is_prime(int x) const{ // O(1)
         if(x == 2) return 1;
         if(x < 2 || x % 2 == 0) return 0;
         return !bs[x >> 1];
     }
+};
+
+template <size_t n>
+class _es_segment : public _es<n>{
+private:
+    ll l = 0, r = -1;
+    vector<bool> bs;
+    vector<ll> prime;
+public:
+    _es_segment() = default;
+    _es_segment(ll l, ll r){ build(l, r); }
+
+    void build(){ build(l, r); } // O(w log log r + pi(sqrt r))
+    void build(ll l, ll r){ // O(w log log r + pi(sqrt r))
+        this->l = l; this->r = r; prime.clear();
+        if(l > r){ bs.clear(); return; }
+        bs.assign(r - l + 1, false);
+        ll lo = max(l, 2ll);
+        for(int p : _es<n>::ret()){
+            ll square = 1ll * p * p;
+            if(square > r) break;
+            ll first = max(square, ((lo + p - 1) / p) * p);
+            for(ll v = first;v <= r;v += p) bs[v - l] = true;
+        }
+        for(ll v = lo;v <= r;v++) if(!bs[v - l]) prime.push_back(v);
+    }
+
+    const vector<ll>& ret() const{ return prime; } // O(1)
+    ll count() const{ return prime.size(); } // O(1)
+    ll count(ll l, ll r) const{ // O(log k)
+        if(l > r) return 0;
+        return upper_bound(all(prime), r) - lower_bound(all(prime), l);
+    }
+    template <class F>
+    void it_prime(const F& f) const{ for(auto p : prime) f(p); } // O(k)
+    bool is_prime(ll x) const{ return x >= 2 && !bs[x - l]; } // O(1)
 };
 
 class _gcd {
