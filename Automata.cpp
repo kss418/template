@@ -9,6 +9,7 @@ using pll = pair<ll, ll>; using tll = tuple<ll, ll, ll>;
 constexpr ll INF = 0x3f3f3f3f3f3f3f3f;
 constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 
+// https://github.com/kss418/template/blob/master/docs/Automata.md#alphabet
 namespace alphabet{
     class lowercase{
     public:
