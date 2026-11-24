@@ -2,7 +2,7 @@
 
 ## alphabet
 
-`alphabet`은 문자열의 각 바이트를 0부터 시작하는 정수 라벨로 바꾸는 정책 모음이다. `_trie<Alphabet>`과 `_ac<Alphabet>`은 `Alphabet::size`를 상태당 전이 배열의 크기로 쓰고, 문자열 입력을 받을 때 `Alphabet::encode()`로 라벨을 만든다. 두 클래스의 기본 정책은 `alphabet::lowercase`다. [소스](../Automata.cpp#L13) · [VS Code 스니펫 `>>alphabet`](../snippets/alphabet.code-snippets)
+`alphabet`은 문자열의 각 바이트를 정수 라벨로 바꾸는 정책 모음이다. `_trie<>`와 `_ac<>`의 기본 정책은 `alphabet::lowercase`다. [소스](../Automata.cpp#L13) · [VS Code 스니펫 `>>alphabet`](../snippets/alphabet.code-snippets)
 
 ### 기본 정책
 
