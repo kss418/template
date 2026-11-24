@@ -1145,6 +1145,57 @@ void check_es(){
     auto saved=sieve;auto expected=saved.ret();sieve.build(0,-1);CHECK(sieve.ret().empty());CHECK(saved.ret()==expected);
 }
 
+template<class S>
+concept ls_public_storage=requires(S& s){s.lp;} || requires(S& s){s.prime;}
+    || requires(S& s){s.vphi;} || requires(S& s){s.vmu;}
+    || requires(S& s){s.n;} || requires(S& s){s.flag;};
+
+void check_ls(){
+    using ls=numeric_templates::_ls;
+    static_assert(!ls_public_storage<ls>);
+    static_assert(is_same_v<decltype(declval<const ls&>().ret()),const vector<int>&>);
+    static_assert(ls::with_phi==1 && ls::with_mobius==2);
+
+    constexpr int limit=512;
+    vector<long long> phi(limit+1),mu(limit+1);
+    vector<vector<long long>> divisors(limit+1);
+    vector<int> primes;
+    mu[1]=1;
+    for(int i=1;i<=limit;i++){
+        for(int d=1;d<=i;d++){
+            phi[i]+=gcd(i,d)==1;
+            if(i%d==0){divisors[i].push_back(d);if(d<i)mu[i]-=mu[d];}
+        }
+        if(es_trial_prime(i))primes.push_back(i);
+    }
+    ls sieve;const auto& read=as_const(sieve);
+    for(int n:{0,1,2,limit,17,0,limit})for(int flags:{0,ls::with_phi,ls::with_mobius,ls::with_phi|ls::with_mobius}){
+        sieve.make(n,flags);
+        const vector<int> expected(primes.begin(),upper_bound(all(primes),n));
+        for(int repeat=0;repeat<2;repeat++){
+            sieve.build();
+            CHECK(read.ret()==expected);CHECK(read.count()==(int)expected.size());
+            vector<int> visited;read.it_prime([&](int p){visited.push_back(p);});CHECK(visited==expected);
+            for(auto [l,r]:array{pair{-5,1},pair{2,n},pair{5,5},pair{5,17},pair{9,4},pair{0,n+5}}){
+                int count=0;for(int p:expected)count+=l<=p && p<=r;
+                CHECK(read.count(l,r)==count);
+            }
+            for(int i=0;i<=n;i++){
+                CHECK(read.is_prime(i)==es_trial_prime(i));
+                if(flags&ls::with_phi)CHECK(read.phi(i)==phi[i]);
+                if(flags&ls::with_mobius)CHECK(read.mobius(i)==mu[i]);
+                CHECK(sieve.divisor(i)==divisors[i]);CHECK(sieve.divisor_num(i)==(long long)divisors[i].size());
+                CHECK(sieve.divisor_sum(i)==accumulate(all(divisors[i]),0ll));
+            }
+            if(n==limit){
+                CHECK(sieve.factorize(360)==vector<long long>({2,2,2,3,3,5}));
+                CHECK((sieve.factorize_cnt(360)==vector<pair<long long,long long>>{{2,3},{3,2},{5,1}}));
+            }
+        }
+    }
+    sieve.make(30);sieve.build();CHECK(read.count()==10 && read.is_prime(29));
+}
+
 void check_dynamic_mint(){
     using mint=numeric_templates::_dynamic_mint;using value=long long;using wide=__int128_t;
     static_assert(is_default_constructible_v<mint> && is_constructible_v<mint,value,value>);
@@ -3198,7 +3249,7 @@ int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
         {"gcd",check_gcd},
-        {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"rc_precision_and_ties",check_rc_precision_and_ties},{"ch_api",check_ch_api},{"gf2",check_gf2},{"gf2_row_api",check_gf2_row_api},{"gf2_basis",check_gf2_basis},{"xor_basis",check_xor_basis},{"xor_basis_merge_kth",check_xor_basis_merge_kth},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"es",check_es},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"pollard_brent",check_pollard_brent},{"line_same",check_line_same},{"line_extended",check_line_extended},
+        {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"rc_precision_and_ties",check_rc_precision_and_ties},{"ch_api",check_ch_api},{"gf2",check_gf2},{"gf2_row_api",check_gf2_row_api},{"gf2_basis",check_gf2_basis},{"xor_basis",check_xor_basis},{"xor_basis_merge_kth",check_xor_basis_merge_kth},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"es",check_es},{"ls",check_ls},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"pollard_brent",check_pollard_brent},{"line_same",check_line_same},{"line_extended",check_line_extended},
         {"lucas",check_lucas},{"comb_crt",check_comb_crt},{"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},{"sparse_trie",check_sparse_trie},
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
         {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"frac_api",check_frac_api},{"frac_arithmetic",check_frac_arithmetic},{"frac_pow",check_frac_pow},{"angle_sort_api",check_angle_sort_api},{"angle_sort_order",check_angle_sort_order},{"li_api",check_li_api},{"inter_regressions",check_inter_regressions},{"inter_locations",check_inter_locations},{"ccw_api",check_ccw_api},{"ccw_large_coordinates",check_ccw_large_coordinates},{"dot_api",check_dot_api},
