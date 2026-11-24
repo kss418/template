@@ -1158,7 +1158,8 @@ void check_ls(){
 
     constexpr int limit=512;
     vector<long long> phi(limit+1),mu(limit+1);
-    vector<vector<long long>> divisors(limit+1);
+    vector<vector<long long>> divisors(limit+1),factors(limit+1);
+    vector<vector<pair<long long,long long>>> factor_counts(limit+1);
     vector<int> primes;
     mu[1]=1;
     for(int i=1;i<=limit;i++){
@@ -1167,6 +1168,12 @@ void check_ls(){
             if(i%d==0){divisors[i].push_back(d);if(d<i)mu[i]-=mu[d];}
         }
         if(es_trial_prime(i))primes.push_back(i);
+        for(int d=2,value=i;d<=value;d++){
+            if(value%d)continue;
+            int c=0;
+            do{value/=d;++c;factors[i].push_back(d);}while(value%d==0);
+            factor_counts[i].emplace_back(d,c);
+        }
     }
     ls sieve;const auto& read=as_const(sieve);
     for(int n:{0,1,2,limit,17,0,limit})for(int flags:{0,ls::with_phi,ls::with_mobius,ls::with_phi|ls::with_mobius}){
@@ -1184,12 +1191,14 @@ void check_ls(){
                 CHECK(read.is_prime(i)==es_trial_prime(i));
                 if(flags&ls::with_phi)CHECK(read.phi(i)==phi[i]);
                 if(flags&ls::with_mobius)CHECK(read.mobius(i)==mu[i]);
-                CHECK(sieve.divisor(i)==divisors[i]);CHECK(sieve.divisor_num(i)==(long long)divisors[i].size());
-                CHECK(sieve.divisor_sum(i)==accumulate(all(divisors[i]),0ll));
-            }
-            if(n==limit){
-                CHECK(sieve.factorize(360)==vector<long long>({2,2,2,3,3,5}));
-                CHECK((sieve.factorize_cnt(360)==vector<pair<long long,long long>>{{2,3},{3,2},{5,1}}));
+                CHECK(read.divisor(i)==divisors[i]);CHECK(read.divisor_num(i)==(long long)divisors[i].size());
+                CHECK(read.divisor_sum(i)==accumulate(all(divisors[i]),0ll));
+                if(i){
+                    vector<pair<long long,long long>> seen;
+                    read.it_factor(i,[&](int p,int c){seen.emplace_back(p,c);});
+                    CHECK(seen==factor_counts[i]);CHECK(read.factorize_cnt(i)==factor_counts[i]);
+                    CHECK(read.factorize(i)==factors[i]);
+                }
             }
         }
     }
