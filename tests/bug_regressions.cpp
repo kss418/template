@@ -2705,6 +2705,9 @@ void check_lift_large_cost(){
     }
 }
 
+static_assert(offline::_fbs::max_right(0,1,[](long double v){return v<=0.5L;},3)==0.5L);
+static_assert(offline::_fbs::min_left(0,1,[](long double v){return v>=0.5L;},3)==0.375L);
+
 void check_binary_search_large_bounds(){
     static_assert(offline::_bs::max_right(LLONG_MIN,LLONG_MAX,[](long long v){return v<=-3;})==-3);
     static_assert(offline::_bs::min_left(LLONG_MIN,LLONG_MAX,[](long long v){return v>=4;})==4);
