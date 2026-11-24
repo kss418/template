@@ -87,12 +87,11 @@ namespace _ts{
     }
 }
 
-class _fts { // real
-public:
+namespace _fts{
     template <class F>
-    static ld max(ld l, ld r, const F& f, int iter = 120) {
-        for(int i = 0; i < iter; i++){
-            ld st = (2 * l + r) / 3, en = (l + 2 * r) / 3;
+    constexpr ld max(ld l, ld r, const F& f, int iter = 120){
+        for(int i = 0;i < iter;i++){
+            ld st = std::lerp(l, r, 1.L / 3), en = std::lerp(r, l, 1.L / 3);
             if(f(st) < f(en)) l = st;
             else r = en;
         }
@@ -100,15 +99,15 @@ public:
     }
 
     template <class F>
-    static ld min(ld l, ld r, const F& f, int iter = 120) {
-        for(int i = 0; i < iter; i++){
-            ld st = (2 * l + r) / 3, en = (l + 2 * r) / 3;
+    constexpr ld min(ld l, ld r, const F& f, int iter = 120){
+        for(int i = 0;i < iter;i++){
+            ld st = std::lerp(l, r, 1.L / 3), en = std::lerp(r, l, 1.L / 3);
             if(f(st) > f(en)) l = st;
             else r = en;
         }
         return std::min(f(l), f(r));
     }
-};
+}
 
 class _lcs{
 private:

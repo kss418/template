@@ -2743,6 +2743,19 @@ void check_ternary_search_large_bounds(){
     CHECK(offline::_ts::max(LLONG_MIN,LLONG_MAX,[&](long long v){return -distance(v);})==0);
 }
 
+void check_real_ternary_search_large_bounds(){
+    static_assert(offline::_fts::min(1,1,[](long double v){return v;},1)==1);
+    static_assert(offline::_fts::max(-1,-1,[](long double v){return v;},1)==-1);
+
+    constexpr long double bound=numeric_limits<long double>::max();
+    for(auto [l,r,peak]:array{tuple{bound/2,bound,0.75L},tuple{-bound,-bound/2,-0.75L},
+        tuple{-bound,bound,0.25L},tuple{bound,bound,1.L},tuple{-bound,-bound,-1.L}}){
+        auto distance=[&](long double v){CHECK(isfinite(v) && l<=v && v<=r);return abs(v/bound-peak);};
+        CHECK(offline::_fts::min(l,r,distance)<1e-15L);
+        CHECK(offline::_fts::max(l,r,[&](long double v){return -distance(v);})>-1e-15L);
+    }
+}
+
 template<class T>
 concept frac_public_parts=requires(T& value){value.p;value.q;};
 
@@ -3270,7 +3283,7 @@ int main(){
         {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"rc_precision_and_ties",check_rc_precision_and_ties},{"ch_api",check_ch_api},{"gf2",check_gf2},{"gf2_row_api",check_gf2_row_api},{"gf2_basis",check_gf2_basis},{"xor_basis",check_xor_basis},{"xor_basis_merge_kth",check_xor_basis_merge_kth},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"es",check_es},{"ls",check_ls},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"pollard_brent",check_pollard_brent},{"line_same",check_line_same},{"line_extended",check_line_extended},
         {"lucas",check_lucas},{"comb_crt",check_comb_crt},{"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},{"sparse_trie",check_sparse_trie},
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
-        {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"frac_api",check_frac_api},{"frac_arithmetic",check_frac_arithmetic},{"frac_pow",check_frac_pow},{"angle_sort_api",check_angle_sort_api},{"angle_sort_order",check_angle_sort_order},{"li_api",check_li_api},{"inter_regressions",check_inter_regressions},{"inter_locations",check_inter_locations},{"ccw_api",check_ccw_api},{"ccw_large_coordinates",check_ccw_large_coordinates},{"dot_api",check_dot_api},
+        {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"real_ternary_search_large_bounds",check_real_ternary_search_large_bounds},{"frac_api",check_frac_api},{"frac_arithmetic",check_frac_arithmetic},{"frac_pow",check_frac_pow},{"angle_sort_api",check_angle_sort_api},{"angle_sort_order",check_angle_sort_order},{"li_api",check_li_api},{"inter_regressions",check_inter_regressions},{"inter_locations",check_inter_locations},{"ccw_api",check_ccw_api},{"ccw_large_coordinates",check_ccw_large_coordinates},{"dot_api",check_dot_api},
         {"dlog_phi",check_dlog_phi},{"dlog_large_arithmetic",check_dlog_large_arithmetic},
         {"dlog_normalized_target",check_dlog_normalized_target},{"area_translated",check_area_translated},
         {"suffix_array_bytes",check_suffix_array_bytes},{"string_build_api",check_string_build_api},{"lcs_build_api",check_lcs_build_api}}){
