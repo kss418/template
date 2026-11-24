@@ -76,6 +76,7 @@ namespace alphabet{
     }
 }
 
+// https://github.com/kss418/template/blob/master/docs/Automata.md#trie
 template <class Alphabet = alphabet::lowercase>
 class _trie { // 0-based index
 private:

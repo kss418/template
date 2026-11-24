@@ -2,7 +2,7 @@
 
 - `Automata.cpp`
   - Alphabet Policies ([`alphabet`](docs/Automata.md#alphabet))
-  - Trie (`_trie`, `_sparse_trie`)
+  - Trie ([`_trie`](docs/Automata.md#trie), `_sparse_trie`)
   - XOR Trie (`_xor_trie`)
   - Aho–Corasick (`_ac`, `_sparse_ac`)
 - `Combinatorics.cpp`
