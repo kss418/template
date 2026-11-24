@@ -2,7 +2,7 @@
   "alphabet": {
     "prefix": ">>alphabet",
     "body": [
-      "// file:///workspace/template/docs/Automata.md#L3",
+      "// https://github.com/kss418/template/blob/master/docs/Automata.md?plain=1#L3",
       "namespace alphabet{",
       "    class lowercase{",
       "    public:",
