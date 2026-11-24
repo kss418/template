@@ -1728,6 +1728,33 @@ void check_pollard_one(){
 }
 
 template<class T>
+concept pollard_public_internal = requires(T& p,vector<uint64_t>& v){p.dnc(2,v);}
+    || requires(T& p){p.rnd;} || requires(T& p){p.pollard(4);}
+    || requires(T& p){p.f(1,1,2);} || requires(T& p){p.mul_mod(1,1,2);} || requires(T& p){p.pow_mod(1,1,2);};
+
+void check_pollard_brent(){
+    using pr=numeric_templates::_pr;
+    static_assert(!pollard_public_internal<pr>);
+    static_assert(!pr::isprime(0) && !pr::isprime(1) && pr::isprime(2));
+    static_assert(pr::isprime(18446744073709551557ull) && !pr::isprime(3825123056546413051ull));
+
+    const vector<pair<uint64_t,vector<uint64_t>>> cases{
+        {82861,{41,43,47}}, {41*41*41,{41,41,41}}, {10403,{101,103}},
+        {4294967291ull*4294967291ull,{4294967291ull,4294967291ull}},
+        {4294967279ull*4294967291ull,{4294967279ull,4294967291ull}},
+        {UINT64_MAX,{3,5,17,257,641,65537,6700417}},
+        {18446744073709551557ull,{18446744073709551557ull}}
+    };
+    for(uint64_t seed:{0,1,9,418}){
+        pr p(seed);
+        for(const auto& [n,expected]:cases)CHECK(p.factorize(n)==expected);
+        CHECK((p.factorize_cnt(41*41*43)==vector<pair<uint64_t,int>>{{41,2},{43,1}}));
+        CHECK(p.factorize(1).empty());
+        CHECK(p.phi(0)==0 && p.mobius(0)==0 && p.divisor_num(0)==0 && p.divisor_sum(0)==0);
+    }
+}
+
+template<class T>
 concept line_public_storage=requires(T& v){v.a;} || requires(T& v){v.b;} || requires(T& v){v.x;} || requires(T& v){v.vert;};
 
 void check_line_same(){
@@ -3154,7 +3181,7 @@ int main(){
     int failures = 0;
     for(auto [name, test] : vector<pair<string,void(*)()>>{
         {"gcd",check_gcd},
-        {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"rc_precision_and_ties",check_rc_precision_and_ties},{"ch_api",check_ch_api},{"gf2",check_gf2},{"gf2_row_api",check_gf2_row_api},{"gf2_basis",check_gf2_basis},{"xor_basis",check_xor_basis},{"xor_basis_merge_kth",check_xor_basis_merge_kth},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"es",check_es},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"line_same",check_line_same},{"line_extended",check_line_extended},
+        {"kmp_policy",check_kmp_policy},{"kmp_go",check_kmp_go},{"rc_split",check_rc_split},{"rc_precision_and_ties",check_rc_precision_and_ties},{"ch_api",check_ch_api},{"gf2",check_gf2},{"gf2_row_api",check_gf2_row_api},{"gf2_basis",check_gf2_basis},{"xor_basis",check_xor_basis},{"xor_basis_merge_kth",check_xor_basis_merge_kth},{"fixed_comb",check_fixed_comb},{"fixed_matrix",check_fixed_matrix},{"fixed_mint",check_fixed_mint},{"es",check_es},{"dynamic_mint",check_dynamic_mint},{"dynamic_mint_unsigned",check_dynamic_mint_unsigned},{"crt",check_crt},{"crt_dependents",check_crt_dependents},{"fft_arrays",check_fft_arrays},{"fft_span",check_fft_span},{"fft_precision",check_fft_precision},{"fft_output",check_fft_output},{"fft_carry",check_fft_carry},{"manacher_values",check_manacher_values},{"manacher",check_manacher},{"cht",check_cht},{"pollard_one",check_pollard_one},{"pollard_brent",check_pollard_brent},{"line_same",check_line_same},{"line_extended",check_line_extended},
         {"lucas",check_lucas},{"comb_crt",check_comb_crt},{"xor_thresholds",check_xor_thresholds},{"bcc_parallel",check_bcc_parallel},{"alphabet_policies",check_alphabets},{"sparse_trie",check_sparse_trie},
         {"lift_large_cost",check_lift_large_cost},{"binary_search_large_bounds",check_binary_search_large_bounds},
         {"ternary_search_large_bounds",check_ternary_search_large_bounds},{"frac_api",check_frac_api},{"frac_arithmetic",check_frac_arithmetic},{"frac_pow",check_frac_pow},{"angle_sort_api",check_angle_sort_api},{"angle_sort_order",check_angle_sort_order},{"li_api",check_li_api},{"inter_regressions",check_inter_regressions},{"inter_locations",check_inter_locations},{"ccw_api",check_ccw_api},{"ccw_large_coordinates",check_ccw_large_coordinates},{"dot_api",check_dot_api},

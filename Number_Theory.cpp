@@ -372,12 +372,13 @@ public:
 
 //Pollard Rho
 class _pr{
-public:
-    using u128 = __uint128_t; mt19937_64 rnd;
-    _pr() : rnd((u64)chrono::steady_clock::now().time_since_epoch().count()){}
-    
-    u64 mul_mod(u64 a, u64 b, u64 mod){ return (u128)a * b % mod; }
-    u64 pow_mod(u64 a, u64 b, u64 mod){
+private:
+    using u128 = __uint128_t;
+    mt19937_64 rnd;
+    static constexpr u64 small_primes[] = {2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37};
+
+    static constexpr u64 mul_mod(u64 a, u64 b, u64 mod){ return (u128)a * b % mod; }
+    static constexpr u64 pow_mod(u64 a, u64 b, u64 mod){
         u64 ret = 1; a %= mod;
         while(b){
             if(b & 1) ret = mul_mod(a, ret, mod);
@@ -387,9 +388,54 @@ public:
         return ret;
     }
 
-    bool isprime(u64 n){
+    static constexpr u64 f(u64 x, u64 c, u64 mod){ return ((u128)x * x + c) % mod; }
+
+    u64 pollard(u64 n){
+        for(u64 p : small_primes) if(n % p == 0) return p;
+        uniform_int_distribution<u64> rx(2, n - 2), rc(1, n - 1);
+        auto diff = [](u64 a, u64 b){ return a > b ? a - b : b - a; };
+
+        while(1){
+            u64 b = rx(rnd), c = rc(rnd), g = 1;
+            for(u64 len = 1;g == 1;len *= 2){
+                u64 a = b;
+                for(u64 i = 0;i < len && g == 1;){
+                    u64 start = b, product = 1, cnt = min<u64>(128, len - i);
+                    for(u64 j = 0;j < cnt;j++){
+                        b = f(b, c, n);
+                        product = mul_mod(product, diff(a, b), n);
+                    }
+                    g = gcd(product, n);
+                    if(g == n){
+                        do{
+                            start = f(start, c, n);
+                            g = gcd(diff(a, start), n);
+                        }while(g == 1);
+                    }
+                    i += cnt;
+                }
+            }
+            if(g != n) return g;
+        }
+    }
+
+    void dnc(u64 n, vector<u64>& ret){
+        if(n == 1) return;
+        if(isprime(n)){
+            ret.push_back(n);
+            return;
+        }
+
+        u64 p = pollard(n);
+        dnc(p, ret); dnc(n / p, ret);
+    }
+public:
+    _pr() : _pr((u64)chrono::steady_clock::now().time_since_epoch().count()){}
+    explicit _pr(u64 seed) : rnd(seed){}
+
+    static constexpr bool isprime(u64 n){
         if(n < 2) return 0;
-        for(u64 i : {2ULL, 3ULL, 5ULL, 7ULL, 11ULL, 13ULL, 17ULL, 19ULL, 23ULL, 29ULL, 31ULL, 37ULL}){
+        for(u64 i : small_primes){
             if(n == i) return 1;
             if(n % i == 0) return 0;
         }
@@ -414,39 +460,7 @@ public:
         return 1;
     }
 
-    u64 f(u64 x, u64 c, u64 mod){ return ((u128)mul_mod(x, x, mod) + c) % mod; }
-    u64 pollard(u64 n){ // 임의의 소인수 반환
-        for(u64 i : {2ULL, 3ULL, 5ULL, 7ULL, 11ULL, 13ULL, 17ULL, 19ULL, 23ULL, 29ULL, 31ULL, 37ULL}){
-            if(n % i == 0) return i;
-        }
-        uniform_int_distribution<u64> rx(2, n - 2), rc(1, n - 1);
-
-        while(1){
-            u64 a = rx(rnd), b = a;
-            u64 c = rc(rnd), g = 1;
-            while(g == 1){
-                a = f(a, c, n);
-                b = f(f(b, c, n), c, n);
-                u64 diff = (a > b) ? (a - b) : (b - a);
-                g = gcd(diff, n);
-            }
-
-            if(g != n) return g;
-        }
-    }
-
-    void dnc(u64 n, vector<u64>& ret){ 
-        if(n == 1) return;
-        if(isprime(n)){
-            ret.push_back(n);
-            return;
-        }
-
-        u64 p = pollard(n);
-        dnc(p, ret); dnc(n / p, ret);
-    }
-
-    vector <u64> factorize(u64 n){ // 소인수분해
+    vector <u64> factorize(u64 n){ // 소인수분해 (n >= 1)
         vector<u64> ret;
         dnc(n, ret);
         sort(all(ret));
