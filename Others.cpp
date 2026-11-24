@@ -10,30 +10,29 @@ constexpr ll INF = 0x3f3f3f3f3f3f3f3f;
 constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 
 //Binary Search
-class _bs { // integer
-public:
+namespace _bs{
     template <class F>
-    static ll max_right(ll l, ll r, const F& f) {
-        ll lo = l, hi = r, mid = -1;
-        while (hi > lo) {
-            mid = midpoint(hi, lo);
-            if (f(mid)) lo = mid;
+    constexpr ll max_right(ll l, ll r, const F& f){
+        ll lo = l, hi = r;
+        while(hi > lo){
+            ll mid = midpoint(hi, lo);
+            if(f(mid)) lo = mid;
             else hi = mid - 1;
         }
         return lo;
     }
 
     template <class F>
-    static ll min_left(ll l, ll r, const F& f) {
-        ll lo = l, hi = r, mid = -1;
-        while (hi > lo) {
-            mid = midpoint(lo, hi);
-            if (f(mid)) hi = mid;
+    constexpr ll min_left(ll l, ll r, const F& f){
+        ll lo = l, hi = r;
+        while(hi > lo){
+            ll mid = midpoint(lo, hi);
+            if(f(mid)) hi = mid;
             else lo = mid + 1;
         }
         return lo;
     }
-};
+}
 
 class _fbs { // real
 public:

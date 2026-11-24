@@ -2706,6 +2706,8 @@ void check_lift_large_cost(){
 }
 
 void check_binary_search_large_bounds(){
+    static_assert(offline::_bs::max_right(LLONG_MIN,LLONG_MAX,[](long long v){return v<=-3;})==-3);
+    static_assert(offline::_bs::min_left(LLONG_MIN,LLONG_MAX,[](long long v){return v>=4;})==4);
     for(auto [l,r,target]:vector<tuple<long long,long long,long long>>{
         {LLONG_MAX-10,LLONG_MAX-1,LLONG_MAX-5},
         {LLONG_MIN,LLONG_MIN+10,LLONG_MIN+4},
