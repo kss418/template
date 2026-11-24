@@ -477,34 +477,33 @@ public:
         return ret;
     }
 
-    u64 phi(u64 n){
-        if(!n) return 0;
-        auto fc = factorize_cnt(n);
-        u128 ret = n;
-        for(auto& [p, c] : fc) ret = ret / p * (p - 1);
-        return (u64)ret;
+    u64 phi(u64 n){ return n ? phi(factorize_cnt(n)) : 0; }
+    static constexpr u64 phi(span<const pair<u64, int>> fc){ // O(sum of exponents)
+        u64 ret = 1;
+        for(auto [p, c] : fc){
+            ret *= p - 1;
+            for(int i = 1;i < c;i++) ret *= p;
+        }
+        return ret;
     }
 
-    int mobius(u64 n){
-        if(n == 0 || n == 1) return n;
-        auto fc = factorize_cnt(n);
-        for(auto& [p, c] : fc) if(c >= 2) return 0;
+    int mobius(u64 n){ return n <= 1 ? (int)n : mobius(factorize_cnt(n)); }
+    static constexpr int mobius(span<const pair<u64, int>> fc){ // O(fc.size())
+        for(auto [p, c] : fc) if(c >= 2) return 0;
         return fc.size() % 2 ? -1 : 1;
     }
 
-    u64 divisor_num(u64 n){
-        if(!n) return 0;
-        auto fc = factorize_cnt(n);
-        u128 ret = 1;
-        for(auto& [p, c] : fc) ret *= c + 1;
-        return (u64)ret;
+    u64 divisor_num(u64 n){ return n ? divisor_num(factorize_cnt(n)) : 0; }
+    static constexpr u64 divisor_num(span<const pair<u64, int>> fc){ // O(fc.size())
+        u64 ret = 1;
+        for(auto [p, c] : fc) ret *= c + 1;
+        return ret;
     }
 
-    u64 divisor_sum(u64 n){
-        if(!n) return 0;
-        auto fc = factorize_cnt(n);
+    u64 divisor_sum(u64 n){ return n ? divisor_sum(factorize_cnt(n)) : 0; }
+    static constexpr u64 divisor_sum(span<const pair<u64, int>> fc){ // O(sum of exponents)
         u128 ret = 1;
-        for(auto& [p, c] : fc){
+        for(auto [p, c] : fc){
             u128 now = 1, cur = 1;
             for(int i = 0;i < c;i++){
                 cur *= p;

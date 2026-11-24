@@ -1714,17 +1714,34 @@ void check_cht(){
 }
 
 void check_pollard_one(){
-    numeric_templates::_pr p;
+    using pr=numeric_templates::_pr;
+    constexpr array<pair<uint64_t,int>,3> factors{{{2,3},{3,2},{5,1}}};
+    static_assert(pr::phi(factors)==96 && pr::mobius(factors)==0);
+    static_assert(pr::divisor_num(factors)==24 && pr::divisor_sum(factors)==1170);
+    constexpr span<const pair<uint64_t,int>> empty;
+    static_assert(pr::phi(empty)==1 && pr::mobius(empty)==1);
+    static_assert(pr::divisor_num(empty)==1 && pr::divisor_sum(empty)==1);
+
+    pr p;
     CHECK(p.factorize_cnt(1).empty());
     CHECK(p.phi(1) == 1); CHECK(p.divisor_num(1) == 1); CHECK(p.divisor_sum(1) == 1);
+    array<int,81> mu{}; mu[1]=1;
     for(uint64_t n = 1; n <= 80; ++n){
         uint64_t phi = 0, count = 0, sum = 0;
         for(uint64_t d = 1; d <= n; ++d){
             phi += gcd(n, d) == 1;
-            if(n % d == 0){ ++count; sum += d; }
+            if(n % d == 0){ ++count; sum += d; if(d<n)mu[n]-=mu[d]; }
         }
+        auto fc=p.factorize_cnt(n);
         CHECK(p.phi(n) == phi); CHECK(p.divisor_num(n) == count); CHECK(p.divisor_sum(n) == sum);
+        CHECK(p.phi(fc)==phi); CHECK(p.divisor_num(fc)==count); CHECK(p.divisor_sum(fc)==sum);
+        CHECK(p.mobius(n)==mu[n]); CHECK(p.mobius(fc)==mu[n]);
     }
+
+    auto fc=p.factorize_cnt(UINT64_MAX);
+    CHECK(p.phi(fc)==9208981628670443520ull);
+    CHECK(p.mobius(fc)==-1); CHECK(p.divisor_num(fc)==128);
+    CHECK(p.divisor_sum(fc)==12975236915480337152ull);
 }
 
 template<class T>
