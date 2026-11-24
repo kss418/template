@@ -1,7 +1,7 @@
 ## 알고리즘 위치 안내
 
 - `Automata.cpp`
-  - Alphabet Policies (`alphabet`)
+  - Alphabet Policies ([`alphabet`](docs/Automata.md#alphabet))
   - Trie (`_trie`, `_sparse_trie`)
   - XOR Trie (`_xor_trie`)
   - Aho–Corasick (`_ac`, `_sparse_ac`)
