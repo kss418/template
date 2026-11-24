@@ -59,12 +59,11 @@ namespace _fbs{
 }
 
 //Ternary Search
-class _ts { // integer
-public:
+namespace _ts{
     template <class F>
-    static ll max(ll l, ll r, const F& f) {
-        while ((i128)r - l > 3) {
-            ll st = (2 * (i128)l + r) / 3, en = ((i128)l + 2 * (i128)r) / 3;
+    constexpr ll max(ll l, ll r, const F& f){
+        while((i128)r - l > 3){
+            ll d = ((i128)r - l) / 3, st = l + d, en = r - d;
             if(f(st) < f(en)) l = st;
             else r = en;
         }
@@ -75,9 +74,9 @@ public:
     }
 
     template <class F>
-    static ll min(ll l, ll r, const F& f) {
-        while ((i128)r - l > 3) {
-            ll st = (2 * (i128)l + r) / 3, en = ((i128)l + 2 * (i128)r) / 3;
+    constexpr ll min(ll l, ll r, const F& f){
+        while((i128)r - l > 3){
+            ll d = ((i128)r - l) / 3, st = l + d, en = r - d;
             if(f(st) > f(en)) l = st;
             else r = en;
         }
@@ -86,7 +85,7 @@ public:
         for(i128 cur = l; cur <= r;cur++) result = std::min(result, f((ll)cur));
         return result;
     }
-};
+}
 
 class _fts { // real
 public:

@@ -2724,10 +2724,14 @@ void check_binary_search_large_bounds(){
 }
 
 void check_ternary_search_large_bounds(){
+    constexpr auto f=[](long long v){return v<1?1-v:v-1;};
+    static_assert(offline::_ts::min(-2,2,f)==0);
+    static_assert(offline::_ts::max(-2,2,[&](long long v){return -f(v);})==0);
     for(auto [l,r,peak]:vector<tuple<long long,long long,long long>>{
         {4000000000000000000LL,4000000000000000010LL,4000000000000000007LL},
         {LLONG_MIN,LLONG_MIN+10,LLONG_MIN+4},{LLONG_MAX-10,LLONG_MAX,LLONG_MAX},
-        {LLONG_MIN,LLONG_MIN,LLONG_MIN},{LLONG_MAX,LLONG_MAX,LLONG_MAX},{-10,10,-3}}){
+        {LLONG_MIN,LLONG_MIN,LLONG_MIN},{LLONG_MAX,LLONG_MAX,LLONG_MAX},{-10,10,-3},
+        {-2,2,1},{-2,2,2},{-2,2,-1}}){
         int calls=0;
         auto distance=[&](long long v){CHECK(++calls<=100);CHECK(l<=v&&v<=r);return (long long)abs((__int128)v-peak);};
         CHECK(offline::_ts::min(l,r,distance)==0);
