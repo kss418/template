@@ -70,7 +70,7 @@ assert(table.comb(10, 3) == 0);
 | 함수 | 동작 | 시간 |
 | --- | --- | --- |
 | `add(int p, int e)` | 소수 `p`의 거듭제곱 `p^e`를 등록한다. `e <= 0`이면 건너뛴다. | `O(1)` amortized |
-| `build()` | 등록한 인수로 다시 전처리한다. 각 `p^e < LLONG_MAX`이고 `M <= LLONG_MAX`여야 한다. | `O(1 + S)` |
+| `build()` | 등록한 인수로 재계산한다. 각 `p^e < INT_MAX`이고 `M <= LLONG_MAX`여야 한다. 팩토리얼 테이블은 `int` 항목을 사용한다. | `O(1 + S)` |
 | `comb(ll n, ll r)` | 조합 `nCr`의 나머지를 담은 `result`를 반환한다. 음수 인자 또는 `r > n`이면 나머지는 `0`이다. | `O(1 + k(log(n + 2) + log M))` |
 | `perm(ll n, ll r)` | 순열 `nPr`의 나머지를 담은 `result`를 반환한다. 음수 인자 또는 `r > n`이면 나머지는 `0`이다. | `O(1 + k(log(n + 2) + log M))` |
 | `multicomb(ll n, ll r)` | `n`종에서 `r`개를 중복 선택하는 수의 나머지를 반환한다. 음수 인자면 `0`이고, `n == 0`이면 `r == 0`인 경우만 `1 mod M`이다. 그 외에는 `n + r - 1 <= LLONG_MAX`여야 한다. | `O(1 + k(log(n + r + 2) + log M))` |

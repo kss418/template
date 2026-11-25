@@ -1380,6 +1380,16 @@ void check_comb_crt(){
     combinatorics::_comb_crt reused;reused.add(2,3);reused.add(3,2);reused.build();
     const auto& read=reused;auto snapshot=read.comb(10,4);verify(snapshot,66,72);
     reused.add(5,1);reused.build();verify(read.comb(10,4),210,360);verify(snapshot,66,72);
+
+    crt_comb wide;
+    wide.add(2,17);wide.add(3,11);wide.add(5,7);wide.build();
+    constexpr long long wide_mod=(1ll<<17)*177147*78125;
+    for(long long n:{987654321012345678ll,LLONG_MAX-1,LLONG_MAX}){
+        __int128_t product=(__int128_t)n*(n-1);
+        verify(wide.comb(n,2),product/2%wide_mod,wide_mod);
+        verify(wide.perm(n,2),product%wide_mod,wide_mod);
+        verify(wide.multicomb(n-1,2),product/2%wide_mod,wide_mod);
+    }
 }
 
 void check_crt_dependents(){
