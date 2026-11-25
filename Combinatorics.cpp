@@ -93,7 +93,8 @@ public:
 };
 
 // comb mod lcm(p1^e1, p2^e2, ...)
-class _comb_crt{ // Require dynamic_mint, crt
+// https://github.com/kss418/template/blob/master/docs/Combinatorics.md#comb_crt
+class _comb_crt{ // Require dynamic_mint, crt, lucas
 public:
     using result = _crt::result;
 private:
@@ -184,7 +185,6 @@ public:
         if(n < 0 || r < 0) return comb(-1, 0);
         if(!n) return comb(0, r ? 1 : 0);
         i128 total = (i128)n + r - 1;
-        assert(total <= LLONG_MAX);
         return comb((ll)total, r);
     }
 
