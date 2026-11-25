@@ -183,3 +183,71 @@ prefix.it_child([](const ll& label, auto child){
 assert(trie.rank("A") == 1); // -5로 시작하는 수열이 앞선다.
 assert(trie.kth(1) == word);
 ```
+
+## XOR Trie
+
+`_xor_trie`는 `u64` 값을 중복 허용으로 저장하고, `x ^ y`의 최솟값·최댓값·순위·개수를 조회한다. `y`는 현재 저장된 값이다. [소스](../Automata.cpp#L325) · [VS Code 스니펫 `>>xor_trie`](../snippets/xor_trie.code-snippets)
+
+- `max_bit`는 가장 높은 비트 번호이며 `0`–`63`이다. 저장할 값과 전체 XOR 마스크가 `B = max_bit + 1`비트에 들어오게 설정한다. 기본값 `63`은 전체 `u64` 범위를 지원한다. XOR 비교의 기준값과 임계값은 `max_bit`와 관계없이 전체 `u64`를 쓸 수 있다.
+- `xor_all(mask)`는 현재 저장된 값마다 `y ^ mask`를 적용한다. 이후에도 삽입·삭제·조회 인자는 현재 값 기준으로 넘긴다. `state::go()`도 현재 값의 비트를 높은 자리부터 받는다.
+- `kth`와 `argkth`의 순위는 `1 <= k <= size()` 범위다. 빈 트라이에서는 `argmin`과 `argmax`가 `0`, `min`과 `max`가 입력값 `x`를 반환한다.
+
+### `_xor_trie` API
+
+| 함수 | 동작 | 시간 |
+| --- | --- | --- |
+| `_xor_trie(int max_bit = 63)` | 빈 트라이를 만든다. | `O(1)` |
+| `clear(int max_bit)` | 값을 모두 지우고 비트 범위와 누적 XOR을 초기화한다. | `O(1)` |
+| `root()` | 루트 상태를 반환한다. 비어 있어도 `id()`는 `0`이다. | `O(1)` |
+| `size()` | 중복을 포함한 값의 개수를 반환한다. | `O(1)` |
+| `insert(u64 x)` | `x` 한 개를 추가하고 끝 상태를 반환한다. | `O(B)` amortized |
+| `erase(u64 x)` | `x` 한 개를 지운다. 없으면 `false`다. | `O(B)` |
+| `get_state(u64 x)` | `x`의 끝 상태를 반환한다. 경로가 없으면 무효 상태다. | `O(B)` |
+| `xor_all(u64 mask)` | 현재 저장된 모든 값에 `mask`를 XOR한다. | `O(1)` |
+| `min(u64 x)` | `x ^ y`의 최솟값을 반환한다. | `O(B)` |
+| `argmin(u64 x)` | `x ^ y`를 최소로 만드는 `y`를 반환한다. | `O(B)` |
+| `max(u64 x)` | `x ^ y`의 최댓값을 반환한다. | `O(B)` |
+| `argmax(u64 x)` | `x ^ y`를 최대로 만드는 `y`를 반환한다. | `O(B)` |
+| `kth(u64 x, int k)` | `x ^ y`를 오름차순으로 정렬했을 때 중복을 포함한 `k`번째 결과를 반환한다. | `O(B)` |
+| `argkth(u64 x, int k)` | `k`번째 XOR 결과를 만드는 `y`를 반환한다. | `O(B)` |
+| `less(u64 x, u64 k)` | `x ^ y < k`인 `y`의 개수를 반환한다. | `O(B)` |
+| `equal(u64 x, u64 k)` | `x ^ y == k`인 `y`의 개수를 반환한다. | `O(B)` |
+| `greater(u64 x, u64 k)` | `x ^ y > k`인 `y`의 개수를 반환한다. | `O(B)` |
+
+### `state` API
+
+삭제 후에도 경로는 남을 수 있다. 값이 남았는지는 끝 상태에서 `end()`로, 비트 접두사가 살아 있는지는 `prefix_count() > 0`으로 확인한다. `clear()` 뒤에는 상태를 다시 얻는다.
+
+| 함수 | 동작 | 시간 |
+| --- | --- | --- |
+| `id()` | 상태 번호를 반환한다. 무효 상태에서는 `-1`이다. | `O(1)` |
+| `valid()` | 경로가 있으면 `true`다. `id() != -1`과 같다. | `O(1)` |
+| `count()` | 끝 상태에서 해당 값의 개수를 반환한다. 그 외에는 `0`이다. | `O(1)` |
+| `end()` | 이 끝 상태에 값이 있으면 `true`다. `count() > 0`과 같다. | `O(1)` |
+| `prefix_count()` | 현재 비트 접두사로 시작하는 값의 개수를 반환한다. 무효 상태에서는 `0`이다. | `O(1)` |
+| `has_child()` | 이 접두사에서 더 이어지는 값이 있으면 `true`다. | `O(1)` |
+| `go(bool c)` | 현재 값 기준 비트 `c`로 이동한다. 다음 경로가 없으면 무효 상태다. | `O(1)` |
+| `it_child(const F& f)` | 값이 남은 직계 자식에 대해 비트 `0`, `1` 순으로 `f(int bit, state child)`를 호출한다. | `O(1)` |
+| `it_subtree(const F& f)` | 값이 남은 상태를 자기 자신부터 깊이 우선으로 순회하며 `f(state node)`를 호출한다. | `O(1 + K)`, `K`는 방문 상태 수 |
+
+### 사용 예시
+
+```cpp
+_xor_trie trie(2); // 2번 비트까지, 값의 범위는 0~7
+trie.insert(1);
+trie.insert(6);
+trie.insert(6);
+
+assert(trie.max(3) == 5);       // XOR 결과는 {2, 5, 5}
+assert(trie.argmax(3) == 6);    // 결과 5를 만드는 저장값
+assert(trie.kth(3, 2) == 5);
+assert(trie.equal(3, 5) == 2); // 중복도 센다.
+
+trie.xor_all(3); // 현재 값은 {2, 5, 5}
+trie.insert(7);  // 전체 XOR 이후에도 현재 값으로 삽입
+bool erased = trie.erase(5);
+assert(erased && trie.size() == 3);
+
+auto five = trie.root().go(1).go(0).go(1); // 현재 값 5의 비트 101
+assert(five.count() == 1);
+```

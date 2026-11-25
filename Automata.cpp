@@ -321,6 +321,7 @@ public:
     }
 };
 
+// https://github.com/kss418/template/blob/master/docs/Automata.md#xor-trie
 class _xor_trie { // 0-based index
 private:
     vector <array<int, 2>> adj;
