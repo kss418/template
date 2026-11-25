@@ -69,7 +69,7 @@ assert(table.comb(10, 3) == 0);
 
 | 함수 | 동작 | 시간 |
 | --- | --- | --- |
-| `add(ll p, ll e)` | 소수 `p`의 거듭제곱 `p^e`를 등록한다. `e <= 0`이면 건너뛴다. `e == 1`이면 `p <= INT_MAX`여야 한다. | `O(1)` amortized |
+| `add(int p, int e)` | 소수 `p`의 거듭제곱 `p^e`를 등록한다. `e <= 0`이면 건너뛴다. | `O(1)` amortized |
 | `build()` | 등록한 인수로 다시 전처리한다. 각 `p^e < LLONG_MAX`이고 `M <= LLONG_MAX`여야 한다. | `O(1 + S)` |
 | `comb(ll n, ll r)` | 조합 `nCr`의 나머지를 담은 `result`를 반환한다. 음수 인자 또는 `r > n`이면 나머지는 `0`이다. | `O(1 + k(log(n + 2) + log M))` |
 | `perm(ll n, ll r)` | 순열 `nPr`의 나머지를 담은 `result`를 반환한다. 음수 인자 또는 `r > n`이면 나머지는 `0`이다. | `O(1 + k(log(n + 2) + log M))` |

@@ -1328,7 +1328,9 @@ void check_crt(){
 }
 
 void check_comb_crt(){
-    using factor=pair<long long,long long>;
+    using crt_comb=combinatorics::_comb_crt;
+    static_assert(same_as<decltype(&crt_comb::add),void(crt_comb::*)(int,int)>);
+    using factor=pair<int,int>;
     vector<vector<factor>> cases{{{2,1}},{{2,2}},{{2,3}},{{2,5}},{{2,8}},{{3,1}},{{3,2}},{{3,3}},{{3,5}},
         {{5,2}},{{5,3}},{{7,2}},{{11,2}},{{2,3},{3,2}},{{2,4},{3,3},{5,1}},{{2,1},{2,2},{2,3}}, {}};
     auto verify=[](const combinatorics::_comb_crt::result& result,long long wanted,long long mod){
