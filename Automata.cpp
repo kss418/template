@@ -600,6 +600,7 @@ public:
     }
 };
 
+// https://github.com/kss418/template/blob/master/docs/Automata.md#sparse-aho-corasick
 template <class T = ll>
 class _sparse_ac{
 private:

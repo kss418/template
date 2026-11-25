@@ -313,3 +313,66 @@ std::vector<int> lengths;
 last.it_match_lens([&](int len){ lengths.push_back(len); });
 assert((lengths == std::vector<int>{3, 2})); // "she", "he" 순서로 한 번씩
 ```
+
+## Sparse Aho-Corasick
+
+`_sparse_ac<T>`는 `T` 타입의 라벨 수열에서 여러 패턴의 출현을 찾는다. 기본 `T`는 `ll`이다. `T`는 기본 생성, 복사, `==` 비교가 가능해야 한다. [소스](../Automata.cpp#L605) · [VS Code 스니펫 `>>sparse_ac`](../snippets/sparse_ac.code-snippets)
+
+- 문자열 입력은 각 바이트를 `unsigned char`로 읽어 `T`로 변환한다. `std::span<const T>`와 `go(const T& c)`는 라벨을 그대로 받는다.
+- 패턴 등록을 마친 뒤 `build()`를 호출한다. 패턴을 더 등록하면 매칭을 조회하기 전에 다시 `build()`를 호출한다.
+
+### `_sparse_ac` API
+
+`s`는 `const std::string&` 또는 `std::span<const T>`다. `L`은 입력 길이, `N`은 상태 수, `H`는 가장 긴 패턴 길이, `D`는 상태당 최대 자식 수다. 라벨 연산 비용은 `O(1)`로 본다.
+
+| 함수 | 동작 | 시간 |
+| --- | --- | --- |
+| `insert(s)` | 패턴 한 개를 등록하고 끝 상태를 반환한다. 중복 등록이 가능하며 패턴은 비어 있지 않아야 한다. | `O(1 + L(D + 1))` amortized |
+| `build()` | 등록된 패턴으로 매칭을 준비한다. 같은 목록으로 다시 호출할 수 있다. | 최대 `O(N(H + 1)(D + 1))` |
+| `clear()` | 패턴을 모두 지운다. 이전 상태는 다시 얻어야 한다. | `O(N)` 상한 |
+| `root()` | `id()`가 `0`인 루트를 반환한다. | `O(1)` |
+| `size()` | 루트를 포함한 상태 수를 반환한다. | `O(1)` |
+| `depth()` | 상태 번호로 접근하는 깊이 배열을 참조로 반환한다. | `O(1)` |
+| `terminal()` | 상태 번호로 접근하는 패턴 끝 여부 배열을 참조로 반환한다. | `O(1)` |
+| `count(s)` | 겹치는 출현과 중복 등록을 모두 포함한 총 매칭 수를 반환한다. | `O(1 + L(D + 1))` |
+| `count_each(s)` | 길이 `size()`의 출현 횟수 벡터를 반환한다. 패턴 끝 상태 번호로 조회하며, 중복 등록 횟수를 곱하지 않는다. | `O(N + L(D + 1))` |
+| `it_state(s, const F& f)` | 루트에서 시작해 각 라벨을 읽은 뒤 `f(state node)`를 한 번 호출한다. | `O(1 + L(D + 1))` |
+
+`go()`는 실패 링크를 여러 번 따라갈 수 있다. 텍스트 전체를 루트부터 읽을 때는 상태 깊이가 한 라벨당 최대 1 증가하므로, 실패 링크를 따라가는 총 횟수는 `O(L)`이다.
+
+### `state` API
+
+`M`은 현재 위치에서 끝나는 서로 다른 패턴 수다. 순회 비용은 콜백 본문을 제외한다.
+
+| 함수 | 동작 | 시간 |
+| --- | --- | --- |
+| `id()` | 상태 번호를 반환한다. | `O(1)` |
+| `terminal_count()` | 이 상태에 직접 등록된 패턴의 등록 횟수를 반환한다. | `O(1)` |
+| `match_count()` | 현재 위치에서 끝나는 패턴 수를 중복 등록까지 포함해 반환한다. | `O(1)` |
+| `go(const T& c)` | 라벨 `c` 하나를 읽은 뒤의 상태를 반환한다. | 최대 `O((H + 1)(D + 1))` |
+| `max_match_len()` | 현재 위치에서 끝나는 가장 긴 패턴 길이를 반환한다. 매칭이 없으면 `0`이다. | `O(1)` |
+| `it_match(const F& f)` | 매칭된 패턴마다 긴 것부터 `f(state matched)`를 한 번 호출한다. | `O(1 + M)` |
+| `it_match(int k, const F& f)` | 위 순서로 최대 `k`개를 순회한다. `k <= 0`이면 호출하지 않는다. | `O(1 + min(k, M))` (`k > 0`) |
+| `it_match_lens(const F& f)` | 매칭된 패턴마다 긴 것부터 `f(int len)`을 한 번 호출한다. | `O(1 + M)` |
+| `it_match_lens(int k, const F& f)` | 위 순서로 최대 `k`개의 길이를 순회한다. `k <= 0`이면 호출하지 않는다. | `O(1 + min(k, M))` (`k > 0`) |
+
+### 사용 예시
+
+```cpp
+_sparse_ac<> ac;
+const std::vector<ll> tail{1'000'000'000}, word{-5, 1'000'000'000};
+auto tail_state = ac.insert(std::span<const ll>(tail));
+auto word_state = ac.insert(std::span<const ll>(word));
+ac.insert("A"); // 바이트 라벨 {65}
+ac.build();
+
+const std::vector<ll> text{-5, 1'000'000'000, 65, -5, 1'000'000'000};
+auto labels = std::span<const ll>(text);
+assert(ac.count(labels) == 5); // word 2회, tail 2회, "A" 1회
+auto each = ac.count_each(labels);
+assert(each[word_state.id()] == 2 && each[tail_state.id()] == 2);
+
+auto last = ac.root().go(-5).go(1'000'000'000);
+assert(last.terminal_count() == 1); // 이 상태에 직접 등록된 패턴은 word
+assert(last.match_count() == 2);    // 같은 자리에서 tail도 끝난다.
+```
