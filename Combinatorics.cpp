@@ -48,6 +48,7 @@ public:
     u64 inv_factorial(int n) const{ return ifac[n].v; } // O(1)
 };
 
+// https://github.com/kss418/template/blob/master/docs/Combinatorics.md#lucas
 class _lucas{ // mod == prime
 private:
     int mod = 0; vector <int> fac, ifac;
@@ -61,7 +62,6 @@ public:
     _lucas(int mod){ build(mod); } // O(mod)
 
     void build(int mod){ // O(mod)
-        assert(mod >= 2);
         this->mod = mod; fac.resize(mod); ifac.resize(mod);
         fac[0] = 1;
         for(int i = 1;i < mod;i++) fac[i] = (ll)fac[i - 1] * i % mod;
@@ -88,7 +88,6 @@ public:
         if(n < 0 || r < 0) return 0;
         if(!n) return !r;
         i128 total = (i128)n + r - 1;
-        assert(total <= LLONG_MAX);
         return comb((ll)total, r);
     }
 };

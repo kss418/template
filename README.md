@@ -7,7 +7,7 @@
   - Aho–Corasick ([`_ac`](docs/Automata.md#aho-corasick), [`_sparse_ac`](docs/Automata.md#sparse-aho-corasick))
 - `Combinatorics.cpp`
   - Combination Table ([`_comb`](docs/Combinatorics.md#comb))
-  - Lucas's Theorem (`_lucas`)
+  - Lucas's Theorem ([`_lucas`](docs/Combinatorics.md#lucas))
   - CRT-based Combination (`_comb_crt`)
 - `DSU.cpp`
   - Union-Find / Component Values (`_uf`, `_uf_value`)
