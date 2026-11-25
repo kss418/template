@@ -104,3 +104,58 @@ ab.it_child([](int label, auto child){
     assert(label == 2 && child.end());
 });
 ```
+
+## Sparse Trie
+
+`_sparse_trie<T>`는 `T` 타입의 라벨 수열을 중복 허용으로 저장한다. 기본 `T`는 `ll`이고, 라벨은 복사하고 `std::less<T>`로 비교할 수 있어야 한다. [소스](../Automata.cpp#L197) · [VS Code 스니펫 `>>sparse_trie`](../snippets/sparse_trie.code-snippets)
+
+- `std::span<const T>`와 `state::go()`는 라벨을 그대로 받는다. 문자열을 넘기면 각 바이트를 `unsigned char`로 읽어 `T`로 변환한다. 문자열 API를 쓰려면 이 변환이 가능해야 한다.
+- 빈 수열의 상태는 루트(`id() == 0`)다. 삭제 후에도 경로는 남으므로, 저장 여부는 `end()`, 접두사 존재 여부는 `prefix_count() > 0`으로 확인한다. `clear()` 뒤에는 상태를 다시 얻는다.
+
+### `_sparse_trie` API
+
+`s`는 `const std::string&` 또는 `std::span<const T>`다. `L`은 입력 또는 결과 길이, `D`는 상태의 최대 자식 수, `N`은 남아 있는 상태 수다. 사전순은 `std::less<T>`를 따르고, 복잡도는 라벨 연산이 `O(1)`일 때 기준이다.
+
+| 함수 | 동작 | 시간 |
+| --- | --- | --- |
+| `insert(s)` | 한 개를 추가하고 끝 상태를 반환한다. | `O(1 + L log(D + 2))` amortized |
+| `erase(s)` | 한 개를 지운다. 수열이 없으면 `false`다. | `O(1 + L log(D + 2))` |
+| `get_state(s)` | 경로의 끝 상태를 반환한다. 경로가 없으면 무효 상태다. | `O(1 + L log(D + 2))` |
+| `size()` | 중복을 포함한 수열 개수를 반환한다. | `O(1)` |
+| `rank(s)` | `s`보다 사전순으로 앞선 수열 개수를 반환한다. | `O(1 + L(D + 1))` |
+| `kth(int k)` | 중복을 포함해 `1`부터 세는 `k`번째 수열을 `vector<T>`로 반환한다. 범위 밖이면 빈 벡터다. | `O(1 + L(D + 1))` |
+| `clear()` | 빈 트라이로 초기화한다. | `O(N)` |
+
+저장된 빈 수열도 `kth()`에서 빈 벡터로 나오므로, `1 <= k <= size()`로 범위 안인지 확인한다.
+
+### `state` API
+
+`d`는 현재 상태의 자식 수다. `D`와 `d`에는 삭제 후 남은 경로도 포함한다.
+
+| 함수 | 동작 | 시간 |
+| --- | --- | --- |
+| `id()` | 상태 번호를 반환한다. 경로가 없으면 `-1`이다. | `O(1)` |
+| `valid()` | 경로가 있으면 `true`다. `id() != -1`과 같다. | `O(1)` |
+| `count()` | 이 경로와 정확히 같은 수열의 개수를 반환한다. 무효 상태에서는 `0`이다. | `O(1)` |
+| `end()` | 이 경로에서 끝나는 수열이 있으면 `true`다. `count() > 0`과 같다. | `O(1)` |
+| `prefix_count()` | 이 경로를 접두사로 갖는 수열의 개수를 반환한다. 무효 상태에서는 `0`이다. | `O(1)` |
+| `has_child()` | 이 경로를 접두사로 갖는 더 긴 수열이 있으면 `true`다. `prefix_count() > count()`와 같다. | `O(1)` |
+| `go(const T& c)` | 라벨 `c`의 자식 상태로 이동한다. 간선이 없으면 무효 상태다. | `O(log(d + 2))` |
+| `it_child(const F& f)` | 수열이 남아 있는 직계 자식을 라벨 순으로 순회하며 `f(const T& label, state child)`를 호출한다. | `O(1 + d)` |
+| `it_subtree(const F& f)` | 수열이 남아 있는 상태를 자기 자신부터 깊이 우선으로 순회하며 `f(state node)`를 호출한다. | `O(1 + K + E)` |
+
+`K`는 방문 상태 수, `E`는 그 상태에서 검사하는 간선 수다. 저장된 수열이 없는 가지의 간선도 `E`에 포함한다.
+
+### 사용 예시
+
+```cpp
+_sparse_trie<> trie;
+const std::vector<ll> word{-5, 1'000'000'000};
+trie.insert(std::span<const ll>(word));
+
+auto root = trie.get_state(std::span<const ll>{});
+auto prefix = root.go(-5);
+assert(prefix.prefix_count() == 1);
+assert(prefix.go(1'000'000'000).end());
+assert(trie.kth(1) == word);
+```

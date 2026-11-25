@@ -192,6 +192,7 @@ public:
     }
 };
 
+// https://github.com/kss418/template/blob/master/docs/Automata.md#sparse-trie
 template <class T = ll>
 class _sparse_trie{
 private:
