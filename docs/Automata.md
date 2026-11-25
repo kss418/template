@@ -35,14 +35,20 @@ using A = alphabet::alnum;
 static_assert(A::encode('A') == 10);
 static_assert(A::decode(61) == 'z');
 
-auto labels = alphabet::tf<A>("0Az"); // {0, 10, 61}
+auto labels = alphabet::tf<A>("0Az"); // 문자별 라벨 {0, 10, 61}
+
+std::string word;
+for(int c : labels) word += static_cast<char>(A::decode(c));
+assert(word == "0Az");
 
 _trie<A> trie;
-trie.insert("0Az");
+trie.insert(word);
+// 이미 변환한 라벨로 같은 경로를 조회한다.
 assert(trie.get_state(std::span<const int>(labels)).count() == 1);
 
-auto root = trie.get_state(std::string{});
-assert(root.go(A::encode('0')).valid());
+// 길이를 지정하면 NUL 바이트도 변환한다.
+auto bytes = alphabet::tf<alphabet::bytes>(std::string("\0\xff", 2));
+assert((bytes == std::vector<int>{0, 255}));
 ```
 
 ### 사용자 정의 정책
@@ -91,18 +97,24 @@ dense 클래스에 사용할 정책은 컴파일 타임 정수 상수 `size`를 
 
 ```cpp
 _trie<> trie;
-trie.insert("ab");
-trie.insert("ab");
+auto ab = trie.insert("ab"); // 삽입한 문자열의 끝 상태
+trie.insert("ab");           // 중복도 개수에 포함
 trie.insert("abc");
 
-auto ab = trie.get_state("ab");
-assert(ab.count() == 2 && ab.prefix_count() == 3);
-assert(trie.rank("abc") == 2);
+assert(ab.count() == 2 && ab.prefix_count() == 3); // 정확히 일치 2개, 접두사 일치 3개
+assert(trie.rank("abc") == 2);                     // "abc"보다 앞선 문자열 개수
 assert((trie.kth(3) == std::vector<int>{0, 1, 2}));
 
 ab.it_child([](int label, auto child){
-    assert(label == 2 && child.end());
+    assert(label == 2 && child.end()); // 직계 자식 "abc"
 });
+
+bool erased = trie.erase("ab"); // 한 개만 삭제
+assert(erased && ab.count() == 1);
+
+int words = 0;
+ab.it_subtree([&](auto node){ words += node.count(); }); // "ab" 상태부터 순회
+assert(words == 2); // "ab", "abc" 각 1개
 ```
 
 ## Sparse Trie
@@ -151,11 +163,18 @@ ab.it_child([](int label, auto child){
 ```cpp
 _sparse_trie<> trie;
 const std::vector<ll> word{-5, 1'000'000'000};
-trie.insert(std::span<const ll>(word));
+trie.insert(std::span<const ll>(word)); // 정수 라벨을 그대로 저장
+trie.insert("A");                      // 바이트 라벨 {65}
 
 auto root = trie.get_state(std::span<const ll>{});
 auto prefix = root.go(-5);
 assert(prefix.prefix_count() == 1);
-assert(prefix.go(1'000'000'000).end());
+assert(root.go(65).end()); // "A"가 저장된 상태
+
+prefix.it_child([](const ll& label, auto child){
+    assert(label == 1'000'000'000 && child.end());
+});
+
+assert(trie.rank("A") == 1); // -5로 시작하는 수열이 앞선다.
 assert(trie.kth(1) == word);
 ```
