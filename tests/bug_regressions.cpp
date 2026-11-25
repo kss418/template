@@ -2422,11 +2422,14 @@ void check_ac_state_api(){
         auto state=current.root();for(unsigned char c:text)state=state.go(A::encode(c));return state;
     };
     auto empty=view.root();CHECK(empty.id()==0);CHECK(empty.terminal_count()==0);CHECK(empty.match_count()==0);
+    CHECK(view.get_state("").id()==empty.id());
     CHECK(empty.go(A::encode('x')).id()==0);CHECK(empty.max_match_len()==0);
     empty.it_match_lens([&](int){CHECK(false);});
     vector<typename AC::state> terminals;
     for(const string& pattern:vector<string>{"he","he","she","e","hers"})terminals.push_back(ac.insert(pattern));
     ac.build();auto he=scan(view,"he"),she=scan(view,"she");
+    CHECK(view.get_state("xxhe").id()==he.id());
+    CHECK(view.get_state("xx").id()==empty.id());
     CHECK(terminals[0].id()==terminals[1].id());CHECK(terminals[0].id()==he.id());CHECK(terminals[2].id()==she.id());
     CHECK(he.terminal_count()==2);CHECK(he.match_count()==3);
     CHECK(she.terminal_count()==1);CHECK(she.match_count()==4);CHECK(she.max_match_len()==3);
@@ -2451,6 +2454,7 @@ void check_ac_state_api(){
     auto chunk=view.root();long long total=0;
     for(const string& part:vector<string>{"us","h","ershe"})for(unsigned char c:part){chunk=chunk.go(A::encode(c));total+=chunk.match_count();}
     CHECK(total==view.count("ushershe"));CHECK(chunk.id()==scan(view,"ushershe").id());
+    CHECK(view.get_state("ushershe").id()==chunk.id());
     long long bulk_total=0;view.it_state("ushershe",[&](auto state){bulk_total+=state.match_count();});CHECK(bulk_total==total);
     int saved_id=he.id();auto copy=ac;auto copied=scan(copy,"he");
     CHECK(ac.insert("he").id()==terminals[0].id());auto long_pattern=ac.insert(string(1024,'x'));ac.build();
@@ -2529,6 +2533,12 @@ void check_alphabet_ac(){
         CHECK(dense_span.count(text)==expected);CHECK(sparse_span.count(text)==expected);
         vector<int> states,other;
         dense.it_state(text,[&](auto s){states.push_back(s.id());});dense.it_state(span<const int>(codes),[&](auto s){other.push_back(s.id());});CHECK(states==other);
+        CHECK(dense.get_state(span<const int>(codes)).id()==states.back());
+        CHECK(dense.get_state(span<const int>{}).id()==dense.root().id());
+        int sparse_last=sparse.root().id();
+        sparse.it_state(text,[&](auto s){sparse_last=s.id();});
+        CHECK(sparse.get_state(span<const int>(raw_codes)).id()==sparse_last);
+        CHECK(sparse.get_state(span<const int>{}).id()==sparse.root().id());
         auto cur=dense.root();
         for(int i=0;i<(int)text.size();i++){
             cur=cur.go(codes[i]);CHECK(cur.id()==states[i]);

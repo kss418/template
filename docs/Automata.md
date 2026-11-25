@@ -269,6 +269,7 @@ assert(five.count() == 1);
 | `build()` | 등록된 패턴으로 매칭을 준비한다. 같은 패턴 목록으로 다시 호출할 수 있다. | `O(NΣ)` |
 | `clear()` | 패턴을 모두 지운다. 이전 상태는 다시 얻어야 한다. | `O(Σ)` |
 | `root()` | `id()`가 `0`인 루트를 반환한다. | `O(1)` |
+| `get_state(s)` | `build()` 후 루트에서 `s`를 끝까지 읽은 상태를 반환한다. 빈 입력이면 루트다. | `O(L)` |
 | `size()` | 루트를 포함한 상태 수를 반환한다. | `O(1)` |
 | `depth()` | 상태 번호로 접근하는 깊이 배열을 참조로 반환한다. | `O(1)` |
 | `terminal()` | 상태 번호로 접근하는 패턴 끝 여부 배열을 참조로 반환한다. | `O(1)` |
@@ -307,7 +308,7 @@ assert(each[he.id()] == 1 && each[she.id()] == 1); // 패턴별 출현 횟수
 
 ### 위치별 매칭
 
-`it_state()`는 글자를 하나 읽을 때마다 그 위치의 상태를 넘긴다. `"she"`의 마지막 `e`에서는 두 패턴이 함께 끝난다.
+`get_state("she")`로 마지막 글자를 읽은 상태를 얻는다. 그 위치에서는 두 패턴이 함께 끝난다.
 
 ```text
 s h e  ← "she" 끝
@@ -317,8 +318,7 @@ s h e  ← "she" 끝
 이 상태의 `terminal_count()`는 직접 등록된 `"she"`만 세고, `match_count()`는 같은 자리에서 끝나는 `"he"`도 센다. 위 예제에 이어, `it_match()`로 각 패턴의 끝 상태를 받을 수 있다.
 
 ```cpp
-auto last = ac.root();
-ac.it_state("she", [&](auto node){ last = node; }); // 마지막 e를 읽은 상태
+auto last = ac.get_state("she"); // 마지막 e를 읽은 상태
 assert(last.terminal_count() == 1); // "she"만
 assert(last.match_count() == 2);    // "she"와 "he"
 
@@ -335,7 +335,7 @@ assert((lengths == std::vector<int>{3, 2}));
 
 ## Sparse Aho-Corasick
 
-`_sparse_ac<T>`는 `T` 타입의 라벨 수열에서 여러 패턴의 출현을 찾는다. 기본 `T`는 `ll`이다. `T`는 기본 생성, 복사, `==` 비교가 가능해야 한다. [소스](../Automata.cpp#L605) · [VS Code 스니펫 `>>sparse_ac`](../snippets/sparse_ac.code-snippets)
+`_sparse_ac<T>`는 `T` 타입의 라벨 수열에서 여러 패턴의 출현을 찾는다. 기본 `T`는 `ll`이다. `T`는 기본 생성, 복사, `==` 비교가 가능해야 한다. [소스](../Automata.cpp#L611) · [VS Code 스니펫 `>>sparse_ac`](../snippets/sparse_ac.code-snippets)
 
 - 문자열 입력은 각 바이트를 `unsigned char`로 읽어 `T`로 변환한다. `std::span<const T>`와 `go(const T& c)`는 라벨을 그대로 받는다.
 - 등록 후 `build()`를 호출한다. 매칭과 중복 등록 규칙, `it_match()` 사용법은 [Aho-Corasick](#aho-corasick)과 같다.
@@ -350,6 +350,7 @@ assert((lengths == std::vector<int>{3, 2}));
 | `build()` | 등록된 패턴으로 매칭을 준비한다. 같은 목록으로 다시 호출할 수 있다. | 최대 `O(N(H + 1)(D + 1))` |
 | `clear()` | 패턴을 모두 지운다. 이전 상태는 다시 얻어야 한다. | `O(N)` 상한 |
 | `root()` | `id()`가 `0`인 루트를 반환한다. | `O(1)` |
+| `get_state(s)` | `build()` 후 루트에서 `s`를 끝까지 읽은 상태를 반환한다. 빈 입력이면 루트다. | `O(1 + L(D + 1))` |
 | `size()` | 루트를 포함한 상태 수를 반환한다. | `O(1)` |
 | `depth()` | 상태 번호로 접근하는 깊이 배열을 참조로 반환한다. | `O(1)` |
 | `terminal()` | 상태 번호로 접근하는 패턴 끝 여부 배열을 참조로 반환한다. | `O(1)` |
@@ -389,6 +390,6 @@ auto labels = std::span<const ll>(text);
 assert(ac.count(labels) == 3); // 정수 수열 2회, "A" 1회
 assert(ac.count_each(labels)[word_state.id()] == 2);
 
-auto last = ac.root().go(-5).go(1'000'000'000); // 정수 라벨로 상태 이동
+auto last = ac.get_state(std::span<const ll>(word)); // 정수 라벨을 읽은 뒤의 상태
 assert(last.id() == word_state.id());
 ```

@@ -526,6 +526,12 @@ public:
     }
     
     state root() const{ return {this, 0}; } // O(1)
+    state get_state(const string& s) const{ auto v = alphabet::tf<Alphabet>(s); return get_state(v); } // O(|s|)
+    state get_state(span<const int> v) const{ // O(|v|)
+        auto ret = root();
+        it_state(v, [&](const state& st){ ret = st; });
+        return ret;
+    }
     const vector<int>& depth() const{ return dep; }
     const vector<bool>& terminal() const{ return end; }
     int size() const{ return (int)adj.size(); } // O(1)
@@ -688,6 +694,12 @@ public:
     }
 
     state root() const{ return {this, 0}; } // O(1)
+    state get_state(const string& s) const{ auto v = tf(s); return get_state(v); } // O(|s| * (D + 1))
+    state get_state(span<const T> v) const{ // O(|v| * (D + 1))
+        auto ret = root();
+        it_state(v, [&](const state& st){ ret = st; });
+        return ret;
+    }
     const vector<int>& depth() const{ return dep; } // O(1)
     const vector<bool>& terminal() const{ return end; } // O(1)
     int size() const{ return (int)head.size(); } // O(1)
