@@ -6,7 +6,7 @@
   - XOR Trie ([`_xor_trie`](docs/Automata.md#xor-trie))
   - Aho–Corasick ([`_ac`](docs/Automata.md#aho-corasick), [`_sparse_ac`](docs/Automata.md#sparse-aho-corasick))
 - `Combinatorics.cpp`
-  - Combination Table (`_comb`)
+  - Combination Table ([`_comb`](docs/Combinatorics.md#comb))
   - Lucas's Theorem (`_lucas`)
   - CRT-based Combination (`_comb_crt`)
 - `DSU.cpp`

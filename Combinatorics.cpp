@@ -9,18 +9,18 @@ using pll = pair<ll, ll>; using tll = tuple<ll, ll, ll>;
 constexpr ll INF = 0x3f3f3f3f3f3f3f3f;
 constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 
+// https://github.com/kss418/template/blob/master/docs/Combinatorics.md#comb
 template <u64 mod = 998244353>
 class _comb{ // mod == prime
 public:
     using mint = _mint<mod>;
 private:
-    vector <mint> fac, ifac; int n;
+    vector <mint> fac, ifac;
 public:
     _comb(int n = 0){ build(n); } // O(n + log mod)
 
     void build(int n){ // O(n + log mod)
-        assert(n >= 0 && (u64)n < mod);
-        this->n = n; fac.resize(n + 1); ifac.resize(n + 1);
+        fac.resize(n + 1); ifac.resize(n + 1);
         fac[0] = 1;
         for(int i = 1;i <= n;i++) fac[i] = fac[i - 1] * i;
         ifac[n] = fac[n].pow(mod - 2);
@@ -41,7 +41,6 @@ public:
         if(n < 0 || r < 0) return 0;
         if(!n) return !r;
         ll total = (ll)n + r - 1;
-        assert(total <= this->n);
         return comb((int)total, r);
     }
 
