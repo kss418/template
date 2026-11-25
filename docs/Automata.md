@@ -259,6 +259,47 @@ assert(five.count() == 1);
 - `insert()`로 패턴을 등록한 뒤 `build()`를 호출하고 매칭을 조회한다. 패턴을 더 등록하면 다시 `build()`를 호출한다.
 - 문자열은 정책이 허용하는 문자만 넣는다. `std::span<const int>`와 `go(int c)`에는 `[0, Alphabet::size)` 라벨을 넘긴다.
 
+### 기본 사용
+
+```cpp
+_ac<> ac;
+auto he = ac.insert("he");
+auto she = ac.insert("she");
+ac.build();
+
+assert(ac.count("she") == 2); // "she"와 "he"가 한 번씩 나온다.
+auto each = ac.count_each("she");
+assert(each[he.id()] == 1 && each[she.id()] == 1); // 패턴별 출현 횟수
+```
+
+### 위치별 매칭
+
+`it_state()`는 글자를 하나 읽을 때마다 그 위치의 상태를 넘긴다. `"she"`의 마지막 `e`에서는 두 패턴이 함께 끝난다.
+
+```text
+s h e  ← "she" 끝
+  h e  ← "he"도 같은 자리에서 끝
+```
+
+이 상태의 `terminal_count()`는 직접 등록된 `"she"`만 세고, `match_count()`는 같은 자리에서 끝나는 `"he"`도 센다. 위 예제에 이어, `it_match()`로 각 패턴의 끝 상태를 받을 수 있다.
+
+```cpp
+auto last = ac.root();
+ac.it_state("she", [&](auto node){ last = node; }); // 마지막 e를 읽은 상태
+assert(last.terminal_count() == 1); // "she"만
+assert(last.match_count() == 2);    // "she"와 "he"
+
+std::vector<int> ids;
+last.it_match([&](auto matched){ ids.push_back(matched.id()); });
+assert((ids == std::vector<int>{she.id(), he.id()})); // 긴 패턴부터
+
+std::vector<int> lengths;
+last.it_match_lens([&](int len){ lengths.push_back(len); });
+assert((lengths == std::vector<int>{3, 2}));
+```
+
+`"he"`를 한 번 더 등록하고 `build()`하면 `"she"`에서 `count()`와 마지막 상태의 `match_count()`는 `3`이 된다. `count_each()`의 `"he"` 출현 횟수는 여전히 `1`이며, `it_match()`는 `"he"`를 한 번 방문한다.
+
 ### `_ac` API
 
 `s`는 `const std::string&` 또는 `std::span<const int>`다. `L`은 입력 길이, `N`은 상태 수, `Σ`는 `Alphabet::size`다.
@@ -292,34 +333,30 @@ assert(five.count() == 1);
 | `it_match_lens(const F& f)` | 매칭된 패턴마다 긴 것부터 `f(int len)`을 호출한다. 같은 패턴의 중복 등록은 한 번 방문한다. | `O(1 + M)` |
 | `it_match_lens(int k, const F& f)` | 위 순서로 최대 `k`개의 길이를 순회한다. `k <= 0`이면 호출하지 않는다. | `O(1 + min(k, M))` (`k > 0`) |
 
-### 사용 예시
-
-```cpp
-_ac<> ac;
-auto he = ac.insert("he"); // 패턴별 조회에 끝 상태 번호를 쓴다.
-ac.insert("he");
-auto she = ac.insert("she");
-ac.build();
-
-assert(ac.count("sheshe") == 6); // "he"는 두 번 등록되어 4회, "she"는 2회
-auto each = ac.count_each("sheshe");
-assert(each[he.id()] == 2 && each[she.id()] == 2); // 패턴별 출현 횟수
-
-auto last = ac.root();
-ac.it_state("she", [&](auto node){ last = node; }); // 마지막 문자를 읽은 상태
-assert(last.terminal_count() == 1 && last.match_count() == 3);
-
-std::vector<int> lengths;
-last.it_match_lens([&](int len){ lengths.push_back(len); });
-assert((lengths == std::vector<int>{3, 2})); // "she", "he" 순서로 한 번씩
-```
-
 ## Sparse Aho-Corasick
 
 `_sparse_ac<T>`는 `T` 타입의 라벨 수열에서 여러 패턴의 출현을 찾는다. 기본 `T`는 `ll`이다. `T`는 기본 생성, 복사, `==` 비교가 가능해야 한다. [소스](../Automata.cpp#L605) · [VS Code 스니펫 `>>sparse_ac`](../snippets/sparse_ac.code-snippets)
 
 - 문자열 입력은 각 바이트를 `unsigned char`로 읽어 `T`로 변환한다. `std::span<const T>`와 `go(const T& c)`는 라벨을 그대로 받는다.
-- 패턴 등록을 마친 뒤 `build()`를 호출한다. 패턴을 더 등록하면 매칭을 조회하기 전에 다시 `build()`를 호출한다.
+- 등록 후 `build()`를 호출한다. 매칭과 중복 등록 규칙, `it_match()` 사용법은 [Aho-Corasick](#aho-corasick)과 같다.
+
+### 사용 예시
+
+```cpp
+_sparse_ac<> ac;
+const std::vector<ll> word{-5, 1'000'000'000};
+auto word_state = ac.insert(std::span<const ll>(word)); // 정수 라벨을 그대로 등록
+ac.insert("A"); // 바이트 라벨 {65}
+ac.build();
+
+const std::vector<ll> text{-5, 1'000'000'000, 65, -5, 1'000'000'000};
+auto labels = std::span<const ll>(text);
+assert(ac.count(labels) == 3); // 정수 수열 2회, "A" 1회
+assert(ac.count_each(labels)[word_state.id()] == 2);
+
+auto last = ac.root().go(-5).go(1'000'000'000); // 정수 라벨로 상태 이동
+assert(last.id() == word_state.id());
+```
 
 ### `_sparse_ac` API
 
@@ -355,24 +392,3 @@ assert((lengths == std::vector<int>{3, 2})); // "she", "he" 순서로 한 번씩
 | `it_match(int k, const F& f)` | 위 순서로 최대 `k`개를 순회한다. `k <= 0`이면 호출하지 않는다. | `O(1 + min(k, M))` (`k > 0`) |
 | `it_match_lens(const F& f)` | 매칭된 패턴마다 긴 것부터 `f(int len)`을 한 번 호출한다. | `O(1 + M)` |
 | `it_match_lens(int k, const F& f)` | 위 순서로 최대 `k`개의 길이를 순회한다. `k <= 0`이면 호출하지 않는다. | `O(1 + min(k, M))` (`k > 0`) |
-
-### 사용 예시
-
-```cpp
-_sparse_ac<> ac;
-const std::vector<ll> tail{1'000'000'000}, word{-5, 1'000'000'000};
-auto tail_state = ac.insert(std::span<const ll>(tail));
-auto word_state = ac.insert(std::span<const ll>(word));
-ac.insert("A"); // 바이트 라벨 {65}
-ac.build();
-
-const std::vector<ll> text{-5, 1'000'000'000, 65, -5, 1'000'000'000};
-auto labels = std::span<const ll>(text);
-assert(ac.count(labels) == 5); // word 2회, tail 2회, "A" 1회
-auto each = ac.count_each(labels);
-assert(each[word_state.id()] == 2 && each[tail_state.id()] == 2);
-
-auto last = ac.root().go(-5).go(1'000'000'000);
-assert(last.terminal_count() == 1); // 이 상태에 직접 등록된 패턴은 word
-assert(last.match_count() == 2);    // 같은 자리에서 tail도 끝난다.
-```
