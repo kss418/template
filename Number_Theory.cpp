@@ -517,16 +517,14 @@ public:
 
 class _ls{
 private:
-    vector <int> lp, prime, vphi, vmu; int n = 0, flag = 0;
+    vector <int> lp, prime, vphi, vmu;
 public:
     static constexpr int with_phi = 1, with_mobius = 2;
 
     _ls() = default;
-    _ls(int n, int flag = 0) : n(n), flag(flag){ build(); }
+    _ls(int n, int flag = 0){ build(n, flag); }
 
-    void make(int n, int flag = 0){ this->n = n; this->flag = flag; } // O(1)
-
-    void build(){ // O(n)
+    void build(int n, int flag = 0){ // O(n)
         bool do_phi = flag & with_phi, do_mu = flag & with_mobius;
         prime.clear(); vphi.clear(); vmu.clear();
         lp.assign(n + 1, 0);
@@ -567,10 +565,12 @@ public:
     }
     template <class F>
     void it_prime(const F& f) const{ for(int p : prime) f(p); } // O(pi(n))
-    bool is_prime(int x) const{ return x >= 2 && lp[x] == x; }
+    bool is_prime(int x) const{ x = abs(x); return x >= 2 && lp[x] == x; } // O(1)
 
     template <class F>
-    void it_factor(int x, const F& f) const{ // O(log x)
+    void it_factor(int x, const F& f) const{ // O(log |x|)
+        if(!x) return;
+        x = abs(x);
         while(x != 1){
             int p = lp[x], c = 0;
             do{ x /= p; c++; }while(lp[x] == p);
@@ -578,8 +578,10 @@ public:
         }
     }
 
-    vector <ll> factorize(int x) const{ // 소인수분해 (1 <= x <= n)
-        vector <ll> ret;
+    vector <int> factorize(int x) const{ // 소인수분해
+        if(!x) return {};
+        x = abs(x);
+        vector <int> ret;
         while(x != 1){
             ret.push_back(lp[x]);
             x /= lp[x];
@@ -587,15 +589,15 @@ public:
         return ret;
     }
 
-    vector <pll> factorize_cnt(int x) const{ // p^c 꼴로 소인수분해 (1 <= x <= n)
-        vector <pll> ret;
+    vector <pair<int, int>> factorize_cnt(int x) const{ // p^c 꼴로 소인수분해
+        vector <pair<int, int>> ret;
         it_factor(x, [&](int p, int c){ ret.emplace_back(p, c); });
         return ret;
     }
 
-    ll divisor_num(int x) const{ // 약수의 개수
+    int divisor_num(int x) const{ // 약수의 개수
         if(!x) return 0;
-        ll ret = 1;
+        int ret = 1;
         it_factor(x, [&](int, int c){ ret *= c + 1; });
         return ret;
     }
@@ -614,12 +616,11 @@ public:
         return ret;
     }
 
-    vector <ll> divisor(int x) const{ // 약수 벡터 반환
+    vector <int> divisor(int x) const{ // 약수 벡터 반환
         if(!x) return {};
-        vector <ll> ret = {1};
+        vector <int> ret = {1};
         it_factor(x, [&](int p, int c){
-            ll mul = 1;
-            int sz = ret.size();
+            int mul = 1, sz = ret.size();
             for(int k = 0;k < c;k++){
                 mul *= p;
                 for(int i = 0;i < sz;i++) ret.push_back(ret[i] * mul);
@@ -630,8 +631,8 @@ public:
         return ret;
     }
 
-    ll phi(int x) const { return vphi[x]; } // 오일러 피
-    ll mobius(int x) const { return vmu[x]; } // 뫼비우스
+    int phi(int x) const{ return x ? vphi[abs(x)] : 0; } // O(1)
+    int mobius(int x) const{ return x ? vmu[abs(x)] : 0; } // O(1)
 };
 
 // Prime Tower

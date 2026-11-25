@@ -1152,14 +1152,21 @@ concept ls_public_storage=requires(S& s){s.lp;} || requires(S& s){s.prime;}
 
 void check_ls(){
     using ls=numeric_templates::_ls;
+    using read_ls=const ls&;
     static_assert(!ls_public_storage<ls>);
-    static_assert(is_same_v<decltype(declval<const ls&>().ret()),const vector<int>&>);
+    static_assert(same_as<decltype(declval<read_ls>().ret()),const vector<int>&>);
+    static_assert(same_as<decltype(declval<read_ls>().factorize(1)),vector<int>>);
+    static_assert(same_as<decltype(declval<read_ls>().factorize_cnt(1)),vector<pair<int,int>>>);
+    static_assert(same_as<decltype(declval<read_ls>().divisor(1)),vector<int>>);
+    static_assert(same_as<decltype(declval<read_ls>().divisor_num(1)),int>);
+    static_assert(same_as<decltype(declval<read_ls>().divisor_sum(1)),long long>);
+    static_assert(same_as<decltype(declval<read_ls>().phi(1)),int> && same_as<decltype(declval<read_ls>().mobius(1)),int>);
     static_assert(ls::with_phi==1 && ls::with_mobius==2);
 
     constexpr int limit=512;
-    vector<long long> phi(limit+1),mu(limit+1);
-    vector<vector<long long>> divisors(limit+1),factors(limit+1);
-    vector<vector<pair<long long,long long>>> factor_counts(limit+1);
+    vector<int> phi(limit+1),mu(limit+1);
+    vector<vector<int>> divisors(limit+1),factors(limit+1);
+    vector<vector<pair<int,int>>> factor_counts(limit+1);
     vector<int> primes;
     mu[1]=1;
     for(int i=1;i<=limit;i++){
@@ -1177,32 +1184,30 @@ void check_ls(){
     }
     ls sieve;const auto& read=as_const(sieve);
     for(int n:{0,1,2,limit,17,0,limit})for(int flags:{0,ls::with_phi,ls::with_mobius,ls::with_phi|ls::with_mobius}){
-        sieve.make(n,flags);
         const vector<int> expected(primes.begin(),upper_bound(all(primes),n));
         for(int repeat=0;repeat<2;repeat++){
-            sieve.build();
+            sieve.build(n,flags);
             CHECK(read.ret()==expected);CHECK(read.count()==(int)expected.size());
             vector<int> visited;read.it_prime([&](int p){visited.push_back(p);});CHECK(visited==expected);
             for(auto [l,r]:array{pair{-5,1},pair{2,n},pair{5,5},pair{5,17},pair{9,4},pair{0,n+5}}){
                 int count=0;for(int p:expected)count+=l<=p && p<=r;
                 CHECK(read.count(l,r)==count);
             }
-            for(int i=0;i<=n;i++){
-                CHECK(read.is_prime(i)==es_trial_prime(i));
-                if(flags&ls::with_phi)CHECK(read.phi(i)==phi[i]);
-                if(flags&ls::with_mobius)CHECK(read.mobius(i)==mu[i]);
-                CHECK(read.divisor(i)==divisors[i]);CHECK(read.divisor_num(i)==(long long)divisors[i].size());
-                CHECK(read.divisor_sum(i)==accumulate(all(divisors[i]),0ll));
-                if(i){
-                    vector<pair<long long,long long>> seen;
-                    read.it_factor(i,[&](int p,int c){seen.emplace_back(p,c);});
-                    CHECK(seen==factor_counts[i]);CHECK(read.factorize_cnt(i)==factor_counts[i]);
-                    CHECK(read.factorize(i)==factors[i]);
-                }
+            for(int value=-n;value<=n;value++){
+                int i=abs(value);
+                CHECK(read.is_prime(value)==es_trial_prime(i));
+                if(!value || (flags&ls::with_phi))CHECK(read.phi(value)==phi[i]);
+                if(!value || (flags&ls::with_mobius))CHECK(read.mobius(value)==mu[i]);
+                CHECK(read.divisor(value)==divisors[i]);CHECK(read.divisor_num(value)==(int)divisors[i].size());
+                CHECK(read.divisor_sum(value)==accumulate(all(divisors[i]),0ll));
+                vector<pair<int,int>> seen;
+                read.it_factor(value,[&](int p,int c){seen.emplace_back(p,c);});
+                CHECK(seen==factor_counts[i]);CHECK(read.factorize_cnt(value)==factor_counts[i]);
+                CHECK(read.factorize(value)==factors[i]);
             }
         }
     }
-    sieve.make(30);sieve.build();CHECK(read.count()==10 && read.is_prime(29));
+    sieve.build(30);CHECK(read.count()==10 && read.is_prime(29));
 }
 
 void check_dynamic_mint(){

@@ -69,7 +69,7 @@ void check_bulk_and_numeric(){
     strings_life::_mnc<> m;m.build(string("aba"));CHECK(m.max_len()==3);m.build(string("x"));CHECK(m.max_len()==1);
     strings_life::_z<> z;z.build(string("aaa"));CHECK(z.result()==vector<int>({3,2,1}));z.build(string("ab"));CHECK(z.result()==vector<int>({2,0}));
     numbers_life::_es<20> es;auto primes=es.ret();es.build();CHECK(es.ret()==primes);es.build();CHECK(es.ret()==primes);
-    numbers_life::_ls sieve(20,numbers_life::_ls::with_phi);CHECK(sieve.phi(18)==6);sieve.build();CHECK(sieve.phi(18)==6);CHECK(sieve.ret()==primes);sieve.make(30,numbers_life::_ls::with_phi);sieve.build();CHECK(sieve.is_prime(29));
+    numbers_life::_ls sieve(20,numbers_life::_ls::with_phi);CHECK(sieve.phi(18)==6);sieve.build(20,numbers_life::_ls::with_phi);CHECK(sieve.phi(18)==6);CHECK(sieve.ret()==primes);sieve.build(30);CHECK(sieve.is_prime(29));
     auto[g,a1,b1]=numbers_life::_gcd::build(30,18);CHECK(g==6 && 30*a1+18*b1==6);
     geometry_life::_ch hull;for(auto p:vector<pair<long long,long long>>{{0,0},{1,0},{1,1},{0,1}})hull.add(p);hull.build();CHECK(hull.ret().size()==4);hull.build();CHECK(hull.ret().size()==4);hull.add(0,0);hull.build();CHECK(hull.ret().size()==4);
     geometry_life::_rc diameter;diameter.build(hull.idx());CHECK(abs(diameter.dist()-sqrtl(2))<1e-9);diameter.build();CHECK(abs(diameter.dist()-sqrtl(2))<1e-9);hull.add(2,0);hull.build();diameter.build(hull.idx());CHECK(abs(diameter.dist()-sqrtl(5))<1e-9);
