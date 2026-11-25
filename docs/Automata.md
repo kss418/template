@@ -251,3 +251,65 @@ assert(erased && trie.size() == 3);
 auto five = trie.root().go(1).go(0).go(1); // 현재 값 5의 비트 101
 assert(five.count() == 1);
 ```
+
+## Aho-Corasick
+
+`_ac<Alphabet>`은 텍스트에서 여러 패턴의 출현을 찾는다. `_ac<>`의 기본 정책은 `alphabet::lowercase`다. 스니펫을 쓸 때는 `>>alphabet`을 먼저 넣는다. [소스](../Automata.cpp#L475) · [VS Code 스니펫 `>>ac`](../snippets/ac.code-snippets)
+
+- `insert()`로 패턴을 등록한 뒤 `build()`를 호출하고 매칭을 조회한다. 패턴을 더 등록하면 다시 `build()`를 호출한다.
+- 문자열은 정책이 허용하는 문자만 넣는다. `std::span<const int>`와 `go(int c)`에는 `[0, Alphabet::size)` 라벨을 넘긴다.
+
+### `_ac` API
+
+`s`는 `const std::string&` 또는 `std::span<const int>`다. `L`은 입력 길이, `N`은 상태 수, `Σ`는 `Alphabet::size`다.
+
+| 함수 | 동작 | 시간 |
+| --- | --- | --- |
+| `insert(s)` | 패턴 한 개를 등록하고 끝 상태를 반환한다. 중복 등록이 가능하며 패턴은 비어 있지 않아야 한다. | `O(1 + LΣ)` amortized |
+| `build()` | 등록된 패턴으로 매칭을 준비한다. 같은 패턴 목록으로 다시 호출할 수 있다. | `O(NΣ)` |
+| `clear()` | 패턴을 모두 지운다. 이전 상태는 다시 얻어야 한다. | `O(Σ)` |
+| `root()` | `id()`가 `0`인 루트를 반환한다. | `O(1)` |
+| `size()` | 루트를 포함한 상태 수를 반환한다. | `O(1)` |
+| `depth()` | 상태 번호로 접근하는 깊이 배열을 참조로 반환한다. | `O(1)` |
+| `terminal()` | 상태 번호로 접근하는 패턴 끝 여부 배열을 참조로 반환한다. | `O(1)` |
+| `count(s)` | 겹치는 출현과 중복 등록을 모두 포함한 총 매칭 수를 반환한다. | `O(L)` |
+| `count_each(s)` | 길이 `size()`의 출현 횟수 벡터를 반환한다. 패턴의 끝 상태 번호로 조회하며, 중복 등록해도 해당 칸은 패턴 한 개의 출현 횟수다. | `O(L + N)` |
+| `it_state(s, const F& f)` | 루트에서 시작해 각 라벨을 읽은 뒤 `f(state node)`를 한 번 호출한다. | `O(L)` |
+
+### `state` API
+
+`M`은 현재 위치에서 끝나는 서로 다른 패턴 수다. 순회 복잡도에는 콜백 본문 비용을 포함하지 않는다.
+
+| 함수 | 동작 | 시간 |
+| --- | --- | --- |
+| `id()` | 상태 번호를 반환한다. | `O(1)` |
+| `terminal_count()` | 이 상태에 직접 등록된 패턴의 등록 횟수를 반환한다. | `O(1)` |
+| `match_count()` | 현재 위치에서 매칭된 패턴 수를 중복 등록까지 포함해 반환한다. | `O(1)` |
+| `go(int c)` | 라벨 `c` 하나를 읽은 뒤의 상태를 반환한다. | `O(1)` |
+| `max_match_len()` | 현재 위치에서 매칭된 가장 긴 패턴 길이를 반환한다. 매칭이 없으면 `0`이다. | `O(1)` |
+| `it_match(const F& f)` | 매칭된 패턴마다 긴 것부터 `f(state matched)`를 호출한다. 같은 패턴의 중복 등록은 한 번 방문한다. | `O(1 + M)` |
+| `it_match(int k, const F& f)` | 위 순서로 최대 `k`개의 패턴을 순회한다. `k <= 0`이면 호출하지 않는다. | `O(1 + min(k, M))` (`k > 0`) |
+| `it_match_lens(const F& f)` | 매칭된 패턴마다 긴 것부터 `f(int len)`을 호출한다. 같은 패턴의 중복 등록은 한 번 방문한다. | `O(1 + M)` |
+| `it_match_lens(int k, const F& f)` | 위 순서로 최대 `k`개의 길이를 순회한다. `k <= 0`이면 호출하지 않는다. | `O(1 + min(k, M))` (`k > 0`) |
+
+### 사용 예시
+
+```cpp
+_ac<> ac;
+auto he = ac.insert("he"); // 패턴별 조회에 끝 상태 번호를 쓴다.
+ac.insert("he");
+auto she = ac.insert("she");
+ac.build();
+
+assert(ac.count("sheshe") == 6); // "he"는 두 번 등록되어 4회, "she"는 2회
+auto each = ac.count_each("sheshe");
+assert(each[he.id()] == 2 && each[she.id()] == 2); // 패턴별 출현 횟수
+
+auto last = ac.root();
+ac.it_state("she", [&](auto node){ last = node; }); // 마지막 문자를 읽은 상태
+assert(last.terminal_count() == 1 && last.match_count() == 3);
+
+std::vector<int> lengths;
+last.it_match_lens([&](int len){ lengths.push_back(len); });
+assert((lengths == std::vector<int>{3, 2})); // "she", "he" 순서로 한 번씩
+```

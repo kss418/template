@@ -470,6 +470,7 @@ public:
     }
 };
 
+// https://github.com/kss418/template/blob/master/docs/Automata.md#aho-corasick
 template <class Alphabet = alphabet::lowercase>
 class _ac{
 private:

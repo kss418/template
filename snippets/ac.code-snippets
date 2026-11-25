@@ -2,6 +2,7 @@
   "ac": {
     "prefix": ">>ac",
     "body": [
+      "// https://github.com/kss418/template/blob/master/docs/Automata.md#aho-corasick",
       "template <class Alphabet = alphabet::lowercase>",
       "class _ac{",
       "private:",
@@ -131,6 +132,6 @@
       "    }",
       "};"
     ],
-    "description": "ac"
+    "description": "Aho-Corasick (requires >>alphabet)"
   }
 }
