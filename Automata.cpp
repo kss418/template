@@ -126,6 +126,7 @@ public:
 
     _trie(){ clear(); } // O(1)
     void clear(){ adj.clear(); cnt.clear(); pass.clear(); new_node(); } // O(1)
+    state root() const{ return {this, 0}; } // O(1)
 
     state get_state(const string& s) const{ auto v = alphabet::tf<Alphabet>(s); return get_state(v); } // O(|s|)
     state get_state(span<const int> v) const{ // O(|v|)
@@ -253,6 +254,7 @@ public:
 
     _sparse_trie(){ clear(); } // O(1)
     void clear(){ adj.clear(); cnt.clear(); pass.clear(); new_node(); } // O(nodes + edges)
+    state root() const{ return {this, 0}; } // O(1)
 
     state get_state(const string& s) const{ auto v = tf(s); return get_state(v); } // O(|s| * log(D + 1))
     state get_state(span<const T> v) const{ // O(|v| * log(D + 1))

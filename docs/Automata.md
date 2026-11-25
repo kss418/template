@@ -60,7 +60,7 @@ dense 클래스에 사용할 정책은 컴파일 타임 정수 상수 `size`를 
 `_trie<Alphabet>`은 문자열을 중복 허용으로 저장한다. `_trie<>`의 기본 정책은 `alphabet::lowercase`다. 스니펫을 쓸 때는 `>>alphabet`을 먼저 넣는다. [소스](../Automata.cpp#L81) · [VS Code 스니펫 `>>trie`](../snippets/trie.code-snippets)
 
 - 문자열은 정책이 허용하는 문자만 넣는다. `span<const int>`와 `state::go(c)`는 `[0, Alphabet::size)` 라벨을 받는다.
-- 빈 문자열도 저장할 수 있다. `get_state("")`는 루트이며 `id()`는 `0`이다.
+- 빈 문자열도 저장할 수 있다. 빈 문자열의 끝 상태는 `root()`와 같다.
 - 상태는 원본 trie의 현재 개수를 읽는다. `erase()`로 마지막 문자열을 지워도 경로는 남으므로, 문자열 존재 여부는 `end()`, 접두사 존재 여부는 `prefix_count() > 0`으로 확인한다. `clear()` 뒤에는 상태를 다시 얻는다.
 
 ### `_trie` API
@@ -72,6 +72,7 @@ dense 클래스에 사용할 정책은 컴파일 타임 정수 상수 `size`를 
 | `insert(s)` | 한 개를 추가하고 끝 상태를 반환한다. | `O(1 + LΣ)` amortized |
 | `erase(s)` | 한 개를 지운다. 해당 문자열이 없으면 `false`다. | `O(L)` |
 | `get_state(s)` | 경로의 끝 상태를 반환한다. 경로가 없으면 무효 상태다. | `O(L)` |
+| `root()` | 루트 상태를 반환한다. 비어 있어도 `id()`는 `0`이다. | `O(1)` |
 | `size()` | 중복을 포함한 문자열 개수를 반환한다. | `O(1)` |
 | `rank(s)` | `s`보다 사전순으로 앞선 문자열 개수를 반환한다. | `O(LΣ)` |
 | `kth(int k)` | 중복을 포함해 `1`부터 세는 `k`번째 문자열을 `vector<int>` 라벨로 반환한다. 범위를 벗어나면 빈 벡터다. | `O(LΣ)` |
@@ -101,6 +102,9 @@ auto ab = trie.insert("ab"); // 삽입한 문자열의 끝 상태
 trie.insert("ab");           // 중복도 개수에 포함
 trie.insert("abc");
 
+auto a = trie.root().go(alphabet::lowercase::encode('a')); // 루트에서 'a'로 이동
+assert(a.prefix_count() == 3);
+
 assert(ab.count() == 2 && ab.prefix_count() == 3); // 정확히 일치 2개, 접두사 일치 3개
 assert(trie.rank("abc") == 2);                     // "abc"보다 앞선 문자열 개수
 assert((trie.kth(3) == std::vector<int>{0, 1, 2}));
@@ -119,10 +123,10 @@ assert(words == 2); // "ab", "abc" 각 1개
 
 ## Sparse Trie
 
-`_sparse_trie<T>`는 `T` 타입의 라벨 수열을 중복 허용으로 저장한다. 기본 `T`는 `ll`이고, 라벨은 복사하고 `std::less<T>`로 비교할 수 있어야 한다. [소스](../Automata.cpp#L197) · [VS Code 스니펫 `>>sparse_trie`](../snippets/sparse_trie.code-snippets)
+`_sparse_trie<T>`는 `T` 타입의 라벨 수열을 중복 허용으로 저장한다. 기본 `T`는 `ll`이고, 라벨은 복사하고 `std::less<T>`로 비교할 수 있어야 한다. [소스](../Automata.cpp#L198) · [VS Code 스니펫 `>>sparse_trie`](../snippets/sparse_trie.code-snippets)
 
 - `std::span<const T>`와 `state::go()`는 라벨을 그대로 받는다. 문자열을 넘기면 각 바이트를 `unsigned char`로 읽어 `T`로 변환한다. 문자열 API를 쓰려면 이 변환이 가능해야 한다.
-- 빈 수열의 상태는 루트(`id() == 0`)다. 삭제 후에도 경로는 남으므로, 저장 여부는 `end()`, 접두사 존재 여부는 `prefix_count() > 0`으로 확인한다. `clear()` 뒤에는 상태를 다시 얻는다.
+- 빈 수열의 끝 상태는 `root()`와 같다. 삭제 후에도 경로는 남으므로, 저장 여부는 `end()`, 접두사 존재 여부는 `prefix_count() > 0`으로 확인한다. `clear()` 뒤에는 상태를 다시 얻는다.
 
 ### `_sparse_trie` API
 
@@ -133,6 +137,7 @@ assert(words == 2); // "ab", "abc" 각 1개
 | `insert(s)` | 한 개를 추가하고 끝 상태를 반환한다. | `O(1 + L log(D + 2))` amortized |
 | `erase(s)` | 한 개를 지운다. 수열이 없으면 `false`다. | `O(1 + L log(D + 2))` |
 | `get_state(s)` | 경로의 끝 상태를 반환한다. 경로가 없으면 무효 상태다. | `O(1 + L log(D + 2))` |
+| `root()` | 루트 상태를 반환한다. 비어 있어도 `id()`는 `0`이다. | `O(1)` |
 | `size()` | 중복을 포함한 수열 개수를 반환한다. | `O(1)` |
 | `rank(s)` | `s`보다 사전순으로 앞선 수열 개수를 반환한다. | `O(1 + L(D + 1))` |
 | `kth(int k)` | 중복을 포함해 `1`부터 세는 `k`번째 수열을 `vector<T>`로 반환한다. 범위 밖이면 빈 벡터다. | `O(1 + L(D + 1))` |
@@ -166,7 +171,7 @@ const std::vector<ll> word{-5, 1'000'000'000};
 trie.insert(std::span<const ll>(word)); // 정수 라벨을 그대로 저장
 trie.insert("A");                      // 바이트 라벨 {65}
 
-auto root = trie.get_state(std::span<const ll>{});
+auto root = trie.root();
 auto prefix = root.go(-5);
 assert(prefix.prefix_count() == 1);
 assert(root.go(65).end()); // "A"가 저장된 상태

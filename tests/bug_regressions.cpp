@@ -2273,6 +2273,9 @@ void check_alphabet_trie(){
     }
     auto verify=[&]{
         const auto& view=tree;
+        auto root=view.root();
+        CHECK(root.id()==0 && root.prefix_count()==(int)expected.size());
+        CHECK(root.id()==view.get_state(span<const int>{}).id());
         CHECK(tree.size()==(int)expected.size());int k=1;
         for(const auto& word:expected){CHECK(tree.kth(k)==word);k++;}
         vector<vector<int>> listed;vector<int> path;
@@ -2282,7 +2285,7 @@ void check_alphabet_trie(){
                 path.push_back(label);self(self,child);path.pop_back();
             });
         };
-        visit(visit,view.get_state(""));CHECK(listed==vector<vector<int>>(expected.begin(),expected.end()));
+        visit(visit,root);CHECK(listed==vector<vector<int>>(expected.begin(),expected.end()));
         set<vector<int>> prefixes;
         for(const auto& word:expected)for(int len=0;len<=(int)word.size();len++)prefixes.emplace(word.begin(),word.begin()+len);
         vector<int> wanted,visited;int total=0;
@@ -2323,7 +2326,7 @@ void check_alphabet_trie(){
     tree.insert(string(2048,char(A::decode(0))));
     CHECK(tree.get_state(missing).id()==state.id());CHECK(tree.get_state(prefix).id()==prefix_state.id());
     CHECK(state.count()==0);CHECK(state.prefix_count()==1);
-    tree.clear();CHECK(tree.size()==0);CHECK(tree.get_state(string()).prefix_count()==0);
+    tree.clear();CHECK(tree.size()==0);CHECK(tree.root().valid() && tree.root().prefix_count()==0);
     CHECK(tree.get_state(missing).id()==-1);CHECK(tree.get_state(string()).id()==0);
     CHECK(tree.get_state(span<const int>()).id()==0);CHECK(tree.insert(string()).id()==0);
     CHECK(tree.insert(span<const int>()).id()==0);CHECK(tree.get_state("").count()==2);
@@ -2331,7 +2334,7 @@ void check_alphabet_trie(){
 
 void check_trie_state_handles(){
     automata::_trie<> tree;const auto& view=tree;
-    auto root=view.get_state("");CHECK(root.id()==0);CHECK(root.count()==0);CHECK(root.prefix_count()==0);
+    auto root=view.root();CHECK(root.id()==0);CHECK(root.count()==0);CHECK(root.prefix_count()==0);
     CHECK(root.valid());CHECK(!root.end());CHECK(!root.has_child());
     auto ab=tree.insert("ab");auto a=root.go(0);
     CHECK(a.go(1).id()==ab.id());CHECK(ab.count()==1);CHECK(ab.prefix_count()==1);
