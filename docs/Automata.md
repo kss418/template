@@ -248,7 +248,7 @@ trie.insert(7);  // 전체 XOR 이후에도 현재 값으로 삽입
 bool erased = trie.erase(5);
 assert(erased && trie.size() == 3);
 
-auto five = trie.root().go(1).go(0).go(1); // 현재 값 5의 비트 101
+auto five = trie.get_state(5); // 현재 값 5의 끝 상태
 assert(five.count() == 1);
 ```
 
