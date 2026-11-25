@@ -76,7 +76,19 @@ assert(table.comb(10, 3) == 0);
 | `multicomb(ll n, ll r)` | `n`종에서 `r`개를 중복 선택하는 수의 나머지를 반환한다. 음수 인자면 `0`이고, `n == 0`이면 `r == 0`인 경우만 `1 mod M`이다. 그 외에는 `n + r - 1 <= LLONG_MAX`여야 한다. | `O(1 + k(log(n + r + 2) + log M))` |
 | `clear()` | 등록한 인수와 테이블을 모두 지운다. | `O(1 + S)` 상한 |
 
-조회가 돌려준 `result`에서 `get_value()`는 `[0, M)`의 나머지, `get_mod()`는 `M`을 반환한다. 둘 다 `O(1)`이다.
+### `result` API
+
+`result`는 `_crt::result`다. 조회에서 값으로 반환하므로 테이블을 다시 전처리해도 이미 받은 결과는 유지된다.
+
+| 함수 | 동작 | 시간 |
+| --- | --- | --- |
+| `get_value()` | 계산 결과의 나머지를 `[0, M)` 범위의 `ll`로 반환한다. | `O(1)` |
+| `get_mod()` | 최종 모듈러 `M`을 `ll`로 반환한다. | `O(1)` |
+| `inconsistent()` | 합칠 수 없는 나머지 조건이면 `true`다. 입력 조건을 만족하는 `_comb_crt` 조회에서는 `false`다. | `O(1)` |
+
+### 큰 `n`과 `r`
+
+전처리 테이블 크기는 등록한 `p^e`로 결정된다. `comb()`과 `perm()`은 조회할 때 `n`과 `r`을 나눈 몫과 나머지를 이용해 계산하므로, 두 값이 커져도 테이블을 늘릴 필요가 없다. 예를 들어 `M = 72`로 전처리한 뒤에도 `n = 10^12`, `r = n - 1`인 조합을 구할 수 있어 `ll`로 받는다. `multicomb()`은 같은 테이블로 `comb(n + r - 1, r)`을 계산한다.
 
 ### 사용 예시
 
@@ -88,8 +100,13 @@ table.add(3, 2);
 table.build(); // lcm(4, 8, 9) = 72
 
 auto result = table.comb(10, 4);
+assert(!result.inconsistent());
 assert(result.get_mod() == 72);
 assert(result.get_value() == 66); // 210 mod 72
+
+constexpr ll n = 1'000'000'000'000LL;
+auto large = table.comb(n, n - 1); // 같은 테이블로 큰 n과 r을 조회
+assert(large.get_value() == n % 72);
 
 table.add(5, 1);
 table.build(); // 인수를 추가했으니 다시 전처리
