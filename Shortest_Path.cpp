@@ -103,22 +103,24 @@ public:
 
     template<class F>
     void it_used_edge(const F& f) const{ // O(n)
-        for(int v = base;v <= n;v++){
-            int u = pre[v];
-            if(u != -1) f(u, v, adj[u][pre_edge[v]].w);
+        for(int i = base;i <= n;i++){
+            int p = pre[i];
+            if(p != -1) f(p, i, adj[p][pre_edge[i]].w);
         }
     }
 
     template<class F>
     void it_unused_edge(const F& f) const{ // O(n + m)
-        for(int u = base;u <= n;u++) for(int i = 0;i < (int)adj[u].size();i++){
-            const auto& [w, v, rev] = adj[u][i];
-            if(pre[v] == u && pre_edge[v] == i) continue;
-            if(rev != -1){
-                if(u > v || (u == v && i > rev)) continue;
-                if(pre[u] == v && pre_edge[u] == rev) continue;
+        for(int i = base;i <= n;i++){
+            for(int j = 0;j < (int)adj[i].size();j++){
+                const auto& [c, nxt, rev] = adj[i][j];
+                if(pre[nxt] == i && pre_edge[nxt] == j) continue;
+                if(rev != -1){
+                    if(i > nxt || (i == nxt && j > rev)) continue;
+                    if(pre[i] == nxt && pre_edge[i] == rev) continue;
+                }
+                f(i, nxt, c);
             }
-            f(u, v, w);
         }
     }
 
