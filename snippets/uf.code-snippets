@@ -2,6 +2,7 @@
 "uf": {
   "prefix": ">>uf",
   "body": [
+    "// https://github.com/kss418/template/blob/master/docs/DSU.md#uf",
     "class _uf{",
     "private:",
     "    bool base;",

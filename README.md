@@ -10,7 +10,7 @@
   - Lucas's Theorem ([`_lucas`](docs/Combinatorics.md#lucas))
   - CRT-based Combination ([`_comb_crt`](docs/Combinatorics.md#comb_crt))
 - `DSU.cpp`
-  - Union-Find / Component Values (`_uf`, `_uf_value`)
+  - Union-Find / Component Values ([`_uf`](docs/DSU.md#uf), `_uf_value`)
   - Weighted Union-Find (`_wuf`)
   - Union-Find Set (`_ufset`)
 - `FFT.cpp`
