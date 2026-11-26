@@ -14,7 +14,7 @@
   - Weighted Union-Find ([`_wuf`](docs/DSU.md#wuf))
   - Union-Find Set ([`_ufset`](docs/DSU.md#ufset))
 - `FFT.cpp`
-  - FFT (`_fft`)
+  - FFT ([`_fft`](docs/FFT.md#fft))
 - `Flow.cpp`
   - Dinic (`_flow`)
   - MCMF (`_mcmf`)
