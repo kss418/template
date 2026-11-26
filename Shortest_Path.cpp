@@ -9,26 +9,10 @@ using pll = pair<ll, ll>; using tll = tuple<ll, ll, ll>;
 constexpr ll INF = 0x3f3f3f3f3f3f3f3f;
 constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 
-struct sp_policy{
-    using dist = ll; using cost = ll;
-    static dist add(const dist& d, const cost& w){ // dist + cost 
-        return d + w;
-    }
-    static bool leq(const dist& a, const dist& b){ // dist a <= dist b 
-        return a <= b;
-    }
-    static dist inf(){ // ll -> INF, pll -> {INF, INF}, tll -> {INF, INF, INF} 
-        return INF;
-    }
-    static dist zero(){ // ll -> 0, pll -> {0, 0}, tll -> {0, 0, 0} 
-        return 0;
-    }
-};
-
-template<class policy = sp_policy>
+template<class Dist = ll, class Cost = Dist>
 class _dij{
 public:
-    using dist = typename policy::dist; using cost = typename policy::cost;
+    using dist = Dist; using cost = Cost;
 private:
     bool base;
     struct edge{ cost w; int nxt, rev; }; struct node{ dist d; int v; };
@@ -37,8 +21,13 @@ private:
     vector <dist> d; vector<int> pre, pre_edge, origin;
     priority_queue<node, vector<node>, cmp> pq;
 
-    static bool less(const dist& a, const dist& b){ return policy::leq(a, b) && !policy::leq(b, a); } // O(1)
-    static bool eq(const dist& a, const dist& b){ return policy::leq(a, b) && policy::leq(b, a); } // O(1)
+    static dist inf(){
+        if constexpr(is_same_v<dist, ll>) return INF;
+        else if constexpr(is_arithmetic_v<dist>) return numeric_limits<dist>::max();
+        else return dist::inf();
+    }
+    static bool less(const dist& a, const dist& b){ return a <= b && !(b <= a); } // O(1)
+    static bool eq(const dist& a, const dist& b){ return a <= b && b <= a; } // O(1)
     void cal(){
         while(!pq.empty()){
             auto [cd, cur] = pq.top(); pq.pop();
@@ -46,8 +35,8 @@ private:
             for(int i = 0;i < (int)adj[cur].size();i++){
                 const auto& e = adj[cur][i];
                 int nxt = e.nxt;
-                dist nd = policy::add(cd, e.w);
-                if(policy::leq(d[nxt], nd)) continue;
+                dist nd = cd + e.w;
+                if(d[nxt] <= nd) continue;
                 d[nxt] = nd; pre[nxt] = cur; pre_edge[nxt] = i; origin[nxt] = origin[cur];
                 pq.push({nd, nxt});
             }
@@ -55,7 +44,7 @@ private:
     }
     void reset(int n){
         pre.assign(n + 1, -1); pre_edge.assign(n + 1, -1); origin.assign(n + 1, -1);
-        d.assign(n + 1, policy::inf());
+        d.assign(n + 1, inf());
     }
     void chk(int x) const{ assert(x >= base && x <= n); }
 public:
@@ -83,7 +72,7 @@ public:
         for(int i : source){
             assert(base <= i && i <= n);
             if(origin[i] != -1) continue;
-            d[i] = policy::zero(); origin[i] = i;
+            d[i] = dist{}; origin[i] = i;
             pq.push({d[i], i});
         }
         cal();
@@ -98,7 +87,7 @@ public:
 
     bool reachable(int x) const{ // O(1)
         chk(x);
-        return !eq(d[x], policy::inf());
+        return !eq(d[x], inf());
     }
 
     template<class F>
@@ -134,27 +123,32 @@ public:
     }
 };
 
-template <class policy = sp_policy>
-class _floyd {
+template<class Dist = ll, class Cost = Dist>
+class _floyd{
     bool base;
 public:
-    using dist = typename policy::dist; using cost = typename policy::cost;
+    using dist = Dist; using cost = Cost;
 private:
     vector <vector<dist>> d, input; vector <vector<int>> nxt;
     int n; bool built = 0;
 
-    static bool less(const dist& a, const dist& b){ return policy::leq(a, b) && !policy::leq(b, a); }
-    static bool eq(const dist& a, const dist& b){ return policy::leq(a, b) && policy::leq(b, a); }
+    static dist inf(){
+        if constexpr(is_same_v<dist, ll>) return INF;
+        else if constexpr(is_arithmetic_v<dist>) return numeric_limits<dist>::max();
+        else return dist::inf();
+    }
+    static bool less(const dist& a, const dist& b){ return a <= b && !(b <= a); }
+    static bool eq(const dist& a, const dist& b){ return a <= b && b <= a; }
     void chk(int st, int en) const{ assert(st >= base && st <= n); assert(en >= base && en <= n); }
 public:
     _floyd(int n = 0, bool base = 1){ clear(n, base); } // O(n^2)
     void clear(int n, bool base = 1){ // O(n^2)
         this->n = n; this->base = base; built = 0;
-        input.assign(n + 1, vector<dist>(n + 1, policy::inf()));
+        input.assign(n + 1, vector<dist>(n + 1, inf()));
         d = input;
         nxt.assign(n + 1, vector<int>(n + 1, 0));
         for(int i = base; i <= n; i++){
-            input[i][i] = d[i][i] = policy::zero();
+            input[i][i] = d[i][i] = dist{};
             nxt[i][i] = i;
         }
     }
@@ -166,21 +160,22 @@ public:
     void addsol(int st, int en, cost c) { // O(1)
         assert(base <= st && st <= n && base <= en && en <= n);
         built = 0;
-        if(!less(c, input[st][en])) return;
-        input[st][en] = c;
+        dist nd = dist{} + c;
+        if(!less(nd, input[st][en])) return;
+        input[st][en] = nd;
     }
 
     void build() { // O(n^3)
         d = input; nxt.assign(n + 1, vector<int>(n + 1, 0));
         for(int i = base; i <= n; ++i) for(int j = base; j <= n; ++j)
-            if(!eq(d[i][j], policy::inf())) nxt[i][j] = j;
+            if(!eq(d[i][j], inf())) nxt[i][j] = j;
         built = 1;
         for (int k = base; k <= n; k++) {
             for (int i = base; i <= n; i++) {
                 for (int j = base; j <= n; j++) {
-                    if(eq(d[i][k], policy::inf()) || eq(d[k][j], policy::inf())) continue;
-                    dist nd = policy::add(d[i][k], d[k][j]);
-                    if (policy::leq(d[i][j], nd)) continue;
+                    if(eq(d[i][k], inf()) || eq(d[k][j], inf())) continue;
+                    dist nd = d[i][k] + d[k][j];
+                    if (d[i][j] <= nd) continue;
                     d[i][j] = nd; nxt[i][j] = nxt[i][k];
                 }
             }
@@ -194,7 +189,7 @@ public:
 
     bool reachable(int st, int en) const{ // O(1)
         chk(st, en);
-        return !eq(d[st][en], policy::inf());
+        return !eq(d[st][en], inf());
     }
 
     template<class F>
@@ -207,19 +202,23 @@ public:
     }
 };
 
-template <class policy = sp_policy>
-class _spfa {
+template<class Dist = ll, class Cost = Dist>
+class _spfa{
     bool base;
 public:
-    using dist = typename policy::dist; using cost = typename policy::cost;
+    using dist = Dist; using cost = Cost;
 private:
     struct edge{ cost w; int nxt; };
     vector <int> pre, cnt; deque <int> q;
     vector <dist> d; vector <bool> in, cy;
     vector <vector <edge>> adj; int n; bool built = 0;
 
-    static bool less(const dist& a, const dist& b){ return policy::leq(a, b) && !policy::leq(b, a); }
-    static bool eq(const dist& a, const dist& b){ return policy::leq(a, b) && policy::leq(b, a); }
+    static dist inf(){
+        if constexpr(is_same_v<dist, ll>) return INF;
+        else if constexpr(is_arithmetic_v<dist>) return numeric_limits<dist>::max();
+        else return dist::inf();
+    }
+    static bool eq(const dist& a, const dist& b){ return a <= b && b <= a; }
     void cal_cy(int x){
         if(cy[x]) return; cy[x] = 1;
         deque <int> q; q.push_back(x);
@@ -241,8 +240,8 @@ private:
             for (auto& e : adj[cur]) {
                 auto [co, nxt] = e;
                 if(cy[nxt]) continue;
-                dist nd = policy::add(cd, co);
-                if (policy::leq(d[nxt], nd)) continue;
+                dist nd = cd + co;
+                if (d[nxt] <= nd) continue;
                 d[nxt] = nd; pre[nxt] = cur;
 
                 cnt[nxt] = cnt[cur] + 1;
@@ -257,7 +256,7 @@ private:
     }
     void reset(int n){
         pre.assign(n + 1, -1); cnt.assign(n + 1, 0);
-        d.assign(n + 1, policy::inf()); q.clear();
+        d.assign(n + 1, inf()); q.clear();
         in.assign(n + 1, false); cy.assign(n + 1, false);
     }
     void chk(int x) const{ assert(x >= base && x <= n); }
@@ -278,7 +277,7 @@ public:
     }
 
     // cycle existed -> return 0 
-    bool build(int source, dist fi = policy::zero()) { // O(nm)
+    bool build(int source, dist fi = dist{}) { // O(nm)
         assert(base <= source && source <= n);
         reset(n); d[source] = fi; in[source] = 1;
         q.push_back(source);
@@ -286,7 +285,7 @@ public:
     }
 
     // cycle existed -> return 0 
-    bool build(const vector <int>& source, dist fi = policy::zero()) { // O(nm)
+    bool build(const vector <int>& source, dist fi = dist{}) { // O(nm)
         reset(n); 
         for (const auto& st : source) {
             assert(base <= st && st <= n);
@@ -303,7 +302,7 @@ public:
 
     bool reachable(int x) const{ // O(1)
         chk(x);
-        return !is_cycle(x) && !eq(d[x], policy::inf());
+        return !is_cycle(x) && !eq(d[x], inf());
     }
 
     bool is_cycle(int x) const{ // O(1)

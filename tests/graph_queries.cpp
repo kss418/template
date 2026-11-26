@@ -1483,25 +1483,32 @@ static_assert(is_same_v<decltype(declval<const paths::_dij<>&>().parent(0)),int>
 static_assert(is_same_v<decltype(declval<const paths::_dij<>&>().source(0)),int>);
 static_assert(requires{static_cast<void(paths::_dij<>::*)(span<const int>)>(&paths::_dij<>::build);});
 
-class dij_lex_policy{
+class lex_distance{
 public:
-    using dist=pair<long long,long long>; using cost=long long;
-    static dist zero(){return {0,0};}
-    static dist inf(){return {paths::INF,paths::INF};}
-    static bool leq(const dist& a,const dist& b){return a<=b;}
-    static dist add(const dist& d,const cost& w){return {d.first+w,d.second+1};}
+    long long weight=0; int hops=0;
+    static lex_distance inf(){return {paths::INF,INT_MAX};}
+    bool operator<=(const lex_distance& rhs) const{return tie(weight,hops)<=tie(rhs.weight,rhs.hops);}
+    lex_distance operator+(long long w) const{return {weight+w,hops+1};}
+    lex_distance operator+(const lex_distance& rhs) const{return {weight+rhs.weight,hops+rhs.hops};}
 };
-class dij_count_policy:public paths::sp_policy{
+class counted_distance{
 public:
     inline static int calls=0;
-    static dist add(const dist& d,const cost& w){calls++;return d+w;}
+    long long value=0;
+    static counted_distance inf(){return {paths::INF};}
+    bool operator<=(const counted_distance& rhs) const{return value<=rhs.value;}
+    counted_distance operator+(long long w) const{calls++;return {value+w};}
 };
-template<class Policy>
+template<class D>
 void check_dijkstra_api(bool base){
-    using D=typename Policy::dist;
+    const D inf=[]() -> D{
+        if constexpr(is_same_v<D,long long>) return paths::INF;
+        else return D::inf();
+    }();
+    auto eq=[](const D& a,const D& b){return a<=b && b<=a;};
     mt19937 rng(842+base);
     for(int trial=0;trial<100;trial++){
-        int n=1+rng()%10; paths::_dij<Policy> g(base+n-1,base);
+        int n=1+rng()%10; paths::_dij<D,long long> g(base+n-1,base);
         vector<vector<long long>> edge(n,vector<long long>(n,paths::INF));
         for(int len=rng()%(2*n*n+1);len--;){
             int a=rng()%n,b=rng()%n;long long w=rng()%12;
@@ -1509,20 +1516,18 @@ void check_dijkstra_api(bool base){
             else{g.add(base+a,base+b,w);edge[a][b]=min(edge[a][b],w);edge[b][a]=min(edge[b][a],w);}
         }
         auto verify=[&](const vector<int>& seeds,int mode){
-            vector<vector<D>> dist(n,vector<D>(n,Policy::inf()));
+            vector<vector<D>> dist(n,vector<D>(n,inf));
             for(int a=0;a<n;a++){
-                dist[a][a]=Policy::zero();
+                dist[a][a]=D{};
                 for(int b=0;b<n;b++) if(edge[a][b]!=paths::INF){
-                    D value=Policy::add(Policy::zero(),edge[a][b]);
-                    if(!Policy::leq(dist[a][b],value)) dist[a][b]=value;
+                    D value=D{}+edge[a][b];
+                    if(!(dist[a][b]<=value)) dist[a][b]=value;
                 }
             }
             for(int k=0;k<n;k++) for(int a=0;a<n;a++) for(int b=0;b<n;b++){
-                if(dist[a][k]==Policy::inf() || dist[k][b]==Policy::inf()) continue;
-                D value;
-                if constexpr(is_same_v<D,long long>) value=dist[a][k]+dist[k][b];
-                else value={dist[a][k].first+dist[k][b].first,dist[a][k].second+dist[k][b].second};
-                if(!Policy::leq(dist[a][b],value)) dist[a][b]=value;
+                if(eq(dist[a][k],inf) || eq(dist[k][b],inf)) continue;
+                D value=dist[a][k]+dist[k][b];
+                if(!(dist[a][b]<=value)) dist[a][b]=value;
             }
             if(mode==0) g.build(seeds.front());
             else if(mode==1) g.build(seeds);
@@ -1532,12 +1537,12 @@ void check_dijkstra_api(bool base){
             }
             const auto& read=as_const(g);
             for(int v=0;v<n;v++){
-                D want=Policy::inf();
-                for(int seed:seeds) if(!Policy::leq(want,dist[seed-base][v])) want=dist[seed-base][v];
-                CHECK(read.ret(base+v)==want); CHECK(read.reachable(base+v)==(want!=Policy::inf()));
-                if(want==Policy::inf()){CHECK(read.parent(base+v)==-1);CHECK(read.source(base+v)==-1);continue;}
+                D want=inf;
+                for(int seed:seeds) if(!(want<=dist[seed-base][v])) want=dist[seed-base][v];
+                CHECK(eq(read.ret(base+v),want)); CHECK(read.reachable(base+v)==!eq(want,inf));
+                if(eq(want,inf)){CHECK(read.parent(base+v)==-1);CHECK(read.source(base+v)==-1);continue;}
                 int root=read.source(base+v); CHECK(find(seeds.begin(),seeds.end(),root)!=seeds.end());
-                CHECK(read.parent(root)==-1); CHECK(read.source(root)==root); CHECK(dist[root-base][v]==want);
+                CHECK(read.parent(root)==-1); CHECK(read.source(root)==root); CHECK(eq(dist[root-base][v],want));
                 vector<int> backward; vector<bool> seen(n);
                 for(int cur=base+v;cur!=-1;cur=read.parent(cur)){
                     CHECK(cur>=base && cur<base+n); CHECK(!seen[cur-base]); seen[cur-base]=true;
@@ -1545,11 +1550,11 @@ void check_dijkstra_api(bool base){
                 }
                 CHECK(backward.back()==root);reverse(backward.begin(),backward.end());
                 vector<int> forward;read.it_path(base+v,[&](int cur){forward.push_back(cur);});CHECK(forward==backward);
-                D value=Policy::zero();
+                D value{};
                 for(int i=1;i<(int)forward.size();i++){
-                    auto w=edge[forward[i-1]-base][forward[i]-base];CHECK(w!=paths::INF);value=Policy::add(value,w);
+                    auto w=edge[forward[i-1]-base][forward[i]-base];CHECK(w!=paths::INF);value=value+w;
                 }
-                CHECK(value==want);
+                CHECK(eq(value,want));
             }
         };
         vector<int> seeds;for(int len=rng()%(2*n+1);len--;) seeds.push_back(base+rng()%n);
@@ -1560,10 +1565,10 @@ void check_dijkstra_api(bool base){
     }
 }
 void check_dijkstra_seeds(bool base){
-    paths::_dij<dij_count_policy> g(base+100,base);
+    paths::_dij<counted_distance,long long> g(base+100,base);
     for(int v=base+1;v<=base+100;v++) g.addsol(base,v,1);
-    dij_count_policy::calls=0;g.build(base);int once=dij_count_policy::calls;CHECK(once==100);
-    dij_count_policy::calls=0;g.build(vector<int>(1000,base));CHECK(dij_count_policy::calls==once);
+    counted_distance::calls=0;g.build(base);int once=counted_distance::calls;CHECK(once==100);
+    counted_distance::calls=0;g.build(vector<int>(1000,base));CHECK(counted_distance::calls==once);
     for(int v=base;v<=base+100;v++){CHECK(g.source(v)==base);CHECK(g.parent(v)==(v==base ? -1 : int(base)));}
     paths::_dij<> zero(base+3,base);zero.add(base,base+1,0);zero.add(base+1,base+2,0);
     const int seeds[]{base,base+2,base,base+2};zero.build(seeds);
@@ -1603,11 +1608,43 @@ void check_dijkstra_edges(bool base){
     g.clear(s,base);g.build(s);verify({},{});
 }
 
+void check_shortest_path_types(bool base){
+    int s=base,a=s+1,b=s+2,t=s+3,u=s+4;
+    paths::_dij<long long,int> dij(u,base);
+    paths::_floyd<long long,int> floyd(u,base);
+    paths::_spfa<long long,int> spfa(u,base);
+    for(auto [from,to,w]:{tuple{s,b,1},tuple{b,a,2'000'000'000},tuple{a,t,2'000'000'000}}){
+        dij.addsol(from,to,w);floyd.addsol(from,to,w);spfa.addsol(from,to,w);
+    }
+    dij.build(s);floyd.build();CHECK(spfa.build(s));
+    CHECK(dij.ret(t)==4'000'000'001LL);CHECK(floyd.ret(s,t)==4'000'000'001LL);CHECK(spfa.ret(t)==4'000'000'001LL);
+    CHECK(dij.ret(u)==paths::INF);CHECK(floyd.ret(s,u)==paths::INF);CHECK(spfa.ret(u)==paths::INF);
+    CHECK(spfa.build(s,5));CHECK(spfa.ret(t)==4'000'000'006LL);
+
+    paths::_floyd<lex_distance,long long> lex_floyd(u,base);
+    paths::_spfa<lex_distance,long long> lex_spfa(u,base);
+    for(auto [from,to,w]:{tuple{s,b,2LL},tuple{b,a,3LL},tuple{a,t,4LL},tuple{s,t,9LL}}){
+        lex_floyd.addsol(from,to,w);lex_spfa.addsol(from,to,w);
+    }
+    lex_floyd.build();CHECK(lex_spfa.build(s));
+    auto [floyd_weight,floyd_hops]=lex_floyd.ret(s,t);
+    auto [spfa_weight,spfa_hops]=lex_spfa.ret(t);
+    CHECK(floyd_weight==9 && floyd_hops==1);CHECK(spfa_weight==9 && spfa_hops==1);
+    CHECK(lex_floyd.ret(s,a).hops==2);CHECK(lex_spfa.ret(a).hops==2);
+    CHECK(!lex_floyd.reachable(s,u));CHECK(!lex_spfa.reachable(u));
+
+    paths::_dij<int> narrow(u,base);narrow.addsol(s,t,5);narrow.build(s);
+    CHECK(narrow.ret(t)==5);CHECK(narrow.ret(u)==INT_MAX);
+}
+
 int main(){
     try {
         for(bool base:{false,true}) check_bm_api(base);
         check_bm_empty();
-        for(bool base:{false,true}){check_dijkstra_api<paths::sp_policy>(base);check_dijkstra_api<dij_lex_policy>(base);check_dijkstra_seeds(base);check_dijkstra_edges(base);}
+        for(bool base:{false,true}){
+            check_dijkstra_api<long long>(base);check_dijkstra_api<lex_distance>(base);
+            check_dijkstra_seeds(base);check_dijkstra_edges(base);check_shortest_path_types(base);
+        }
         for(bool base:{false,true}){check_cycle_api(base); check_cycle_large(base);}
         for(bool base:{false,true}) check_triangle_api(base);
         for(bool base:{false,true}) check_bcc_api(base);
