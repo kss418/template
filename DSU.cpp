@@ -174,6 +174,7 @@ public:
     }
 };
 
+// https://github.com/kss418/template/blob/master/docs/DSU.md#ufset
 class _ufset{
 private:
     bool base;

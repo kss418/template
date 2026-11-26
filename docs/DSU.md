@@ -155,3 +155,49 @@ assert(uf.diff(2, 3).inconsistent());
 uf.merge(3, 4, 1); // 4번이 모순 상태인 집합에 합쳐진다.
 assert(uf.same(1, 4) && uf.diff(1, 4).inconsistent());
 ```
+
+## ufset
+
+`_ufset`은 정수 범위를 연속된 구간들로 관리한다. 처음에는 원소 하나가 구간 하나이며, `merge_prv()`와 `merge_nxt()`로 바로 이웃한 구간을 합친다. [소스](../DSU.cpp#L178) · [VS Code 스니펫 `>>ufset`](../snippets/ufset.code-snippets)
+
+### `_ufset` API
+
+`n`은 최대 원소 번호다. 원소 범위는 `[base, n]`이고, 그 밖의 경계값은 표에 명시된 호출에서 사용할 수 있다. 공간은 `O(n + 1)`이다.
+
+| 함수 | 동작 | 시간 |
+| --- | --- | --- |
+| `_ufset(int n = 0, bool base = 1)` | 각 원소를 한 칸짜리 구간으로 초기화한다. | `O(n + 1)` |
+| `clear(int n, bool base = 1)` | 병합 기록을 지우고 새 범위로 초기화한다. | `O(n + 1)` |
+| `find(int num)` | `num`이 속한 구간의 대표를 반환한다. `base - 1`과 `n + 1`은 그대로 반환한다. | `O(α(n))` amortized |
+| `merge_prv(int x)` | `x`의 구간과 왼쪽 이웃을 합쳐 `true`를 반환한다. 왼쪽 이웃이 없으면 `false`다. | `O(α(n))` amortized |
+| `merge_nxt(int x)` | `x`의 구간과 오른쪽 이웃을 합쳐 `true`를 반환한다. 오른쪽 이웃이 없으면 `false`다. | `O(α(n))` amortized |
+| `left(int x)` | `x`의 구간에서 가장 작은 원소를 반환한다. `base - 1`과 `n + 1`은 그대로 반환한다. | `O(α(n))` amortized |
+| `right(int x)` | `x`의 구간에서 가장 큰 원소를 반환한다. `base - 1`과 `n + 1`은 그대로 반환한다. | `O(α(n))` amortized |
+| `prv(int x)` | 왼쪽 이웃 구간의 대표를 반환한다. 이웃이 없으면 `base - 1`이다. `prv(n + 1)`로 맨 오른쪽 구간부터 순회할 수 있다. | `O(α(n))` amortized |
+| `nxt(int x)` | 오른쪽 이웃 구간의 대표를 반환한다. 이웃이 없으면 `n + 1`이다. `nxt(base - 1)`로 맨 왼쪽 구간부터 순회할 수 있다. | `O(α(n))` amortized |
+| `same(int a, int b)` | 두 원소가 같은 구간에 속하면 `true`를 반환한다. | `O(α(n))` amortized |
+| `size(int x)` | `x`가 속한 구간의 원소 수를 반환한다. | `O(α(n))` amortized |
+| `count()` | 현재 구간 수를 반환한다. | `O(1)` |
+| `root(int x)` | `x`가 현재 구간의 대표면 `true`를 반환한다. | `O(1)` |
+| `it_root(const F& f)` | 대표 번호의 오름차순으로 `f(int r)`을 호출한다. | `O(n)` + 콜백 비용 |
+| `groups()` | 구간을 대표 번호 순으로 반환한다. 각 구간의 원소도 오름차순이다. | `O(n α(n))` |
+
+### 사용 예시
+
+```cpp
+_ufset uf(5);
+uf.merge_nxt(2); // [2, 3], 대표는 2
+uf.merge_prv(5); // [4, 5], 대표는 5
+
+assert(uf.left(3) == 2 && uf.right(3) == 3);
+assert(uf.prv(5) == 2 && uf.nxt(3) == 5); // 이웃 구간의 대표를 조회
+assert(!uf.merge_prv(1) && !uf.merge_nxt(5)); // 양 끝의 이웃은 없다.
+
+uf.merge_prv(5); // 두 구간을 [2, 5]로 합친다.
+assert(uf.same(2, 5) && uf.size(2) == 4);
+
+vector<pair<int, int>> intervals;
+for(int r = uf.nxt(0); r <= 5; r = uf.nxt(r)){
+    intervals.emplace_back(uf.left(r), uf.right(r));
+} // {{1, 1}, {2, 5}}
+```
