@@ -11,7 +11,7 @@
   - CRT-based Combination ([`_comb_crt`](docs/Combinatorics.md#comb_crt))
 - `DSU.cpp`
   - Union-Find / Component Values ([`_uf`](docs/DSU.md#uf), [`uf_policy`](docs/DSU.md#uf_policy), [`_uf_value`](docs/DSU.md#uf_value))
-  - Weighted Union-Find (`_wuf`)
+  - Weighted Union-Find ([`_wuf`](docs/DSU.md#wuf))
   - Union-Find Set (`_ufset`)
 - `FFT.cpp`
   - FFT (`_fft`)

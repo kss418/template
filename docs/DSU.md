@@ -105,3 +105,53 @@ uf.it_component([&](int r, sum_policy::node& value){
     components.emplace_back(r, value.sum);
 }); // {{2, 20}, {4, 7}}
 ```
+
+## wuf
+
+`_wuf`는 두 원소의 값 차이 조건을 추가하고, 그 조건들로 계산한 차이를 조회한다. `merge(a, b, c)`와 `diff(a, b)`의 방향은 모두 `val[b] - val[a]`다. [소스](../DSU.cpp#L107) · [VS Code 스니펫 `>>wuf`](../snippets/weight%20uf.code-snippets)
+
+### `_wuf` API
+
+`n`은 최대 원소 번호이며 원소 범위는 `[base, n]`이다. 내부에 저장되는 차이와 조회하는 차이는 `ll` 범위에 있어야 한다. 공간은 `O(n + 1)`이다.
+
+| 함수 | 동작 | 시간 |
+| --- | --- | --- |
+| `_wuf(int n = 0, bool base = 1)` | 각 원소를 별도 집합으로 초기화한다. | `O(n + 1)` |
+| `clear(int n, bool base = 1)` | 기존 차이 조건과 모순 상태를 지우고 새 범위로 초기화한다. | `O(n + 1)` |
+| `find(int num)` | `{대표 번호, val[num] - val[대표]}`를 `pair<int, ll>`로 반환하고 경로를 압축한다. 차이의 유효성은 `diff()`로 확인한다. | `O(α(n))` amortized |
+| `merge(int a, int b, ll c)` | `val[b] - val[a] = c` 조건을 추가한다. 두 원소가 다른 집합이면 합친다. 같은 집합에서 차이가 충돌하면 집합 전체를 모순으로 표시한다. 모순 상태는 합친 집합에도 이어진다. | `O(α(n))` amortized |
+| `diff(int a, int b)` | 두 원소가 다른 집합이면 `disconnected`, 같은 집합에 모순이 있으면 `inconsistent`, 그 외에는 `known`과 `val[b] - val[a]`를 담아 반환한다. | `O(α(n))` amortized |
+| `same(int a, int b)` | 같은 집합이면 모순 상태여도 `true`를 반환한다. | `O(α(n))` amortized |
+| `size(int x)` | `x`가 속한 집합의 원소 수를 반환한다. | `O(α(n))` amortized |
+| `count()` | 현재 집합 수를 반환한다. | `O(1)` |
+| `root(int x)` | `x`가 현재 집합의 대표면 `true`를 반환한다. | `O(1)` |
+| `it_root(const F& f)` | 대표 번호의 오름차순으로 `f(int r)`을 호출한다. | `O(n)` + 콜백 비용 |
+| `groups()` | 집합을 대표 번호 순으로 반환한다. 각 집합의 원소도 오름차순이다. | `O(n α(n))` |
+
+### `result` API
+
+| 멤버 | 동작 | 시간 |
+| --- | --- | --- |
+| `status` | `state::disconnected`, `state::inconsistent`, `state::known` 중 하나다. | `O(1)` |
+| `disconnected()` | 상태가 `disconnected`면 `true`를 반환한다. | `O(1)` |
+| `inconsistent()` | 상태가 `inconsistent`면 `true`를 반환한다. | `O(1)` |
+| `get_value()` | `ll` 멤버 `value`를 반환한다. `known`이면 계산한 차이이고, 그 외에는 `0`이다. | `O(1)` |
+
+### 사용 예시
+
+```cpp
+_wuf uf(4);
+uf.merge(1, 2, 5);  // val[2] - val[1] = 5
+uf.merge(2, 3, -2); // val[3] - val[2] = -2
+
+auto res = uf.diff(1, 3);
+assert(res.status == _wuf::state::known && res.get_value() == 3);
+assert(uf.diff(3, 1).get_value() == -3); // 순서를 뒤집으면 부호도 바뀐다.
+assert(uf.diff(1, 4).disconnected());
+
+uf.merge(1, 3, 4); // 이미 계산된 차이 3과 충돌
+assert(uf.diff(2, 3).inconsistent());
+
+uf.merge(3, 4, 1); // 4번이 모순 상태인 집합에 합쳐진다.
+assert(uf.same(1, 4) && uf.diff(1, 4).inconsistent());
+```

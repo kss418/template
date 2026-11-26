@@ -103,6 +103,7 @@ public:
 };
 
 // WEIGHTED UNION FIND
+// https://github.com/kss418/template/blob/master/docs/DSU.md#wuf
 class _wuf{
 private:
     bool base;
