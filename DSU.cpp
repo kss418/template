@@ -232,14 +232,12 @@ public:
         for(int i = base;i <= n;i++) if(root(i)) f(i);
     }
 
-    vector<vector<int>> groups(){ // O(n * alpha(n))
-        vector<int> id(n + 1, -1);
-        vector<vector<int>> ret; ret.reserve(cc);
-        it_root([&](int root){
-            id[root] = (int)ret.size(); ret.emplace_back();
-            ret.back().reserve(-p[root + 1]);
-        });
-        for(int i = base;i <= n;i++) ret[id[find(i)]].push_back(i);
-        return ret;
+    template<class F>
+    void it_interval(const F& f){ // O(1 + k * alpha(n)) amortized
+        for(int lo = base;lo <= n;){
+            const int hi = right(lo);
+            f(lo, hi);
+            lo = hi + 1;
+        }
     }
 };

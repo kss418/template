@@ -278,6 +278,11 @@ void check_sets(bool base){
     CHECK(intervals.merge_nxt(first));CHECK(intervals.same(first,first+1));CHECK(intervals.prv(first+1)==first-1);CHECK(intervals.nxt(first)==first+2);
 }
 void check_ufset(bool base){
+    auto intervals=[](sets::_ufset& uf){
+        vector<pair<int,int>> ret;
+        uf.it_interval([&](int l,int r){ret.emplace_back(l,r);});
+        return ret;
+    };
     auto verify=[&](sets::_ufset& uf,int n,const vector<int>& component){
         set<int> components;for(int i=base;i<=n;i++)components.insert(component[i]);
         CHECK(uf.count()==(int)components.size());
@@ -290,19 +295,19 @@ void check_ufset(bool base){
         vector<int> roots;as_const(uf).it_root([&](int root){CHECK(as_const(uf).root(root));roots.push_back(root);});
         CHECK(roots.size()==components.size());CHECK(is_sorted(roots.begin(),roots.end()));
         CHECK(adjacent_find(roots.begin(),roots.end())==roots.end());
-        auto groups=uf.groups();CHECK(groups.size()==roots.size());vector<int> seen(n+1,0);
-        for(int g=0;g<(int)groups.size();g++){
-            CHECK(!groups[g].empty());CHECK(is_sorted(groups[g].begin(),groups[g].end()));
-            CHECK((int)groups[g].size()==uf.size(roots[g]));
-            for(int vertex:groups[g]){
-                CHECK(base<=vertex&&vertex<=n);CHECK(component[vertex]==component[roots[g]]);
-                CHECK(uf.find(vertex)==roots[g]);seen[vertex]++;
-            }
+        auto ranges=intervals(uf);CHECK(ranges.size()==roots.size());
+        int next=base;
+        for(auto [l,r]:ranges){
+            CHECK(l==next);CHECK(l<=r && r<=n);
+            for(int i=l;i<=r;i++) CHECK(component[i]==component[l]);
+            CHECK(r==n || component[r+1]!=component[l]);
+            next=r+1;
         }
+        CHECK(next==n+1);
         for(int i=base;i<=n;i++){
             int left=n+1,right=base-1,size=0;
             for(int j=base;j<=n;j++)if(component[i]==component[j]){left=min(left,j);right=max(right,j);size++;}
-            CHECK(size==right-left+1);CHECK(seen[i]==1);CHECK(uf.size(i)==size);CHECK(as_const(uf).root(i)==(uf.find(i)==i));
+            CHECK(size==right-left+1);CHECK(uf.size(i)==size);CHECK(as_const(uf).root(i)==(uf.find(i)==i));
             CHECK(uf.left(i)==left);CHECK(uf.right(i)==right);
             CHECK(uf.prv(i)==uf.find(left-1));CHECK(uf.nxt(i)==uf.find(right+1));
             for(int j=base;j<=n;j++)CHECK(uf.same(i,j)==(component[i]==component[j]));
@@ -330,7 +335,7 @@ void check_ufset(bool base){
     }
     sets::_ufset ordered(base+4,base);
     CHECK(ordered.merge_nxt(base+3));CHECK(ordered.merge_prv(base+3));CHECK(ordered.find(base+2)==base+3);
-    CHECK((ordered.groups()==vector<vector<int>>{{base},{base+1},{base+2,base+3,base+4}}));
+    CHECK((intervals(ordered)==vector<pair<int,int>>{{base,base},{base+1,base+1},{base+2,base+4}}));
     CHECK(ordered.prv(base+2)==base+1);CHECK(ordered.nxt(base+2)==base+5);CHECK(!ordered.same(base+2,base+1));
     CHECK(ordered.merge_prv(base+4));CHECK(ordered.find(base+1)==base+3);CHECK(ordered.size(base+1)==4);
     CHECK(!ordered.merge_nxt(base+1));CHECK(ordered.merge_nxt(base));CHECK(ordered.find(base)==base+3);
@@ -341,9 +346,9 @@ void check_ufset(bool base){
     for(int cur=blocks.nxt(base-1);cur<=base+3;cur=blocks.nxt(cur))forward.push_back(cur);
     for(int cur=blocks.prv(base+4);cur>=base;cur=blocks.prv(cur))backward.push_back(cur);
     CHECK((forward==vector<int>{base,base+2}));CHECK((backward==vector<int>{base+2,base}));
-    ordered.clear(0,1);CHECK(ordered.groups().empty());CHECK(ordered.count()==0);
+    ordered.clear(0,1);CHECK(intervals(ordered).empty());CHECK(ordered.count()==0);
     as_const(ordered).it_root([&](int){CHECK(false);});
-    ordered.clear(0,0);CHECK((ordered.groups()==vector<vector<int>>{{0}}));CHECK(as_const(ordered).root(0));
+    ordered.clear(0,0);CHECK((intervals(ordered)==vector<pair<int,int>>{{0,0}}));CHECK(as_const(ordered).root(0));
     CHECK(ordered.prv(0)==-1);CHECK(ordered.nxt(0)==1);
     CHECK(!ordered.merge_prv(0));CHECK(!ordered.merge_nxt(0));CHECK(ordered.count()==1);
 }

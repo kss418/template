@@ -162,7 +162,7 @@ assert(uf.same(1, 4) && uf.diff(1, 4).inconsistent());
 
 ### `_ufset` API
 
-`n`은 최대 원소 번호다. 원소 범위는 `[base, n]`이고, 그 밖의 경계값은 표에 명시된 호출에서 사용할 수 있다. 공간은 `O(n + 1)`이다.
+`n`은 최대 원소 번호, `k`는 구간 수다. 원소 범위는 `[base, n]`이고, 그 밖의 경계값은 표에 명시된 호출에서 사용할 수 있다. 공간은 `O(n + 1)`이다.
 
 | 함수 | 동작 | 시간 |
 | --- | --- | --- |
@@ -180,7 +180,7 @@ assert(uf.same(1, 4) && uf.diff(1, 4).inconsistent());
 | `count()` | 현재 구간 수를 반환한다. | `O(1)` |
 | `root(int x)` | `x`가 현재 구간의 대표면 `true`를 반환한다. | `O(1)` |
 | `it_root(const F& f)` | 대표 번호의 오름차순으로 `f(int r)`을 호출한다. | `O(n)` + 콜백 비용 |
-| `groups()` | 구간을 대표 번호 순으로 반환한다. 각 구간의 원소도 오름차순이다. | `O(n α(n))` |
+| `it_interval(const F& f)` | 왼쪽부터 구간마다 `f(int lo, int hi)`를 호출한다. 양 끝 모두 구간에 포함된다. 순회 중에는 구간 구성을 유지해야 한다. | `O(1 + k α(n))` amortized + 콜백 비용 |
 
 ### 사용 예시
 
@@ -197,7 +197,7 @@ uf.merge_prv(5); // 두 구간을 [2, 5]로 합친다.
 assert(uf.same(2, 5) && uf.size(2) == 4);
 
 vector<pair<int, int>> intervals;
-for(int r = uf.nxt(0); r <= 5; r = uf.nxt(r)){
-    intervals.emplace_back(uf.left(r), uf.right(r));
-} // {{1, 1}, {2, 5}}
+uf.it_interval([&](int lo, int hi){
+    intervals.emplace_back(lo, hi);
+}); // {{1, 1}, {2, 5}}
 ```
