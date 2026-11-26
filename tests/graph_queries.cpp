@@ -1574,11 +1574,40 @@ void check_dijkstra_seeds(bool base){
     paths::_dij<> empty;empty.build(span<const int>{});
 }
 
+void check_dijkstra_edges(bool base){
+    int s=base,a=s+1,b=s+2,t=s+3,u=s+4,v=s+5;
+    paths::_dij<> g(v,base);
+    g.add(a,s,5);g.add(a,s,1);g.addsol(s,a,1);g.add(a,s,1);
+    g.addsol(s,b,1);g.addsol(a,t,1);g.addsol(b,t,1);
+    g.add(b,b,0);g.add(v,u,2);
+
+    using edge=tuple<int,int,long long>;
+    auto verify=[&](multiset<edge> used,multiset<edge> unused){
+        const auto& read=as_const(g);
+        multiset<edge> actual_used,actual_unused;
+        read.it_used_edge([&](int from,int to,const long long& w){actual_used.emplace(from,to,w);});
+        read.it_unused_edge([&](int from,int to,const long long& w){actual_unused.emplace(from,to,w);});
+        CHECK(actual_used==used);CHECK(actual_unused==unused);
+    };
+    g.build(s);
+    int parent=g.parent(t);CHECK(parent==a || parent==b);
+    int other=parent==a?b:a;
+    verify({{s,a,1},{s,b,1},{parent,t,1}},{{s,a,5},{s,a,1},{s,a,1},{other,t,1},{b,b,0},{u,v,2}});
+
+    g.build(span<const int>{});
+    verify({},{{s,a,5},{s,a,1},{s,a,1},{s,a,1},{s,b,1},{a,t,1},{b,t,1},{b,b,0},{u,v,2}});
+
+    g.addsol(s,a,0);g.build(array{s,u});
+    verify({{s,a,0},{s,b,1},{a,t,1},{u,v,2}},{{s,a,5},{s,a,1},{s,a,1},{s,a,1},{b,t,1},{b,b,0}});
+
+    g.clear(s,base);g.build(s);verify({},{});
+}
+
 int main(){
     try {
         for(bool base:{false,true}) check_bm_api(base);
         check_bm_empty();
-        for(bool base:{false,true}){check_dijkstra_api<paths::sp_policy>(base);check_dijkstra_api<dij_lex_policy>(base);check_dijkstra_seeds(base);}
+        for(bool base:{false,true}){check_dijkstra_api<paths::sp_policy>(base);check_dijkstra_api<dij_lex_policy>(base);check_dijkstra_seeds(base);check_dijkstra_edges(base);}
         for(bool base:{false,true}){check_cycle_api(base); check_cycle_large(base);}
         for(bool base:{false,true}) check_triangle_api(base);
         for(bool base:{false,true}) check_bcc_api(base);
