@@ -11,23 +11,20 @@ constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 
 template<class Dist = ll, class Cost = Dist>
 class _dij{
-public:
-    using dist = Dist; using cost = Cost;
 private:
     bool base;
-    struct edge{ cost w; int nxt, rev; }; struct node{ dist d; int v; };
+    struct edge{ Cost w; int nxt, rev; }; struct node{ Dist d; int v; };
     struct cmp{ bool operator()(const node& a, const node& b) const{ return _dij::less(b.d, a.d); } };
     vector<vector<edge>> adj; int n;
-    vector <dist> d; vector<int> pre, pre_edge, origin;
+    vector <Dist> d; vector<int> pre, pre_edge, origin;
     priority_queue<node, vector<node>, cmp> pq;
 
-    static dist inf(){
-        if constexpr(is_same_v<dist, ll>) return INF;
-        else if constexpr(is_arithmetic_v<dist>) return numeric_limits<dist>::max();
-        else return dist::inf();
+    static Dist inf(){
+        if constexpr(is_arithmetic_v<Dist>) return numeric_limits<Dist>::max();
+        else return Dist::inf();
     }
-    static bool less(const dist& a, const dist& b){ return a <= b && !(b <= a); } // O(1)
-    static bool eq(const dist& a, const dist& b){ return a <= b && b <= a; } // O(1)
+    static bool less(const Dist& a, const Dist& b){ return a <= b && !(b <= a); } // O(1)
+    static bool eq(const Dist& a, const Dist& b){ return a <= b && b <= a; } // O(1)
     void cal(){
         while(!pq.empty()){
             auto [cd, cur] = pq.top(); pq.pop();
@@ -35,7 +32,7 @@ private:
             for(int i = 0;i < (int)adj[cur].size();i++){
                 const auto& e = adj[cur][i];
                 int nxt = e.nxt;
-                dist nd = cd + e.w;
+                Dist nd = cd + e.w;
                 if(d[nxt] <= nd) continue;
                 d[nxt] = nd; pre[nxt] = cur; pre_edge[nxt] = i; origin[nxt] = origin[cur];
                 pq.push({nd, nxt});
@@ -46,7 +43,6 @@ private:
         pre.assign(n + 1, -1); pre_edge.assign(n + 1, -1); origin.assign(n + 1, -1);
         d.assign(n + 1, inf());
     }
-    void chk(int x) const{ assert(x >= base && x <= n); }
 public:
     _dij(int n = 0, bool base = 1){ clear(n, base); } // O(n)
     void clear(int n, bool base = 1){ // O(n + m)
@@ -54,12 +50,10 @@ public:
         while(!pq.empty()) pq.pop();
     }
 
-    void addsol(int st, int en, cost c){ // O(1)
-        chk(st); chk(en);
+    void addsol(int st, int en, Cost c){ // O(1)
         adj[st].push_back({c, en, -1});
     }
-    void add(int st, int en, cost c){ // O(1)
-        chk(st); chk(en);
+    void add(int st, int en, Cost c){ // O(1)
         int a = adj[st].size(), b = adj[en].size();
         adj[st].push_back({c, en, b + (st == en)});
         adj[en].push_back({c, st, a});
@@ -70,23 +64,20 @@ public:
         while(!pq.empty()) pq.pop();
         reset(n);
         for(int i : source){
-            assert(base <= i && i <= n);
             if(origin[i] != -1) continue;
-            d[i] = dist{}; origin[i] = i;
+            d[i] = Dist{}; origin[i] = i;
             pq.push({d[i], i});
         }
         cal();
     }
 
-    dist ret(int x) const{ // O(1)
-        chk(x);
+    Dist ret(int x) const{ // O(1)
         return d[x];
     }
-    int parent(int x) const{ chk(x); return pre[x]; } // O(1)
-    int source(int x) const{ chk(x); return origin[x]; } // O(1)
+    int parent(int x) const{ return pre[x]; } // O(1)
+    int source(int x) const{ return origin[x]; } // O(1)
 
     bool reachable(int x) const{ // O(1)
-        chk(x);
         return !eq(d[x], inf());
     }
 
@@ -115,7 +106,6 @@ public:
 
     template<class F>
     void it_path(int x, const F& f) const{ // O(n)
-        chk(x); assert(reachable(x));
         vector<int> ret;
         for(int cur = x; cur != -1; cur = pre[cur]) ret.push_back(cur);
         reverse(all(ret));
@@ -125,42 +115,36 @@ public:
 
 template<class Dist = ll, class Cost = Dist>
 class _floyd{
-    bool base;
-public:
-    using dist = Dist; using cost = Cost;
 private:
-    vector <vector<dist>> d, input; vector <vector<int>> nxt;
-    int n; bool built = 0;
+    bool base;
+    vector <vector<Dist>> d, input; vector <vector<int>> nxt;
+    int n;
 
-    static dist inf(){
-        if constexpr(is_same_v<dist, ll>) return INF;
-        else if constexpr(is_arithmetic_v<dist>) return numeric_limits<dist>::max();
-        else return dist::inf();
+    static Dist inf(){
+        if constexpr(is_arithmetic_v<Dist>) return numeric_limits<Dist>::max();
+        else return Dist::inf();
     }
-    static bool less(const dist& a, const dist& b){ return a <= b && !(b <= a); }
-    static bool eq(const dist& a, const dist& b){ return a <= b && b <= a; }
-    void chk(int st, int en) const{ assert(st >= base && st <= n); assert(en >= base && en <= n); }
+    static bool less(const Dist& a, const Dist& b){ return a <= b && !(b <= a); }
+    static bool eq(const Dist& a, const Dist& b){ return a <= b && b <= a; }
 public:
     _floyd(int n = 0, bool base = 1){ clear(n, base); } // O(n^2)
     void clear(int n, bool base = 1){ // O(n^2)
-        this->n = n; this->base = base; built = 0;
-        input.assign(n + 1, vector<dist>(n + 1, inf()));
+        this->n = n; this->base = base;
+        input.assign(n + 1, vector<Dist>(n + 1, inf()));
         d = input;
         nxt.assign(n + 1, vector<int>(n + 1, 0));
         for(int i = base; i <= n; i++){
-            input[i][i] = d[i][i] = dist{};
+            input[i][i] = d[i][i] = Dist{};
             nxt[i][i] = i;
         }
     }
 
-    void add(int st, int en, cost c) { // O(1)
+    void add(int st, int en, Cost c) { // O(1)
         addsol(st, en, c); addsol(en, st, c);
     }
 
-    void addsol(int st, int en, cost c) { // O(1)
-        assert(base <= st && st <= n && base <= en && en <= n);
-        built = 0;
-        dist nd = dist{} + c;
+    void addsol(int st, int en, Cost c) { // O(1)
+        Dist nd = Dist{} + c;
         if(!less(nd, input[st][en])) return;
         input[st][en] = nd;
     }
@@ -169,12 +153,11 @@ public:
         d = input; nxt.assign(n + 1, vector<int>(n + 1, 0));
         for(int i = base; i <= n; ++i) for(int j = base; j <= n; ++j)
             if(!eq(d[i][j], inf())) nxt[i][j] = j;
-        built = 1;
         for (int k = base; k <= n; k++) {
             for (int i = base; i <= n; i++) {
                 for (int j = base; j <= n; j++) {
                     if(eq(d[i][k], inf()) || eq(d[k][j], inf())) continue;
-                    dist nd = d[i][k] + d[k][j];
+                    Dist nd = d[i][k] + d[k][j];
                     if (d[i][j] <= nd) continue;
                     d[i][j] = nd; nxt[i][j] = nxt[i][k];
                 }
@@ -182,19 +165,16 @@ public:
         }
     }
 
-    dist ret(int st, int en) const{ // O(1)
-        chk(st, en);
+    Dist ret(int st, int en) const{ // O(1)
         return d[st][en];
     }
 
     bool reachable(int st, int en) const{ // O(1)
-        chk(st, en);
         return !eq(d[st][en], inf());
     }
 
     template<class F>
     void it_path(int st, int en, const F& f) const{ // O(n)
-        chk(st, en); assert(reachable(st, en));
         for(int cur = st;; cur = nxt[cur][en]){
             f(cur);
             if(cur == en) break;
@@ -204,21 +184,18 @@ public:
 
 template<class Dist = ll, class Cost = Dist>
 class _spfa{
-    bool base;
-public:
-    using dist = Dist; using cost = Cost;
 private:
-    struct edge{ cost w; int nxt; };
+    bool base;
+    struct edge{ Cost w; int nxt; };
     vector <int> pre, cnt; deque <int> q;
-    vector <dist> d; vector <bool> in, cy;
-    vector <vector <edge>> adj; int n; bool built = 0;
+    vector <Dist> d; vector <bool> in, cy;
+    vector <vector <edge>> adj; int n;
 
-    static dist inf(){
-        if constexpr(is_same_v<dist, ll>) return INF;
-        else if constexpr(is_arithmetic_v<dist>) return numeric_limits<dist>::max();
-        else return dist::inf();
+    static Dist inf(){
+        if constexpr(is_arithmetic_v<Dist>) return numeric_limits<Dist>::max();
+        else return Dist::inf();
     }
-    static bool eq(const dist& a, const dist& b){ return a <= b && b <= a; }
+    static bool eq(const Dist& a, const Dist& b){ return a <= b && b <= a; }
     void cal_cy(int x){
         if(cy[x]) return; cy[x] = 1;
         deque <int> q; q.push_back(x);
@@ -232,15 +209,15 @@ private:
     }
     
     bool cal(){
-        built = 1; bool ret = 1;
+        bool ret = 1;
         while (!q.empty()) {
             int cur = q.front(); q.pop_front();
-            in[cur] = 0; dist cd = d[cur];
+            in[cur] = 0; Dist cd = d[cur];
             if(cy[cur]) continue;
             for (auto& e : adj[cur]) {
                 auto [co, nxt] = e;
                 if(cy[nxt]) continue;
-                dist nd = cd + co;
+                Dist nd = cd + co;
                 if (d[nxt] <= nd) continue;
                 d[nxt] = nd; pre[nxt] = cur;
 
@@ -259,60 +236,51 @@ private:
         d.assign(n + 1, inf()); q.clear();
         in.assign(n + 1, false); cy.assign(n + 1, false);
     }
-    void chk(int x) const{ assert(x >= base && x <= n); }
 public:
     _spfa(int n = 0, bool base = 1){ clear(n, base); } // O(n)
     void clear(int n, bool base = 1){ // O(n + m)
-        this->n = n; this->base = base; built = 0;
+        this->n = n; this->base = base;
         reset(n); adj.assign(n + 1, {});
     }
 
-    void addsol(int st, int en, cost c) { // O(1)
-        assert(base <= st && st <= n && base <= en && en <= n);
-        built = 0;
+    void addsol(int st, int en, Cost c) { // O(1)
         adj[st].push_back({ c, en });
     }
-    void add(int st, int en, cost c) { // O(1)
+    void add(int st, int en, Cost c) { // O(1)
         addsol(st, en, c); addsol(en, st, c);
     }
 
     // cycle existed -> return 0 
-    bool build(int source, dist fi = dist{}) { // O(nm)
-        assert(base <= source && source <= n);
+    bool build(int source, Dist fi = Dist{}) { // O(nm)
         reset(n); d[source] = fi; in[source] = 1;
         q.push_back(source);
         return cal();
     }
 
     // cycle existed -> return 0 
-    bool build(const vector <int>& source, dist fi = dist{}) { // O(nm)
+    bool build(const vector <int>& source, Dist fi = Dist{}) { // O(nm)
         reset(n); 
         for (const auto& st : source) {
-            assert(base <= st && st <= n);
             d[st] = fi; in[st] = 1;
             q.push_back(st);
         }
         return cal();
     }
 
-    dist ret(int x) const{ // O(1)
-        chk(x);
+    Dist ret(int x) const{ // O(1)
         return d[x];
     }
 
     bool reachable(int x) const{ // O(1)
-        chk(x);
         return !is_cycle(x) && !eq(d[x], inf());
     }
 
     bool is_cycle(int x) const{ // O(1)
-        chk(x);
         return cy[x];
     }
 
     template<class F>
     void it_path(int x, const F& f) const{ // O(n) 
-        chk(x); assert(reachable(x)); assert(!is_cycle(x));
         vector <int> ret;
         for(int cur = x; cur != -1; cur = pre[cur]) ret.push_back(cur);
         for(auto it = ret.rbegin(); it != ret.rend(); ++it) f(*it);

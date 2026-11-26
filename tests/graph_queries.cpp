@@ -1502,7 +1502,7 @@ public:
 template<class D>
 void check_dijkstra_api(bool base){
     const D inf=[]() -> D{
-        if constexpr(is_same_v<D,long long>) return paths::INF;
+        if constexpr(is_arithmetic_v<D>) return numeric_limits<D>::max();
         else return D::inf();
     }();
     auto eq=[](const D& a,const D& b){return a<=b && b<=a;};
@@ -1618,7 +1618,7 @@ void check_shortest_path_types(bool base){
     }
     dij.build(s);floyd.build();CHECK(spfa.build(s));
     CHECK(dij.ret(t)==4'000'000'001LL);CHECK(floyd.ret(s,t)==4'000'000'001LL);CHECK(spfa.ret(t)==4'000'000'001LL);
-    CHECK(dij.ret(u)==paths::INF);CHECK(floyd.ret(s,u)==paths::INF);CHECK(spfa.ret(u)==paths::INF);
+    CHECK(dij.ret(u)==LLONG_MAX);CHECK(floyd.ret(s,u)==LLONG_MAX);CHECK(spfa.ret(u)==LLONG_MAX);
     CHECK(spfa.build(s,5));CHECK(spfa.ret(t)==4'000'000'006LL);
 
     paths::_floyd<lex_distance,long long> lex_floyd(u,base);
