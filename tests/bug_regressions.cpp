@@ -105,12 +105,19 @@ concept noarg_build = requires(T& value){value.build();};
 static_assert(!noarg_build<offline::_lcs>);
 
 template<class T>
-concept fft_make_input = requires(const fft_templates::_fft<8>& f,const vector<T>& values){f.make(values);};
+concept fft_coefficient = requires{typename fft_templates::_fft<8,T>;};
+template<class F, class Range>
+concept fft_make_input = requires(const F& f,const Range& values){f.make(values);};
 template<class T>
 concept fft_inverse_output = requires(const fft_templates::_fft<8>& f,const fft_templates::_fft<8>::node& value){f.template inverse<T>(value);};
-static_assert(fft_make_input<int> && fft_make_input<long long> && fft_make_input<unsigned>);
-static_assert(fft_make_input<bool> && fft_make_input<__int128_t>);
-static_assert(!fft_make_input<float> && !fft_make_input<double> && !fft_make_input<complex<double>>);
+static_assert(fft_coefficient<int> && fft_coefficient<long long> && fft_coefficient<unsigned>);
+static_assert(fft_coefficient<bool> && fft_coefficient<__int128_t>);
+static_assert(!fft_coefficient<float> && !fft_coefficient<double> && !fft_coefficient<complex<double>>);
+static_assert(fft_make_input<fft_templates::_fft<8>,vector<long long>>);
+static_assert(!fft_make_input<fft_templates::_fft<8>,vector<int>>);
+static_assert(fft_make_input<fft_templates::_fft<8,int>,vector<int>>);
+static_assert(fft_make_input<fft_templates::_fft<8,int>,span<const int,3>>);
+static_assert(fft_make_input<fft_templates::_fft<8,bool>,span<const bool>>);
 static_assert(fft_inverse_output<int> && fft_inverse_output<long long>);
 static_assert(!fft_inverse_output<double>);
 template<class A, class B>
@@ -139,32 +146,35 @@ void check_fft_arrays(){
         for(size_t i=0;i<a.size();++i)for(size_t j=0;j<b.size();++j)result[i+j]+=a[i]*b[j];
         return result;
     };
-    fft_templates::_fft<0> empty;auto zero=empty.make(vector<int>{});CHECK(empty.inverse(zero).empty());
+    fft_templates::_fft<0,int> empty;auto zero=empty.make(vector<int>{});CHECK(empty.inverse(zero).empty());
     CHECK(empty.inverse(zero+zero).empty());CHECK(empty.inverse(zero*zero).empty());
-    fft_templates::_fft<1> single;auto constant=single.make(vector<int>{7});CHECK(single.inverse(constant*constant)==vector<value>{49});
-    fft_templates::_fft<3> small;const vector<int> input{1,2};auto original=small.make(input);
+    fft_templates::_fft<1,int> single;auto constant=single.make(vector<int>{7});CHECK(single.inverse(constant*constant)==vector<value>{49});
+    fft_templates::_fft<3,int> small;const vector<int> input{1,2};auto original=small.make(input);
     CHECK(small.inverse(original*original)==vector<value>({1,4,4}));CHECK(input==vector<int>({1,2}));
     auto square=original;square*=square;CHECK(small.inverse(square)==vector<value>({1,4,4}));
-    fft_templates::_fft<3> same_size;auto other=same_size.make(vector<value>{3,4});
+    fft_templates::_fft<3,int> same_size;auto other=same_size.make(vector<int>{3,4});
     CHECK(small.inverse(original*other+original)==vector<value>({4,12,8}));
-    fft_templates::_fft<4> unsigned_plan;auto ua=unsigned_plan.make(vector<unsigned>{1,2});auto ub=unsigned_plan.make(vector<bool>{1,0,1});
+    fft_templates::_fft<4,unsigned> unsigned_plan;auto ua=unsigned_plan.make(vector<unsigned>{1,2});auto ub=unsigned_plan.make(vector<unsigned>{1,0,1});
     CHECK(unsigned_plan.inverse<unsigned>(ua*ub)==vector<unsigned>({1,2,1,2}));
-    auto wide=unsigned_plan.make(vector<__int128_t>{-2,3});CHECK(unsigned_plan.inverse(wide)==vector<value>({-2,3}));
+    fft_templates::_fft<4,bool> bool_plan;const bool flags[]{true,false,true};
+    CHECK(bool_plan.inverse(bool_plan.make(flags))==vector<value>({1,0,1}));
+    fft_templates::_fft<4,__int128_t> wide_plan;
+    CHECK(wide_plan.inverse(wide_plan.make(vector<__int128_t>{-2,3}))==vector<value>({-2,3}));
     mt19937 rng(921);
     for(int la=0;la<=9;++la)for(int lb=0;lb<=9;++lb)for(int trial=0;trial<3;++trial){
-        vector<value> a(la);vector<int> b(lb);
+        vector<value> a(la),b(lb);
         for(auto& v:a)v=(int)(rng()%21)-10;
         for(auto& v:b)v=(int)(rng()%21)-10;
-        const auto saved_a=a;const auto saved_b=b;vector<value> bv(all(b));
-        auto product=mul(a,bv),squared=mul(a,a),triple=mul(product,a);
+        const auto saved_a=a;const auto saved_b=b;
+        auto product=mul(a,b),squared=mul(a,a),triple=mul(product,a);
         fft_templates::_fft<32> plan;const auto& read=plan;auto fa=read.make(a),fb=read.make(b);
-        CHECK(read.inverse(fa)==a);CHECK(read.inverse(fb)==bv);
-        CHECK(read.inverse(fa+fb)==add(a,bv));CHECK(read.inverse(fa*fb)==product);
+        CHECK(read.inverse(fa)==a);CHECK(read.inverse(fb)==b);
+        CHECK(read.inverse(fa+fb)==add(a,b));CHECK(read.inverse(fa*fb)==product);
         CHECK(read.inverse(fa*fb+fa)==add(product,a));CHECK(read.inverse((fa*fb)*fa)==triple);
         auto inplace=fa;inplace*=inplace;CHECK(read.inverse(inplace)==squared);
         inplace=fa;inplace+=inplace;CHECK(read.inverse(inplace)==add(a,a));
         auto ints=read.inverse<int>(fa*fb);CHECK(ints==vector<int>(all(product)));
-        CHECK(read.inverse(fa)==a);CHECK(read.inverse(fb)==bv);CHECK(a==saved_a);CHECK(b==saved_b);
+        CHECK(read.inverse(fa)==a);CHECK(read.inverse(fb)==b);CHECK(a==saved_a);CHECK(b==saved_b);
     }
     for(int length:{16,17,31,32,33,64,65}){
         vector<value> a(length),b(length-1);
@@ -173,16 +183,16 @@ void check_fft_arrays(){
         fft_templates::_fft<129> plan;auto fa=plan.make(a),fb=plan.make(b);
         CHECK(plan.inverse(fa*fb)==mul(a,b));CHECK(plan.inverse(fa+fb)==add(a,b));
     }
-    auto detached=[](){fft_templates::_fft<8> plan;return plan.make(vector<int>{2,3});}();
-    fft_templates::_fft<8> reader;CHECK(reader.inverse(detached*detached)==vector<value>({4,12,9}));
+    auto detached=[](){fft_templates::_fft<8,int> plan;return plan.make(vector<int>{2,3});}();
+    fft_templates::_fft<8,int> reader;CHECK(reader.inverse(detached*detached)==vector<value>({4,12,9}));
 }
 
 void check_fft_span(){
-    const fft_templates::_fft<7> plan;
+    const fft_templates::_fft<7,int> plan;
     static_assert(fft_templates::_fft<7>::capacity()==8);
     static_assert(fft_templates::_fft<0>::capacity()==0);
     int a[]={9,1,2,3,8};
-    const array<long long,3> b={4,5,6};
+    const array<int,3> b={4,5,6};
     auto fa=plan.make(span{a}.subspan(1,3));
     auto fb=plan.make(span{b});
     CHECK(plan.inverse(fa*fb)==vector<long long>({4,13,28,27,18}));
@@ -200,7 +210,7 @@ void check_fft_span(){
     CHECK((zero+fa).size()==3 && !(zero+fa).empty());
     CHECK(plan.inverse(zero+fa)==vector<long long>({1,2,3}));
     CHECK(a[0]==9 && a[1]==1 && a[2]==2 && a[3]==3 && a[4]==8);
-    fft_templates::_fft<0> no_capacity;
+    fft_templates::_fft<0,int> no_capacity;
     CHECK(no_capacity.make(span<const int>{}).empty());
     vector<int> full(plan.capacity(),1);
     CHECK(plan.inverse(plan.make(span{full}))==vector<long long>(8,1));
@@ -211,7 +221,7 @@ void check_fft_precision(){
     const vector<long long> input={9007199254740993LL};
     CHECK(single.inverse(single.make(input))==input);
     const int length=32768;
-    fft_templates::_fft<65536> plan;
+    fft_templates::_fft<65536,int> plan;
     auto a=plan.make(vector<int>(length,100000));
     auto product=plan.inverse(a*a);
     CHECK(product.size()==2*length-1);
@@ -222,24 +232,24 @@ void check_fft_precision(){
 }
 
 void check_fft_output(){
-    fft_templates::_fft<8> plan;
+    fft_templates::_fft<8,int> plan;
     const auto a=plan.make(vector<int>{3,2,1});
     ostringstream out;out<<a<<':'<<a;CHECK(out.str()=="123:123");
     CHECK(plan.inverse(a)==vector<long long>({3,2,1}));
     ostringstream zeros;zeros<<plan.make(vector<int>{0,0,1});CHECK(zeros.str()=="100");
     ostringstream coefficients;coefficients<<plan.make(vector<int>{12,34});CHECK(coefficients.str()=="3412");
     ostringstream zero;zero<<plan.make(vector<int>{0});CHECK(zero.str()=="0");
-    fft_templates::_fft<0> empty;ostringstream blank;blank<<empty.make(vector<int>{});CHECK(blank.str()=="0");
+    fft_templates::_fft<0,int> empty;ostringstream blank;blank<<empty.make(vector<int>{});CHECK(blank.str()=="0");
     const auto nine=plan.make(vector<int>{9,9});
     ostringstream product;product<<(nine*nine);CHECK(product.str()=="8116281");
     CHECK(plan.inverse(nine)==vector<long long>({9,9}));
 }
 
 void check_fft_carry(){
-    using value=long long;fft_templates::_fft<8> plan;
+    using value=long long;fft_templates::_fft<8,int> plan;
     const auto a=plan.make(vector<int>{9,9});const auto square=a*a;
     auto decimal=plan.carry(square);
-    static_assert(same_as<decltype(decimal),fft_templates::_fft<8>::node>);
+    static_assert(same_as<decltype(decimal),fft_templates::_fft<8,int>::node>);
     CHECK(plan.inverse(decimal)==vector<value>({1,0,8,9}));
     CHECK(plan.inverse_carry(square)==vector<value>({1,0,8,9}));
     ostringstream out;out<<decimal;CHECK(out.str()=="9801");
@@ -254,11 +264,13 @@ void check_fft_carry(){
     CHECK(plan.inverse(plan.carry(plan.make(vector<int>{0,0,0})))==vector<value>{0});
     CHECK(plan.inverse(plan.carry(plan.make(vector<int>{9,0,0})))==vector<value>{9});
     CHECK(plan.inverse(plan.carry(plan.make(vector<int>{81})))==vector<value>({1,8}));
-    fft_templates::_fft<1> single;
+    auto big_digit=plan.make(vector<int>{1'000'000});
+    CHECK(plan.inverse(plan.carry(big_digit*big_digit,1'000'000'000'001LL))==vector<value>{1'000'000'000'000LL});
+    fft_templates::_fft<1,int> single;
     CHECK(single.inverse_carry(single.make(vector<int>{81}))==vector<value>({1,8}));
     auto empty=plan.carry(plan.make(vector<int>{}));CHECK(plan.inverse(empty).empty());
     ostringstream empty_out;empty_out<<empty;CHECK(empty_out.str()=="0");
-    fft_templates::_fft<0> no_capacity;CHECK(no_capacity.inverse(no_capacity.carry(no_capacity.make(vector<int>{}))).empty());
+    fft_templates::_fft<0,int> no_capacity;CHECK(no_capacity.inverse(no_capacity.carry(no_capacity.make(vector<int>{}))).empty());
     auto decode=[](const vector<value>& digits,value radix){
         __int128_t result=0;for(size_t i=digits.size();i--;)result=result*radix+digits[i];return result;
     };

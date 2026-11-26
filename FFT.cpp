@@ -10,7 +10,7 @@ constexpr ll INF = 0x3f3f3f3f3f3f3f3f;
 constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 
 // https://github.com/kss418/template/blob/master/docs/FFT.md#fft
-template <size_t sz>
+template <size_t sz, integral T = ll>
 class _fft{
 private:
     using cpd = complex <ld>;
@@ -73,31 +73,16 @@ public:
 
     static constexpr size_t capacity(){ return n; }
 
-    template <integral T, size_t Extent>
-    node make(span <T, Extent> arr) const{ // O(n log n)
-        node ret(arr.size());
-        for(ll i = 0;i < (ll)arr.size();i++) ret.v[i] = (ld)arr[i];
-        transform(ret.v, 0);
-        return ret;
+    node make(span<const T> arr) const{ // O(n log n)
+        return make_internal(arr);
     }
 
-    template <integral T>
-    node make(const vector <T>& arr) const{ // O(n log n)
-        if constexpr(!same_as<T, bool>) return make(span{arr});
-        else{
-            node ret(arr.size());
-            for(ll i = 0;i < (ll)arr.size();i++) ret.v[i] = (ld)arr[i];
-            transform(ret.v, 0);
-            return ret;
-        }
-    }
-
-    template <integral T = ll>
-    vector <T> inverse(const node& a) const{ // O(n log n)
+    template <integral R = ll>
+    vector <R> inverse(const node& a) const{ // O(n log n)
         if(!a.len) return {};
         auto v = a.v; transform(v, 1);
-        vector <T> ret(a.len);
-        for(ll i = 0;i < a.len;i++) ret[i] = (T)round(v[i].real());
+        vector <R> ret(a.len);
+        for(ll i = 0;i < a.len;i++) ret[i] = (R)round(v[i].real());
         return ret;
     }
 
@@ -119,6 +104,14 @@ public:
     }
 
     node carry(const node& a, ll radix = 10) const{ // O(n log n)
-        return make(inverse_carry(a, radix));
+        return make_internal<ll>(inverse_carry(a, radix));
+    }
+private:
+    template <integral R>
+    static node make_internal(span<const R> arr){ // O(n log n)
+        node ret(arr.size());
+        for(ll i = 0;i < (ll)arr.size();i++) ret.v[i] = (ld)arr[i];
+        transform(ret.v, 0);
+        return ret;
     }
 };
