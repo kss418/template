@@ -57,6 +57,7 @@ public:
     }
 };
 
+// https://github.com/kss418/template/blob/master/docs/DSU.md#uf_policy
 class uf_policy{
 public:
     class node{};
@@ -64,6 +65,7 @@ public:
     static void merge(node& a, node& b){}
 };
 
+// https://github.com/kss418/template/blob/master/docs/DSU.md#uf_value
 template <class policy = uf_policy>
 class _uf_value : public _uf{
 public:
