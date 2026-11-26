@@ -1620,6 +1620,11 @@ void check_shortest_path_types(bool base){
     CHECK(dij.ret(t)==4'000'000'001LL);CHECK(floyd.ret(s,t)==4'000'000'001LL);CHECK(spfa.ret(t)==4'000'000'001LL);
     CHECK(dij.ret(u)==LLONG_MAX);CHECK(floyd.ret(s,u)==LLONG_MAX);CHECK(spfa.ret(u)==LLONG_MAX);
     CHECK(spfa.build(s,5));CHECK(spfa.ret(t)==4'000'000'006LL);
+    const int seeds[]{u,s,b,u};
+    CHECK(spfa.build(span<const int>(seeds).subspan(1,2),5));
+    CHECK(spfa.ret(s)==5);CHECK(spfa.ret(t)==4'000'000'005LL);CHECK(!spfa.reachable(u));
+    CHECK(spfa.build(vector<int>{s,b}));CHECK(spfa.ret(t)==4'000'000'000LL);
+    CHECK(spfa.build(span<const int>{}));CHECK(!spfa.reachable(s));CHECK(!spfa.reachable(t));
 
     paths::_floyd<lex_distance,long long> lex_floyd(u,base);
     paths::_spfa<lex_distance,long long> lex_spfa(u,base);
