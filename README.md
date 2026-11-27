@@ -17,7 +17,7 @@
   - FFT ([`_fft`](docs/FFT.md#fft))
 - `Flow.cpp`
   - Dinic ([`_flow`](docs/Flow.md#flow))
-  - MCMF (`_mcmf`)
+  - MCMF ([`_mcmf`](docs/Flow.md#mcmf))
 - `Geometry.cpp`
   - CCW (`_ccw`)
   - Angle Sort (`_angle_sort`)

@@ -161,6 +161,7 @@ public:
     T ret() const{ return result; } // O(1)
 };
 
+// https://github.com/kss418/template/blob/master/docs/Flow.md#mcmf
 template <signed_integral F = ll, signed_integral C = ll>
 class _mcmf{
 private:
