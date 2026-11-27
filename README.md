@@ -16,7 +16,7 @@
 - `FFT.cpp`
   - FFT ([`_fft`](docs/FFT.md#fft))
 - `Flow.cpp`
-  - Dinic (`_flow`)
+  - Dinic ([`_flow`](docs/Flow.md#flow))
   - MCMF (`_mcmf`)
 - `Geometry.cpp`
   - CCW (`_ccw`)

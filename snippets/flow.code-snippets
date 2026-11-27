@@ -2,6 +2,7 @@
 "flow": {
   "prefix": ">>flow",
   "body": [
+    "// https://github.com/kss418/template/blob/master/docs/Flow.md#flow",
     "template <signed_integral T = ll>",
     "class _flow{",
     "private:",
