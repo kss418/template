@@ -33,6 +33,7 @@ namespace _ccw{
 }
 
 //ANGLE SORT
+// https://github.com/kss418/template/blob/master/docs/Geometry.md#angle_sort
 namespace _angle_sort{
     using i128 = __int128_t;
     template <class T>

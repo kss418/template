@@ -20,7 +20,7 @@
   - MCMF ([`_mcmf`](docs/Flow.md#mcmf))
 - `Geometry.cpp`
   - CCW ([`_ccw`](docs/Geometry.md#ccw))
-  - Angle Sort (`_angle_sort`)
+  - Angle Sort ([`_angle_sort`](docs/Geometry.md#angle_sort))
   - Segment Intersection (`_li`)
   - Fraction (`_frac`)
   - Line Equation/Intersection (`_line`)

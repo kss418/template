@@ -25,3 +25,32 @@ assert(_ccw::cross(a, b, c) == 12); // 넓이의 두 배
 
 assert(_ccw::ret(0, 0, 4, 0, 8, 0) == 0); // 선분 밖의 점도 같은 직선 위에 있으면 0
 ```
+
+## angle_sort
+
+`_angle_sort`는 기준점 `(cx, cy)`에서 오른쪽을 가리키는 방향부터 점을 각도순으로 정렬한다. 기본은 반시계 방향이며, `is_clock = true`이면 시계 방향이다. 기준점과 같은 점은 맨 앞에 오고, 같은 방향의 점은 가까운 순서로 놓인다. [소스](../Geometry.cpp#L37) · [VS Code 스니펫 `>>angle_sort`](../snippets/angle_sort.code-snippets)
+
+### `_angle_sort` API
+
+`point`는 좌표가 모두 정수인 타입을 요구한다. 템플릿의 `x`, `y` 매크로를 쓰면 좌표 멤버 이름은 `first`, `second`다. `pll`을 바로 쓸 수 있다. 좌표 차이와 외적·내적·거리 제곱 계산이 `i128` 범위에 있어야 한다.
+
+| 함수 | 동작 | 시간 |
+| --- | --- | --- |
+| `cmp(ll cx = 0, ll cy = 0, bool is_clock = false)` | 두 점의 순서를 판단하는 비교 함수를 반환한다. `ranges::sort()` 등에 넘길 수 있다. | 생성·비교 각각 `O(1)` |
+| `sort(R&& arr, ll cx = 0, ll cy = 0, bool is_clock = false)` | 점 `n`개의 순서를 제자리에서 바꾼다. 원소를 수정할 수 있는 연속 범위인 `vector`, 배열, `span` 등을 받는다. | `O(n log n)` |
+| `is_same(const A& a, const B& b, ll cx = 0, ll cy = 0)` | 기준점에서 본 두 점이 같은 반직선 방향에 있으면 `true`다. 어느 한 점이 기준점과 같거나 두 점이 반대 방향이면 `false`다. | `O(1)` |
+
+### 사용 예시
+
+```cpp
+vector<pll> points{{0, -1}, {2, 0}, {-1, 0}, {0, 1}, {1, 0}, {0, 0}};
+_angle_sort::sort(points); // 원점 기준 반시계 방향
+assert((points == vector<pll>{{0, 0}, {1, 0}, {2, 0}, {0, 1}, {-1, 0}, {0, -1}}));
+assert(_angle_sort::is_same(points[1], points[2])); // 오른쪽 방향이 같다.
+assert(!_angle_sort::is_same(points[0], points[1])); // 기준점에는 방향이 없다.
+
+array<pll, 4> shifted{{{1, 4}, {0, 3}, {2, 3}, {1, 2}}};
+auto cmp = _angle_sort::cmp(1, 3, true);
+ranges::sort(shifted, cmp); // (1, 3) 기준으로 오른쪽, 아래쪽, 왼쪽, 위쪽
+assert((shifted == array<pll, 4>{{{2, 3}, {1, 2}, {0, 3}, {1, 4}}}));
+```
