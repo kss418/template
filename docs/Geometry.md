@@ -334,7 +334,9 @@ assert(_inter::ret(polygon, {2, 2})); // 꼭짓점도 포함
 assert(_inter::locate(span<const pll>{}, {0, 0}) == location::outside);
 ```
 
-## rc
+<a name="rc"></a>
+
+## Rotating Calipers
 
 `_rc`는 회전 캘리퍼스로 볼록 다각형에서 가장 멀리 떨어진 두 점과 그 거리를 구한다. 스니펫은 `>>ccw`, `>>ch`, `>>rc` 순서로 넣는다. [소스](../Geometry.cpp#L446) · [VS Code 스니펫 `>>rc`](../snippets/rc.code-snippets)
 
