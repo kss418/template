@@ -19,7 +19,7 @@
   - Dinic ([`_flow`](docs/Flow.md#flow))
   - MCMF ([`_mcmf`](docs/Flow.md#mcmf))
 - `Geometry.cpp`
-  - CCW (`_ccw`)
+  - CCW ([`_ccw`](docs/Geometry.md#ccw))
   - Angle Sort (`_angle_sort`)
   - Segment Intersection (`_li`)
   - Fraction (`_frac`)

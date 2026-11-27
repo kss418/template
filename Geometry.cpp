@@ -10,6 +10,7 @@ constexpr ll INF = 0x3f3f3f3f3f3f3f3f;
 constexpr ll MINF = 0xc0c0c0c0c0c0c0c0;
 
 //CCW
+// https://github.com/kss418/template/blob/master/docs/Geometry.md#ccw
 namespace _ccw{
     inline i128 cross(pll v1, pll v2, pll v3){ // O(1)
         i128 num = ((i128)v2.x - v1.x) * ((i128)v3.y - v1.y);
