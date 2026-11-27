@@ -2,6 +2,7 @@
 "frac": {
   "prefix": ">>frac",
   "body": [
+    "// https://github.com/kss418/template/blob/master/docs/Geometry.md#frac",
     "template <signed_integral T = i128>",
     "class _frac{",
     "private:",

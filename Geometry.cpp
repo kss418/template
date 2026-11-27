@@ -108,6 +108,7 @@ namespace _li{
     inline bool proper_intersect(pair<pll, pll> a, pair<pll, pll> b){ return proper_intersect(a.x, a.y, b.x, b.y); } // O(1)
 }
 
+// https://github.com/kss418/template/blob/master/docs/Geometry.md#frac
 template <signed_integral T = i128>
 class _frac{
 private:

@@ -22,7 +22,7 @@
   - CCW ([`_ccw`](docs/Geometry.md#ccw))
   - Angle Sort ([`_angle_sort`](docs/Geometry.md#angle_sort))
   - Segment Intersection ([`_li`](docs/Geometry.md#li))
-  - Fraction (`_frac`)
+  - Fraction ([`_frac`](docs/Geometry.md#frac))
   - Line Equation/Intersection (`_line`)
   - Point-in-Polygon (`_inter`)
   - Convex hull (`_ch`)
