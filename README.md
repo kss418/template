@@ -25,7 +25,7 @@
   - Fraction ([`_frac`](docs/Geometry.md#frac))
   - Line Equation/Intersection ([`_line`](docs/Geometry.md#line))
   - Point-in-Polygon ([`_inter`](docs/Geometry.md#inter))
-  - Convex hull ([`_ch`](docs/Geometry.md#ch))
+  - Convex Hull ([`_ch`](docs/Geometry.md#convex-hull))
   - Rotating Calipers ([`_rc`](docs/Geometry.md#rotating-calipers))
   - Polygon Area ([`_area`](docs/Geometry.md#area))
   - Point/Vector Operations ([`_dot`](docs/Geometry.md#dot))
