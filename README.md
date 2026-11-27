@@ -8,11 +8,11 @@
 - `Combinatorics.cpp`
   - Combination Table ([`_comb`](docs/Combinatorics.md#comb))
   - Lucas's Theorem ([`_lucas`](docs/Combinatorics.md#lucas))
-  - CRT-based Combination ([`_comb_crt`](docs/Combinatorics.md#comb_crt))
+  - CRT-based Combination ([`_comb_crt`](docs/Combinatorics.md#comb-crt))
 - `DSU.cpp`
-  - Union-Find / Component Values ([`_uf`](docs/DSU.md#uf), [`uf_policy`](docs/DSU.md#uf_policy), [`_uf_value`](docs/DSU.md#uf_value))
+  - Union-Find / Component Values ([`_uf`](docs/DSU.md#uf), [`uf_policy`](docs/DSU.md#uf-policy), [`_uf_value`](docs/DSU.md#uf-value))
   - Weighted Union-Find ([`_wuf`](docs/DSU.md#wuf))
-  - Union-Find Set ([`_ufset`](docs/DSU.md#ufset))
+  - Union-Find Set ([`_ufset`](docs/DSU.md#uf-set))
 - `FFT.cpp`
   - FFT ([`_fft`](docs/FFT.md#fft))
 - `Flow.cpp`
@@ -20,8 +20,8 @@
   - MCMF ([`_mcmf`](docs/Flow.md#mcmf))
 - `Geometry.cpp`
   - CCW ([`_ccw`](docs/Geometry.md#ccw))
-  - Angle Sort ([`_angle_sort`](docs/Geometry.md#angle_sort))
-  - Segment Intersection ([`_li`](docs/Geometry.md#linear_intersection))
+  - Angle Sort ([`_angle_sort`](docs/Geometry.md#angle-sort))
+  - Segment Intersection ([`_li`](docs/Geometry.md#linear-intersection))
   - Fraction ([`_frac`](docs/Geometry.md#frac))
   - Line Equation/Intersection ([`_line`](docs/Geometry.md#line))
   - Point-in-Polygon ([`_inter`](docs/Geometry.md#inter))
@@ -29,9 +29,9 @@
   - Rotating Calipers ([`_rc`](docs/Geometry.md#rotating-calipers))
   - Polygon Area ([`_area`](docs/Geometry.md#area))
   - Point/Vector Operations ([`_dot`](docs/Geometry.md#dot))
-  - Modular Matrix Operations ([`_mod_matrix`](docs/Geometry.md#mod_matrix))
+  - Modular Matrix Operations ([`_mod_matrix`](docs/Geometry.md#mod-matrix))
   - GF(2) Linear Algebra ([`_gf2`](docs/Geometry.md#gf2))
-  - XOR Basis ([`_xor_basis`](docs/Geometry.md#xor_basis))
+  - XOR Basis ([`_xor_basis`](docs/Geometry.md#xor-basis))
 - `Graph.cpp`
   - LCA / Path Aggregation (`_lca`, `_lca_path`)
   - Virtual Tree (`_vtree`)
@@ -83,7 +83,7 @@
   - Manacher (`_mnc`)
   - Z Algorithm (`_z`)
 
-## snippets/
+## Snippets
 
 `snippets/`에는 VS Code용 code snippets이 들어있습니다. 각 알고리즘명에 대응하는
 `.code-snippets` 파일이 존재하며 위 템플릿 파일들과 1:1로 매칭됩니다.

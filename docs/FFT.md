@@ -1,10 +1,10 @@
 # FFT.cpp
 
-## fft
+## FFT
 
 `_fft<sz, T = ll>`은 정수 계수의 다항식을 변환해 덧셈과 곱셈을 계산한다. `T`는 입력 계수의 정수 타입이다. 계수는 낮은 차수부터 넣고, `node`는 변환된 상태를 보관한다. [소스](../FFT.cpp#L14) · [VS Code 스니펫 `>>fft`](../snippets/fft.code-snippets)
 
-### `_fft` API
+### FFT API
 
 `N = capacity()`는 FFT 길이이며 `node` 하나는 `O(N)` 공간을 쓴다. 같은 `_fft<sz, T>`의 `node`끼리 연산한다. 내부에서 `long double`을 사용하므로 길이와 계수 크기에 따라 반올림 오차로 결과 정수가 달라질 수 있다.
 
@@ -18,7 +18,7 @@
 
 `k`는 올림 후 자릿수다. `N <= 1`이면 FFT 단계는 생략한다.
 
-### `node` API
+### Node API
 
 | 함수 | 동작 | 시간 |
 | --- | --- | --- |

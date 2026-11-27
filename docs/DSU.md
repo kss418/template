@@ -1,10 +1,10 @@
 # DSU.cpp
 
-## uf
+## UF
 
 `_uf`는 두 집합을 합치고 원소가 같은 집합에 속하는지 확인한다. 경로 압축과 크기 기준 합치기를 사용한다. [소스](../DSU.cpp#L13) · [VS Code 스니펫 `>>uf`](../snippets/uf.code-snippets)
 
-### `_uf` API
+### UF API
 
 `n`은 최대 원소 번호다. 모든 원소 인자는 `[base, n]`에 있어야 한다. 기본은 `1`번부터 시작하며, `base = 0`이면 `0`번도 포함한다. 공간은 `O(n + 1)`이다.
 
@@ -40,7 +40,9 @@ uf.clear(2, 0); // 0~2번으로 초기화
 assert(uf.count() == 3 && uf.size(0) == 1);
 ```
 
-## uf_policy
+<a name="uf_policy"></a>
+
+## UF Policy
 
 `uf_policy`는 `_uf_value`의 기본 정책이다. 기본 `node`는 빈 타입이다. 집합에 값을 붙이려면 세 멤버를 정의한 정책을 넘긴다. [소스](../DSU.cpp#L61) · [VS Code 스니펫 `>>uf_value`](../snippets/uf_value.code-snippets)
 
@@ -66,11 +68,13 @@ public:
 };
 ```
 
-## uf_value
+<a name="uf_value"></a>
 
-`_uf_value<policy>`는 집합마다 [`policy::node`](#uf_policy) 값을 하나씩 관리한다. 스니펫은 `>>uf` 다음에 `>>uf_value`를 넣는다. [소스](../DSU.cpp#L70) · [VS Code 스니펫 `>>uf_value`](../snippets/uf_value.code-snippets)
+## UF Value
 
-### `_uf_value` API
+`_uf_value<policy>`는 집합마다 [`policy::node`](#uf-policy) 값을 하나씩 관리한다. 스니펫은 `>>uf` 다음에 `>>uf_value`를 넣는다. [소스](../DSU.cpp#L70) · [VS Code 스니펫 `>>uf_value`](../snippets/uf_value.code-snippets)
+
+### UF Value API
 
 원소 범위는 `_uf`와 같은 `[base, n]`이다. `_uf`의 `find()`, `same()`, `size()`, `count()`, `root()`, `it_root()`, `groups()`도 사용할 수 있다. 집합과 값을 함께 갱신하려면 `_uf_value`의 `merge()`와 `clear()`를 호출한다. 공간은 `O(n + 1)`이고, 표의 시간은 `leaf()`와 `node` 복사가 `O(1)`일 때 기준이다.
 
@@ -106,11 +110,11 @@ uf.it_component([&](int r, sum_policy::node& value){
 }); // {{2, 20}, {4, 7}}
 ```
 
-## wuf
+## WUF
 
 `_wuf`는 두 원소의 값 차이 조건을 추가하고, 그 조건들로 계산한 차이를 조회한다. `merge(a, b, c)`와 `diff(a, b)`의 방향은 모두 `val[b] - val[a]`다. [소스](../DSU.cpp#L107) · [VS Code 스니펫 `>>wuf`](../snippets/weight%20uf.code-snippets)
 
-### `_wuf` API
+### WUF API
 
 `n`은 최대 원소 번호이며 원소 범위는 `[base, n]`이다. 내부에 저장되는 차이와 조회하는 차이는 `ll` 범위에 있어야 한다. 공간은 `O(n + 1)`이다.
 
@@ -128,7 +132,7 @@ uf.it_component([&](int r, sum_policy::node& value){
 | `it_root(const F& f)` | 대표 번호의 오름차순으로 `f(int r)`을 호출한다. | `O(n)` + 콜백 비용 |
 | `groups()` | 집합을 대표 번호 순으로 반환한다. 각 집합의 원소도 오름차순이다. | `O(n α(n))` |
 
-### `result` API
+### Result API
 
 | 멤버 | 동작 | 시간 |
 | --- | --- | --- |
@@ -156,11 +160,13 @@ uf.merge(3, 4, 1); // 4번이 모순 상태인 집합에 합쳐진다.
 assert(uf.same(1, 4) && uf.diff(1, 4).inconsistent());
 ```
 
-## ufset
+<a name="ufset"></a>
+
+## UF Set
 
 `_ufset`은 정수 범위를 연속된 구간들로 관리한다. 처음에는 원소 하나가 구간 하나이며, `merge_prv()`와 `merge_nxt()`로 바로 이웃한 구간을 합친다. [소스](../DSU.cpp#L178) · [VS Code 스니펫 `>>ufset`](../snippets/ufset.code-snippets)
 
-### `_ufset` API
+### UF Set API
 
 `n`은 최대 원소 번호, `k`는 구간 수다. 원소 범위는 `[base, n]`이고, 그 밖의 경계값은 표에 명시된 호출에서 사용할 수 있다. 공간은 `O(n + 1)`이다.
 

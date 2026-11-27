@@ -1,6 +1,6 @@
 # Automata.cpp
 
-## alphabet
+## Alphabet
 
 `alphabet`은 문자열의 각 바이트를 정수 라벨로 바꾸는 정책 모음이다. [소스](../Automata.cpp#L13) · [VS Code 스니펫 `>>alphabet`](../snippets/alphabet.code-snippets)
 
@@ -63,7 +63,7 @@ dense 클래스에 사용할 정책은 컴파일 타임 정수 상수 `size`를 
 - 빈 문자열도 저장할 수 있다. 빈 문자열의 끝 상태는 `root()`와 같다.
 - 상태는 원본 trie의 현재 개수를 읽는다. `erase()`로 마지막 문자열을 지워도 경로는 남으므로, 문자열 존재 여부는 `end()`, 접두사 존재 여부는 `prefix_count() > 0`으로 확인한다. `clear()` 뒤에는 상태를 다시 얻는다.
 
-### `_trie` API
+### Trie API
 
 `s`는 `const std::string&` 또는 `std::span<const int>`다. `L`은 입력 또는 결과 길이, `Σ`는 `Alphabet::size`다. 사전순은 라벨의 오름차순이다.
 
@@ -80,7 +80,7 @@ dense 클래스에 사용할 정책은 컴파일 타임 정수 상수 `size`를 
 
 `kth()`가 반환한 빈 벡터는 저장된 빈 문자열일 수도 있으므로, 호출 전에 `1 <= k <= size()`로 구분할 수 있다.
 
-### `state` API
+### State API
 
 | 함수 | 동작 | 시간 |
 | --- | --- | --- |
@@ -128,7 +128,7 @@ assert(words == 2); // "ab", "abc" 각 1개
 - `std::span<const T>`와 `state::go()`는 라벨을 그대로 받는다. 문자열을 넘기면 각 바이트를 `unsigned char`로 읽어 `T`로 변환한다. 문자열 API를 쓰려면 이 변환이 가능해야 한다.
 - 빈 수열의 끝 상태는 `root()`와 같다. 삭제 후에도 경로는 남으므로, 저장 여부는 `end()`, 접두사 존재 여부는 `prefix_count() > 0`으로 확인한다. `clear()` 뒤에는 상태를 다시 얻는다.
 
-### `_sparse_trie` API
+### Sparse Trie API
 
 `s`는 `const std::string&` 또는 `std::span<const T>`다. `L`은 입력 또는 결과 길이, `D`는 상태의 최대 자식 수, `N`은 남아 있는 상태 수다. 사전순은 `std::less<T>`를 따르고, 복잡도는 라벨 연산이 `O(1)`일 때 기준이다.
 
@@ -145,7 +145,7 @@ assert(words == 2); // "ab", "abc" 각 1개
 
 저장된 빈 수열도 `kth()`에서 빈 벡터로 나오므로, `1 <= k <= size()`로 범위 안인지 확인한다.
 
-### `state` API
+### State API
 
 `d`는 현재 상태의 자식 수다. `D`와 `d`에는 삭제 후 남은 경로도 포함한다.
 
@@ -192,7 +192,7 @@ assert(trie.kth(1) == word);
 - `xor_all(mask)`는 현재 저장된 값마다 `y ^ mask`를 적용한다. 이후에도 삽입·삭제·조회 인자는 현재 값 기준으로 넘긴다. `state::go()`도 현재 값의 비트를 높은 자리부터 받는다.
 - `kth`와 `argkth`의 순위는 `1 <= k <= size()` 범위다.
 
-### `_xor_trie` API
+### XOR Trie API
 
 | 함수 | 동작 | 시간 |
 | --- | --- | --- |
@@ -214,7 +214,7 @@ assert(trie.kth(1) == word);
 | `equal(u64 x, u64 k)` | `x ^ y == k`인 `y`의 개수를 반환한다. | `O(B)` |
 | `greater(u64 x, u64 k)` | `x ^ y > k`인 `y`의 개수를 반환한다. | `O(B)` |
 
-### `state` API
+### State API
 
 삭제 후에도 경로는 남을 수 있다. 값이 남았는지는 끝 상태에서 `end()`로, 비트 접두사가 살아 있는지는 `prefix_count() > 0`으로 확인한다. `clear()` 뒤에는 상태를 다시 얻는다.
 
@@ -259,7 +259,7 @@ assert(five.count() == 1);
 - `insert()`로 패턴을 등록한 뒤 `build()`를 호출하고 매칭을 조회한다. 패턴을 더 등록하면 다시 `build()`를 호출한다.
 - 문자열은 정책이 허용하는 문자만 넣는다. `std::span<const int>`와 `go(int c)`에는 `[0, Alphabet::size)` 라벨을 넘긴다.
 
-### `_ac` API
+### Aho-Corasick API
 
 `s`는 `const std::string&` 또는 `std::span<const int>`다. `L`은 입력 길이, `N`은 상태 수, `Σ`는 `Alphabet::size`다.
 
@@ -277,7 +277,7 @@ assert(five.count() == 1);
 | `count_each(s)` | 길이 `size()`의 출현 횟수 벡터를 반환한다. 패턴의 끝 상태 번호로 조회하며, 중복 등록해도 해당 칸은 패턴 한 개의 출현 횟수다. | `O(L + N)` |
 | `it_state(s, const F& f)` | 루트에서 시작해 각 라벨을 읽은 뒤 `f(state node)`를 한 번 호출한다. | `O(L)` |
 
-### `state` API
+### State API
 
 `M`은 현재 위치에서 끝나는 서로 다른 패턴 수다. 순회 복잡도에는 콜백 본문 비용을 포함하지 않는다.
 
@@ -340,7 +340,7 @@ assert((lengths == std::vector<int>{3, 2}));
 - 문자열 입력은 각 바이트를 `unsigned char`로 읽어 `T`로 변환한다. `std::span<const T>`와 `go(const T& c)`는 라벨을 그대로 받는다.
 - 등록 후 `build()`를 호출한다. 매칭과 중복 등록 규칙, `it_match()` 사용법은 [Aho-Corasick](#aho-corasick)과 같다.
 
-### `_sparse_ac` API
+### Sparse Aho-Corasick API
 
 `s`는 `const std::string&` 또는 `std::span<const T>`다. `L`은 입력 길이, `N`은 상태 수, `H`는 가장 긴 패턴 길이, `D`는 상태당 최대 자식 수다. 라벨 연산 비용은 `O(1)`로 본다.
 
@@ -360,7 +360,7 @@ assert((lengths == std::vector<int>{3, 2}));
 
 `go()`는 실패 링크를 여러 번 따라갈 수 있다. 텍스트 전체를 루트부터 읽을 때는 상태 깊이가 한 라벨당 최대 1 증가하므로, 실패 링크를 따라가는 총 횟수는 `O(L)`이다.
 
-### `state` API
+### State API
 
 `M`은 현재 위치에서 끝나는 서로 다른 패턴 수다. 순회 비용은 콜백 본문을 제외한다.
 

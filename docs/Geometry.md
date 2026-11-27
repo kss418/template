@@ -1,10 +1,10 @@
 # Geometry.cpp
 
-## ccw
+## CCW
 
 `_ccw`는 세 점 `a`, `b`, `c`의 방향을 판정한다. `ret()`은 `a → b`를 기준으로 `c`가 왼쪽이면 `1`(반시계), 오른쪽이면 `-1`(시계), 일직선이면 `0`을 반환한다. [소스](../Geometry.cpp#L14) · [VS Code 스니펫 `>>ccw`](../snippets/ccw.code-snippets)
 
-### `_ccw` API
+### CCW API
 
 `pll`은 `pair<ll, ll>`이다. 좌표 차이는 `i128`로 계산하며, 외적을 계산하는 두 곱과 그 차이도 `i128` 범위에 있어야 한다.
 
@@ -26,11 +26,13 @@ assert(_ccw::cross(a, b, c) == 12); // 넓이의 두 배
 assert(_ccw::ret(0, 0, 4, 0, 8, 0) == 0); // 선분 밖의 점도 같은 직선 위에 있으면 0
 ```
 
-## angle_sort
+<a name="angle_sort"></a>
+
+## Angle Sort
 
 `_angle_sort`는 기준점 `(cx, cy)`에서 오른쪽을 가리키는 방향부터 점을 각도순으로 정렬한다. 기본은 반시계 방향이며, `is_clock = true`이면 시계 방향이다. 기준점과 같은 점은 맨 앞에 오고, 같은 방향의 점은 가까운 순서로 놓인다. [소스](../Geometry.cpp#L37) · [VS Code 스니펫 `>>angle_sort`](../snippets/angle_sort.code-snippets)
 
-### `_angle_sort` API
+### Angle Sort API
 
 `point`는 좌표가 모두 정수인 타입을 요구한다. 템플릿의 `x`, `y` 매크로를 쓰면 좌표 멤버 이름은 `first`, `second`다. `pll`을 바로 쓸 수 있다. 좌표 차이와 외적·내적·거리 제곱 계산이 `i128` 범위에 있어야 한다.
 
@@ -57,11 +59,13 @@ assert((shifted == array<pll, 4>{{{2, 3}, {1, 2}, {0, 3}, {1, 4}}}));
 
 <a name="li"></a>
 
-## linear_intersection
+<a name="linear_intersection"></a>
+
+## Linear Intersection
 
 `_li`는 정수 좌표의 점이 선분 위에 있는지, 두 선분이 교차하는지 판정한다. `pll`로 끝점을 넘기거나 `pair<pll, pll>`로 선분을 넘길 수 있다. 스니펫은 `>>ccw` 다음에 `>>li`를 넣는다. [소스](../Geometry.cpp#L79) · [VS Code 스니펫 `>>li`](../snippets/li.code-snippets)
 
-### `_li` API
+### Linear Intersection API
 
 선분의 두 끝점은 어느 순서로 넣어도 된다. 끝점이 같으면 선분은 점 하나를 나타낸다. 좌표의 계산 범위는 `_ccw`와 같다. [CCW](#ccw)
 
@@ -92,11 +96,11 @@ assert(_li::intersect(a, overlap) && !_li::proper_intersect(a, overlap));
 assert(_li::intersect(a, point) && !_li::proper_intersect(a, point));
 ```
 
-## frac
+## Frac
 
 `_frac<T = i128>`은 분모가 양수인 기약분수를 저장한다. `T`는 부호 있는 정수 타입이고, `0`은 항상 `0/1`로 저장한다. [소스](../Geometry.cpp#L113) · [VS Code 스니펫 `>>frac`](../snippets/frac.code-snippets)
 
-### `_frac` API
+### Frac API
 
 정규화와 연산 중의 부호 변경, 절댓값, 곱셈 등 모든 중간값이 `T` 범위에 있어야 한다. 표에서 `M`은 해당 연산의 `gcd`에 넘기는 정수의 최대 크기다.
 
@@ -154,7 +158,7 @@ assert(a == 0 && a.den() == 1); // 0/1
 
 `_ch`는 정수 좌표 점 집합의 볼록 껍질을 구한다. 스니펫은 `>>ccw` 다음에 `>>ch`를 넣는다. [소스](../Geometry.cpp#L191) · [VS Code 스니펫 `>>ch`](../snippets/ch.code-snippets)
 
-### `_ch` API
+### Convex Hull API
 
 꼭짓점은 `(x, y)`의 사전순 최솟값부터 반시계 순서로 저장하며, 시작점을 끝에 반복하지 않는다. 변 위의 중간 점은 제외하고, 중복 좌표에는 가장 먼저 넣은 점의 ID를 남긴다. 빈 입력이면 결과도 비어 있고, 서로 다른 좌표가 하나면 그 점 하나, 서로 다른 좌표가 모두 일직선 위에 있으면 양 끝점만 남긴다.
 
@@ -190,11 +194,13 @@ hull.build(); // 추가한 점을 반영
 assert(id == 6 && hull.idx()[1].idx == id);
 ```
 
-## mod_matrix
+<a name="mod_matrix"></a>
+
+## Mod Matrix
 
 `_mod_matrix<mod = 998244353>`은 고정 모듈러로 행렬의 덧셈, 뺄셈, 곱셈과 거듭제곱을 계산한다. `mod`는 양의 컴파일 타임 `u64` 값이며 합성수와 `1`도 쓸 수 있다. 원소 타입 `mint`는 `_mint<mod>`의 별칭이다. 스니펫은 `>>mint` 다음에 `>>mod_matrix`를 넣는다. [소스](../Geometry.cpp#L255) · [VS Code 스니펫 `>>mod_matrix`](../snippets/mod_matrix.code-snippets) · [VS Code 스니펫 `>>mint`](../snippets/mint.code-snippets)
 
-### `_mod_matrix` API
+### Mod Matrix API
 
 `n`과 `m`은 행과 열의 개수다. 차원과 인덱스는 `int`이며, 차원은 각각 `0` 이상이어야 한다. 원소에 접근할 때는 `0 <= i < n`, `0 <= j < m`이어야 하며 인덱스는 검사하지 않는다. 행렬은 `O(1 + nm)` 공간을 쓰며 생성 직후부터 조회하고 수정할 수 있다.
 
@@ -245,11 +251,11 @@ a.clear(1, 1); // 같은 크기여도 원소는 0으로 초기화
 assert(a.at(0, 0) == 0);
 ```
 
-## area
+## Area
 
 `_area`는 단순 다각형 넓이의 두 배를 구한다. 꼭짓점은 경계를 따라 시계 또는 반시계 순서로 넣는다. 마지막 점에서 첫 점으로 돌아가는 변은 함수가 포함한다. [소스](../Geometry.cpp#L342) · [VS Code 스니펫 `>>area`](../snippets/area.code-snippets)
 
-### `_area` API
+### Area API
 
 | 함수 | 동작 | 시간 |
 | --- | --- | --- |
@@ -267,11 +273,11 @@ reverse(polygon.begin(), polygon.end());
 assert(_area::ret(polygon) == twice); // 꼭짓점 순서의 방향을 뒤집어도 넓이는 같다.
 ```
 
-## line
+## Line
 
 `_line<T = i128>`은 직선을 `y = ax + b` 또는 `x = c`로 나타낸다. 기울기, 절편, 함수값과 교점 좌표는 `_frac<T>`로 정확하게 계산한다. 스니펫은 `>>frac` 다음에 `>>line`을 넣는다. [소스](../Geometry.cpp#L358) · [VS Code 스니펫 `>>line`](../snippets/line.code-snippets) · [분수](#frac)
 
-### `_line` API
+### Line API
 
 `T`는 부호 있는 정수 타입이다. 좌표 차이와 분수 연산의 모든 중간값이 `T` 범위에 있어야 한다. 표에서 `M`은 해당 연산의 `gcd`에 넘기는 정수의 최대 크기다.
 
@@ -310,11 +316,11 @@ assert(!diagonal.intersect(parallel));
 assert(diagonal.same(line(frac(1, 2), {4, 2})));
 ```
 
-## inter
+## Inter
 
-`_inter`는 점이 단순 다각형의 외부, 경계, 내부 중 어디에 있는지 판정한다. 각 변에서 경계 포함 여부를 확인하고, 점에서 오른쪽으로 뻗는 수평 반직선과 변의 교차 횟수의 홀짝으로 내부를 판정한다. 스니펫은 `>>ccw`, `>>li`, `>>inter` 순서로 넣는다. [소스](../Geometry.cpp#L426) · [VS Code 스니펫 `>>inter`](../snippets/inter.code-snippets) · [선분 판정](#linear_intersection)
+`_inter`는 점이 단순 다각형의 외부, 경계, 내부 중 어디에 있는지 판정한다. 각 변에서 경계 포함 여부를 확인하고, 점에서 오른쪽으로 뻗는 수평 반직선과 변의 교차 횟수의 홀짝으로 내부를 판정한다. 스니펫은 `>>ccw`, `>>li`, `>>inter` 순서로 넣는다. [소스](../Geometry.cpp#L426) · [VS Code 스니펫 `>>inter`](../snippets/inter.code-snippets) · [선분 판정](#linear-intersection)
 
-### `_inter` API
+### Inter API
 
 `p`는 다각형 경계를 따라 나열한 정수 좌표 꼭짓점이다. 시계·반시계 순서 모두 지원하며 마지막 꼭짓점과 첫 꼭짓점도 변으로 잇는다. 첫 꼭짓점을 끝에 한 번 더 넣어도 된다. 꼭짓점이 3개 미만이면 `outside`다. 꼭짓점이 3개 이상이고 모두 일직선 위에 있으면 변 위의 점은 `boundary`이고 나머지는 `outside`다. 좌표의 계산 범위는 `_ccw`와 같다. 두 함수의 추가 공간은 `O(1)`이다. [CCW](#ccw)
 
@@ -342,7 +348,7 @@ assert(_inter::locate(span<const pll>{}, {0, 0}) == location::outside);
 
 `_rc`는 회전 캘리퍼스로 볼록 다각형에서 가장 멀리 떨어진 두 점과 그 거리를 구한다. 스니펫은 `>>ccw`, `>>ch`, `>>rc` 순서로 넣는다. [소스](../Geometry.cpp#L446) · [VS Code 스니펫 `>>rc`](../snippets/rc.code-snippets)
 
-### `_rc` API
+### Rotating Calipers API
 
 볼록 다각형의 경계를 시계 또는 반시계 순서로 넘긴다. 시작 꼭짓점은 자유롭게 고를 수 있고, 변 위의 중간 점도 허용한다. 인접한 중복 좌표와 시작점을 닫는 중복 좌표는 하나로 합치고 가장 작은 ID를 남긴다. 모든 점이 일직선 위에 있으면 입력 순서에 관계없이 양 끝점을 고른다. 순서 없는 일반 점 집합은 먼저 볼록 껍질을 구한다. [볼록 껍질](#convex-hull)
 
@@ -378,11 +384,11 @@ diameter.build(hull.ret()); // 볼록 껍질에서의 위치를 ID로 사용
 assert((diameter.idx() == pll{0, 2}));
 ```
 
-## dot
+## Dot
 
 `_dot`은 정수 좌표로 내적을 계산한다. 점 세 개를 넣으면 가운데 점을 꼭짓점으로 사용한다. [소스](../Geometry.cpp#L522) · [VS Code 스니펫 `>>dot`](../snippets/dot.code-snippets)
 
-### `_dot` API
+### Dot API
 
 좌표 차이, 곱, 합은 `i128` 범위에 있어야 하고 반환하는 내적은 `ll` 범위에 있어야 한다. 두 벡터의 길이가 양수일 때 내적이 양수면 각도가 `90°`보다 작고, `0`이면 `90°`, 음수면 `90°`보다 크다. 한쪽 벡터가 영벡터면 내적은 `0`이다.
 
@@ -402,11 +408,11 @@ assert(_dot::ret(l, m, {-1, 1}) < 0); // 둔각
 assert(_dot::ret(1, 0, 0, 0, 0, 1) == 0); // 직각
 ```
 
-## gf2
+## GF2
 
 `_gf2<m>`은 원소가 0 또는 1인 GF(2)에서 연립방정식 `A v = b`를 가우스-조르당 소거법으로 푼다. 변수 개수 `m`은 컴파일 시 정하고, 방정식 개수 `n`은 생성자 또는 `clear(n)`으로 정한다. 행과 변수의 인덱스는 0부터 시작한다. [소스](../Geometry.cpp#L539) · [VS Code 스니펫 `>>gf2`](../snippets/gf2.code-snippets)
 
-### `_gf2` API
+### GF2 API
 
 확대 행렬의 각 행은 `bitset<m + 1>`이다. 비트 `0`부터 `m - 1`까지는 각 변수의 계수이고 비트 `m`은 우변이다. `n`은 음이 아닌 정수이고 `m = 0`과 `n = 0`도 허용한다. `build()`는 보존된 입력으로 매번 결과를 다시 계산한다. 처음 결과를 읽을 때와 입력을 바꾼 뒤에는 `ret()`보다 먼저 `build()`를 호출한다.
 
@@ -425,7 +431,7 @@ assert(_dot::ret(1, 0, 0, 0, 0, 1) == 0); // 직각
 | `build(bool with_basis = 0)` | 입력의 복사본을 소거해 결과를 저장한다. `true`이면 영공간 기저도 저장한다. | 기본 `O(1 + m + nB + nm + nrB)`, 기저 생성에 `O(m(1 + f))` 추가 |
 | `ret()` | 마지막으로 계산한 결과를 `const result&`로 반환한다. | `O(1)` |
 
-### `result` API
+### Result API
 
 | 함수·필드 | 동작 |
 | --- | --- |
@@ -458,11 +464,13 @@ system.build(true);
 assert(system.ret().inconsistent() && system.ret().get_basis().size() == 2);
 ```
 
-## xor_basis
+<a name="xor_basis"></a>
+
+## XOR Basis
 
 `_xor_basis<N = 64>`는 삽입한 `u64` 값의 부분집합으로 만들 수 있는 XOR 값들을 선형 기저로 관리한다. 빈 부분집합의 XOR은 0이며, 랭크가 `r`이면 서로 다른 값이 `2^r`개다. [소스](../Geometry.cpp#L612) · [VS Code 스니펫 `>>xor_basis`](../snippets/xor_basis.code-snippets)
 
-### `_xor_basis` API
+### XOR Basis API
 
 `u64`는 `uint64_t`이고 비트 폭 `N`은 `0 <= N <= 64`이다. `insert()`에 넘기는 값은 하위 `N`비트에 들어가야 하며, 호출자가 이 조건을 보장한다. `N = 0`이면 삽입할 수 있는 값과 만들 수 있는 값은 모두 0뿐이다.
 

@@ -1,10 +1,10 @@
 # Combinatorics.cpp
 
-## comb
+## Comb
 
 `_comb<mod>`는 팩토리얼 테이블로 조합과 순열을 계산한다. `mod`는 소수여야 하며 기본값은 `998244353`이다. 조회 결과는 `[0, mod)`의 `u64`다. 스니펫은 `>>mint` 다음에 `>>comb`를 넣는다. [소스](../Combinatorics.cpp#L14) · [VS Code 스니펫 `>>comb`](../snippets/comb.code-snippets)
 
-### `_comb` API
+### Comb API
 
 `N`은 가장 최근에 전처리한 상한이다. 테이블은 `O(N + 1)` 공간을 쓴다. 전처리와 조회 범위는 호출자가 맞춘다.
 
@@ -30,11 +30,11 @@ assert(table.factorial(4) == 3);
 assert(table.inv_factorial(4) == 5); // 3 * 5 mod 7 == 1
 ```
 
-## lucas
+## Lucas
 
 `_lucas`는 소수 `mod`에 대해 `n`이 `mod` 이상인 조합도 계산한다. 전처리 공간은 `O(mod)`이고, 조합·순열 결과는 `[0, mod)`의 `int`다. 스니펫은 `>>dynamic_mint` 다음에 `>>lucas`를 넣는다. [소스](../Combinatorics.cpp#L52) · [VS Code 스니펫 `>>lucas`](../snippets/lucas.code-snippets)
 
-### `_lucas` API
+### Lucas API
 
 | 함수 | 동작 | 시간 |
 | --- | --- | --- |
@@ -59,11 +59,13 @@ table.build(5); // 모듈러를 바꾸고 다시 전처리
 assert(table.comb(10, 3) == 0);
 ```
 
-## comb_crt
+<a name="comb_crt"></a>
+
+## Comb CRT
 
 `_comb_crt`는 등록한 소수 거듭제곱 `p^e`의 최소공배수 `M`을 모듈러로 사용한다. 같은 소수를 여러 번 등록할 수 있고, 등록한 인수가 없으면 `M = 1`이다. 스니펫은 `>>dynamic_mint`, `>>crt`, `>>lucas`를 준비한 뒤 `>>comb_crt`를 넣는다. [소스](../Combinatorics.cpp#L97) · [VS Code 스니펫 `>>comb_crt`](../snippets/comb_crt.code-snippets)
 
-### `_comb_crt` API
+### Comb CRT API
 
 `k`는 등록한 인수 수, `S`는 등록한 `p^e`의 합이다. 전처리에 `O(1 + S)` 공간을 쓴다. 인수를 등록하거나 지운 뒤에는 `build()`를 호출하고 조회한다.
 
@@ -76,7 +78,7 @@ assert(table.comb(10, 3) == 0);
 | `multicomb(ll n, ll r)` | `n`종에서 `r`개를 중복 선택하는 수의 나머지를 반환한다. 음수 인자면 `0`이고, `n == 0`이면 `r == 0`인 경우만 `1 mod M`이다. 그 외에는 `n + r - 1 <= LLONG_MAX`여야 한다. | `O(1 + k(log(n + r + 2) + log M))` |
 | `clear()` | 등록한 인수와 테이블을 모두 지운다. | `O(1 + S)` 상한 |
 
-### `result` API
+### Result API
 
 `result`는 `_crt::result`다. 조회에서 값으로 반환하므로 테이블을 다시 전처리해도 이미 받은 결과는 유지된다.
 
