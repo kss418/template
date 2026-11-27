@@ -2,6 +2,7 @@
 "mod_matrix": {
   "prefix": ">>mod_matrix",
   "body": [
+    "// https://github.com/kss418/template/blob/master/docs/Geometry.md#mod_matrix",
     "template <u64 mod = 998244353>",
     "class _mod_matrix{ // 0-based index, Require _mint",
     "public:",

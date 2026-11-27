@@ -2,6 +2,7 @@
   "ch": {
     "prefix": ">>ch",
     "body": [
+      "// https://github.com/kss418/template/blob/master/docs/Geometry.md#ch",
       "class _ch{",
       "public:",
       "    class node{",

@@ -2,6 +2,7 @@
 "inter": {
   "prefix": ">>inter",
   "body": [
+    "// https://github.com/kss418/template/blob/master/docs/Geometry.md#inter",
     "namespace _inter{",
     "    enum class location{ outside, boundary, inside };",
     "",

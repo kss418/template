@@ -2,6 +2,7 @@
 "dot": {
   "prefix": ">>dot",
   "body": [
+    "// https://github.com/kss418/template/blob/master/docs/Geometry.md#dot",
     "namespace _dot{",
     "    inline ll ret(pll a, pll b){ // O(1)",
     "        return (ll)((i128)a.x * b.x + (i128)a.y * b.y);",

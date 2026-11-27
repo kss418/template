@@ -187,6 +187,7 @@ public:
 };
 
 //CONVEX HULL
+// https://github.com/kss418/template/blob/master/docs/Geometry.md#ch
 class _ch{
 public:
     class node{
@@ -249,6 +250,7 @@ public:
     const vector <node>& idx() const{ return st; } // O(1)
 };
 
+// https://github.com/kss418/template/blob/master/docs/Geometry.md#mod_matrix
 template <u64 mod = 998244353>
 class _mod_matrix{ // 0-based index, Require _mint
 public:
@@ -336,6 +338,7 @@ public:
 };
 
 //AREA
+// https://github.com/kss418/template/blob/master/docs/Geometry.md#area
 namespace _area{
     inline ll ret(span<const pll> v){ // div by 2
         i128 num = 0;
@@ -350,6 +353,7 @@ namespace _area{
 }
 
 //LINE
+// https://github.com/kss418/template/blob/master/docs/Geometry.md#line
 template <signed_integral T = i128>
 class _line{ 
 private:
@@ -418,6 +422,7 @@ public:
 };
 
 // 점 다각형 내부 판별
+// https://github.com/kss418/template/blob/master/docs/Geometry.md#inter
 namespace _inter{
     enum class location{ outside, boundary, inside };
 
@@ -437,6 +442,7 @@ namespace _inter{
 }
 
 //ROTATING CALIPUS
+// https://github.com/kss418/template/blob/master/docs/Geometry.md#rc
 class _rc{
 public:
     using node = _ch::node;
@@ -512,6 +518,7 @@ public:
     ld dist() const{ return len; } // O(1)
 };
 
+// https://github.com/kss418/template/blob/master/docs/Geometry.md#dot
 namespace _dot{
     inline ll ret(pll a, pll b){ // O(1)
         return (ll)((i128)a.x * b.x + (i128)a.y * b.y);
@@ -527,6 +534,7 @@ namespace _dot{
     inline ll ret(ll x1, ll y1, ll x2, ll y2, ll x3, ll y3){ return ret({x1, y1}, {x2, y2}, {x3, y3}); } // O(1)
 }
 
+// https://github.com/kss418/template/blob/master/docs/Geometry.md#gf2
 template <size_t m>
 class _gf2{ // 0-based index
 public:
@@ -599,6 +607,7 @@ public:
     const result& ret() const{ return ans; } // O(1)
 };
 
+// https://github.com/kss418/template/blob/master/docs/Geometry.md#xor_basis
 template <size_t N = 64> requires (N <= 64)
 class _xor_basis{
 private:

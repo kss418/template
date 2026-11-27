@@ -2,6 +2,7 @@
   "rc": {
     "prefix": ">>rc",
     "body": [
+      "// https://github.com/kss418/template/blob/master/docs/Geometry.md#rc",
       "class _rc{",
       "public:",
       "    using node = _ch::node;",

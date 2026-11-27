@@ -2,6 +2,7 @@
 "line": {
   "prefix": ">>line",
   "body": [
+    "// https://github.com/kss418/template/blob/master/docs/Geometry.md#line",
     "template <signed_integral T = i128>",
     "class _line{ ",
     "private:",

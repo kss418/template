@@ -2,6 +2,7 @@
   "area": {
     "prefix": ">>area",
     "body": [
+      "// https://github.com/kss418/template/blob/master/docs/Geometry.md#area",
       "namespace _area{",
       "    inline ll ret(span<const pll> v){ // div by 2",
       "        i128 num = 0;",

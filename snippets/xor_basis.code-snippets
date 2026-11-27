@@ -2,6 +2,7 @@
   "xor_basis": {
     "prefix": ">>xor_basis",
     "body": [
+      "// https://github.com/kss418/template/blob/master/docs/Geometry.md#xor_basis",
       "template <size_t N = 64> requires (N <= 64)",
       "class _xor_basis{",
       "private:",

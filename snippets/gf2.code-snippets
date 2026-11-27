@@ -2,6 +2,7 @@
 "gf2": {
   "prefix": ">>gf2",
   "body": [
+    "// https://github.com/kss418/template/blob/master/docs/Geometry.md#gf2",
     "template <size_t m>",
     "class _gf2{ // 0-based index",
     "public:",
