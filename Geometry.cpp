@@ -75,6 +75,7 @@ namespace _angle_sort{
 }
 
 //LINE INTERSECTION
+// https://github.com/kss418/template/blob/master/docs/Geometry.md#li
 namespace _li{
     inline int ccw(const pll& v1, const pll& v2, const pll& v3){ return _ccw::ret(v1, v2, v3); } // O(1)
 

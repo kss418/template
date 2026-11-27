@@ -54,3 +54,38 @@ auto cmp = _angle_sort::cmp(1, 3, true);
 ranges::sort(shifted, cmp); // (1, 3) 기준으로 오른쪽, 아래쪽, 왼쪽, 위쪽
 assert((shifted == array<pll, 4>{{{2, 3}, {1, 2}, {0, 3}, {1, 4}}}));
 ```
+
+## li
+
+`_li`는 정수 좌표의 점이 선분 위에 있는지, 두 선분이 교차하는지 판정한다. `pll`로 끝점을 넘기거나 `pair<pll, pll>`로 선분을 넘길 수 있다. 스니펫은 `>>ccw` 다음에 `>>li`를 넣는다. [소스](../Geometry.cpp#L79) · [VS Code 스니펫 `>>li`](../snippets/li.code-snippets)
+
+### `_li` API
+
+선분의 두 끝점은 어느 순서로 넣어도 된다. 끝점이 같으면 선분은 점 하나를 나타낸다. 좌표의 계산 범위는 `_ccw`와 같다. [CCW](#ccw)
+
+| 함수 | 동작 | 시간 |
+| --- | --- | --- |
+| `ccw(const pll& v1, const pll& v2, const pll& v3)` | `_ccw::ret()`으로 세 점의 방향을 `1`, `-1`, `0`으로 반환한다. | `O(1)` |
+| `on_segment(pll a, pll b, pll p)` | 점 `p`가 선분 `ab` 위에 있으면 `true`다. 끝점도 포함한다. | `O(1)` |
+| `on_segment(pair<pll, pll> a, pll p)` | `a.first`와 `a.second`를 끝점으로 사용해 `p`의 포함 여부를 판정한다. | `O(1)` |
+| `intersect(pll av1, pll av2, pll bv1, pll bv2)` | 두 선분에 공통점이 하나라도 있으면 `true`다. 끝점 접촉과 일직선 위의 겹침을 포함한다. | `O(1)` |
+| `intersect(pair<pll, pll> a, pair<pll, pll> b)` | 두 선분을 끝점 쌍으로 받아 공통점이 있는지 판정한다. | `O(1)` |
+| `proper_intersect(pll av1, pll av2, pll bv1, pll bv2)` | 서로 다른 직선 위의 두 선분이 양쪽 선분의 내부에서 교차하면 `true`다. | `O(1)` |
+| `proper_intersect(pair<pll, pll> a, pair<pll, pll> b)` | 두 선분을 끝점 쌍으로 받아 같은 내부 교차 조건을 판정한다. | `O(1)` |
+
+### 사용 예시
+
+```cpp
+using segment = pair<pll, pll>;
+segment a{{0, 0}, {4, 0}};
+segment crossing{{2, -1}, {2, 1}};
+segment touching{{4, 0}, {5, 1}};
+segment overlap{{2, 0}, {6, 0}};
+segment point{{2, 0}, {2, 0}};
+
+assert(_li::on_segment(a, {4, 0})); // 끝점도 포함
+assert(_li::intersect(a, crossing) && _li::proper_intersect(a, crossing));
+assert(_li::intersect(a, touching) && !_li::proper_intersect(a, touching));
+assert(_li::intersect(a, overlap) && !_li::proper_intersect(a, overlap));
+assert(_li::intersect(a, point) && !_li::proper_intersect(a, point));
+```
