@@ -21,7 +21,7 @@
 - `Geometry.cpp`
   - CCW ([`_ccw`](docs/Geometry.md#ccw))
   - Angle Sort ([`_angle_sort`](docs/Geometry.md#angle_sort))
-  - Segment Intersection ([`_li`](docs/Geometry.md#li))
+  - Segment Intersection ([`_li`](docs/Geometry.md#linear_intersection))
   - Fraction ([`_frac`](docs/Geometry.md#frac))
   - Line Equation/Intersection ([`_line`](docs/Geometry.md#line))
   - Point-in-Polygon ([`_inter`](docs/Geometry.md#inter))

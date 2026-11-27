@@ -55,7 +55,9 @@ ranges::sort(shifted, cmp); // (1, 3) 기준으로 오른쪽, 아래쪽, 왼쪽,
 assert((shifted == array<pll, 4>{{{2, 3}, {1, 2}, {0, 3}, {1, 4}}}));
 ```
 
-## li
+<a name="li"></a>
+
+## linear_intersection
 
 `_li`는 정수 좌표의 점이 선분 위에 있는지, 두 선분이 교차하는지 판정한다. `pll`로 끝점을 넘기거나 `pair<pll, pll>`로 선분을 넘길 수 있다. 스니펫은 `>>ccw` 다음에 `>>li`를 넣는다. [소스](../Geometry.cpp#L79) · [VS Code 스니펫 `>>li`](../snippets/li.code-snippets)
 
@@ -308,7 +310,7 @@ assert(diagonal.same(line(frac(1, 2), {4, 2})));
 
 ## inter
 
-`_inter`는 점이 단순 다각형의 외부, 경계, 내부 중 어디에 있는지 판정한다. 각 변에서 경계 포함 여부를 확인하고, 점에서 오른쪽으로 뻗는 수평 반직선과 변의 교차 횟수의 홀짝으로 내부를 판정한다. 스니펫은 `>>ccw`, `>>li`, `>>inter` 순서로 넣는다. [소스](../Geometry.cpp#L426) · [VS Code 스니펫 `>>inter`](../snippets/inter.code-snippets) · [선분 판정](#li)
+`_inter`는 점이 단순 다각형의 외부, 경계, 내부 중 어디에 있는지 판정한다. 각 변에서 경계 포함 여부를 확인하고, 점에서 오른쪽으로 뻗는 수평 반직선과 변의 교차 횟수의 홀짝으로 내부를 판정한다. 스니펫은 `>>ccw`, `>>li`, `>>inter` 순서로 넣는다. [소스](../Geometry.cpp#L426) · [VS Code 스니펫 `>>inter`](../snippets/inter.code-snippets) · [선분 판정](#linear_intersection)
 
 ### `_inter` API
 
